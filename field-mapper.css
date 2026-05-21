@@ -195,12 +195,12 @@
   position: relative;
   display: inline-block;
   max-width: 100%;
-  line-height: 0;
   user-select: none;
   touch-action: none;
 }
 
 .fm-stage.has-map {
+  line-height: 0;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
 }
 
@@ -209,10 +209,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.75rem;
   text-align: center;
-  min-width: 320px;
-  min-height: 280px;
-  padding: 2rem;
+  line-height: 1.5;
+  min-width: 280px;
+  min-height: 200px;
+  padding: 2rem 1.5rem;
   color: var(--text-muted);
 }
 
@@ -223,15 +225,17 @@
 .fm-empty-title {
   font-family: var(--font-display);
   font-size: 1.75rem;
+  line-height: 1.15;
   color: var(--text);
-  margin: 0 0 0.5rem;
+  margin: 0;
   letter-spacing: 0.03em;
 }
 
-.fm-empty p {
+.fm-empty-desc {
   margin: 0;
   max-width: 280px;
   font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .fm-image {
@@ -267,19 +271,19 @@
 
 .fm-player {
   position: absolute;
-  width: var(--player-size, 36px);
-  height: var(--player-size, 36px);
-  margin-left: calc(var(--player-size, 36px) / -2);
-  margin-top: calc(var(--player-size, 36px) / -2);
+  width: var(--player-size, 12px);
+  height: var(--player-size, 12px);
+  margin-left: calc(var(--player-size, 12px) / -2);
+  margin-top: calc(var(--player-size, 12px) / -2);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  letter-spacing: 0.02em;
+  font-size: 0.5rem;
+  letter-spacing: 0;
   color: #0f1210;
-  border: 3px solid rgba(15, 18, 16, 0.85);
+  border: 1px solid rgba(15, 18, 16, 0.85);
   cursor: grab;
   z-index: 10;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
@@ -382,7 +386,17 @@
   .fm-empty {
     min-width: 0;
     width: 100%;
-    min-height: 240px;
+    min-height: 200px;
+    padding: 1.5rem 1rem;
+  }
+
+  .fm-empty-title {
+    font-size: 1.5rem;
+  }
+
+  .fm-empty-desc {
+    font-size: 0.9rem;
+    max-width: 260px;
   }
 
   .fm-hint {
@@ -457,12 +471,19 @@
 
 @media (max-width: 900px) and (pointer: coarse) {
   :root {
-    --player-size: 44px;
+    --player-size: 14px;
   }
 
   .fm-player {
-    font-size: 1.25rem;
-    border-width: 3px;
+    font-size: 0.55rem;
+    border-width: 1px;
+  }
+
+  /* Small markers, larger invisible touch target */
+  .fm-player::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
   }
 
   .fm-stage-wrap {
