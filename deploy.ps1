@@ -1,5 +1,5 @@
 # Deploy Paintballer to free GitHub Pages
-# Prerequisites: GitHub CLI logged in (run: gh auth login)
+# If PowerShell blocks scripts, double-click deploy.cmd instead.
 
 $ErrorActionPreference = "Stop"
 $env:Path = "C:\Program Files\Git\bin;C:\Program Files\GitHub CLI;" + $env:Path
