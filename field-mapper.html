@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1210" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="description" content="Paintballer Field Mapper — upload a map, draw tactics, and position your teams." />
   <title>Field Mapper — Paintballer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -30,7 +32,7 @@
   </header>
 
   <main class="fm-page">
-    <aside class="fm-sidebar">
+    <aside class="fm-sidebar" id="fm-sidebar">
       <div class="fm-sidebar-head">
         <p class="eyebrow">Field Mapper</p>
         <h1>Plan the push</h1>
@@ -88,6 +90,30 @@
       <p class="fm-hint" id="fm-hint">Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
     </section>
   </main>
+
+  <nav class="fm-mobile-bar" id="fm-mobile-bar" aria-label="Quick tools">
+    <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
+      <span class="fm-mobile-icon" aria-hidden="true">↖</span>
+      <span>Move</span>
+    </button>
+    <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
+      <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
+      <span>Brush</span>
+    </button>
+    <label class="fm-mobile-btn fm-mobile-upload">
+      <span class="fm-mobile-icon" aria-hidden="true">📷</span>
+      <span>Upload</span>
+      <input type="file" id="map-upload-mobile" accept="image/*" hidden />
+    </label>
+    <button type="button" class="fm-mobile-btn" id="reset-players-mobile" disabled aria-label="Reset player positions">
+      <span class="fm-mobile-icon" aria-hidden="true">↺</span>
+      <span>Reset</span>
+    </button>
+    <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
+      <span class="fm-mobile-icon" aria-hidden="true">☰</span>
+      <span>Tools</span>
+    </button>
+  </nav>
 
   <script src="main.js"></script>
   <script src="field-mapper.js"></script>

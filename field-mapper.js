@@ -2,19 +2,26 @@
   const TEAM_A = "#ff5c00";
   const TEAM_B = "#3b9eff";
   const PLAYERS_PER_TEAM = 5;
+  const IS_COARSE = window.matchMedia("(pointer: coarse)").matches;
 
+  const body = document.body;
   const stage = document.getElementById("fm-stage");
   const empty = document.getElementById("fm-empty");
   const image = document.getElementById("fm-image");
   const canvas = document.getElementById("fm-canvas");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
+  const mapUploadMobile = document.getElementById("map-upload-mobile");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
   const resetPlayersBtn = document.getElementById("reset-players");
+  const resetPlayersMobile = document.getElementById("reset-players-mobile");
   const brushSizeInput = document.getElementById("brush-size");
   const brushColorInput = document.getElementById("brush-color");
   const toolBtns = document.querySelectorAll(".fm-tool-btn[data-tool]");
+  const mobileToolBtns = document.querySelectorAll(".fm-mobile-btn[data-tool]");
+  const toggleToolsBtn = document.getElementById("toggle-tools");
+  const sidebar = document.getElementById("fm-sidebar");
   const hint = document.getElementById("fm-hint");
 
   if (!stage || !canvas) return;
@@ -26,6 +33,10 @@
   let draggedPlayer = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
+
+  if (IS_COARSE && brushSizeInput) {
+    brushSizeInput.value = "12";
+  }
 
   const defaultPositions = {
     a: [
@@ -47,10 +58,26 @@
   document.documentElement.style.setProperty("--team-a", TEAM_A);
   document.documentElement.style.setProperty("--team-b", TEAM_B);
 
+  function setInteractionLock(on) {
+    body.classList.toggle("fm-drawing", on);
+  }
+
+  function updateMobileControls() {
+    if (resetPlayersMobile) resetPlayersMobile.disabled = !hasMap;
+    if (resetPlayersBtn) resetPlayersBtn.disabled = !hasMap;
+    if (clearMapBtn) clearMapBtn.disabled = !hasMap;
+    if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
+  }
+
   function setTool(tool) {
     activeTool = tool;
     toolBtns.forEach((btn) => {
       btn.classList.toggle("is-active", btn.dataset.tool === tool);
+    });
+    mobileToolBtns.forEach((btn) => {
+      const isActive = btn.dataset.tool === tool;
+      btn.classList.toggle("is-active", isActive);
+      btn.setAttribute("aria-pressed", String(isActive));
     });
     stage.classList.toggle("tool-brush", tool === "brush");
     if (hint) {
@@ -61,8 +88,39 @@
     }
   }
 
+  function closeToolsPanel() {
+    sidebar?.classList.remove("is-open");
+    body.classList.remove("fm-tools-open");
+    if (toggleToolsBtn) {
+      toggleToolsBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function openToolsPanel() {
+    sidebar?.classList.add("is-open");
+    body.classList.add("fm-tools-open");
+    if (toggleToolsBtn) {
+      toggleToolsBtn.setAttribute("aria-expanded", "true");
+    }
+  }
+
   toolBtns.forEach((btn) => {
     btn.addEventListener("click", () => setTool(btn.dataset.tool || "select"));
+  });
+
+  mobileToolBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setTool(btn.dataset.tool || "select");
+      closeToolsPanel();
+    });
+  });
+
+  toggleToolsBtn?.addEventListener("click", () => {
+    if (sidebar?.classList.contains("is-open")) {
+      closeToolsPanel();
+    } else {
+      openToolsPanel();
+    }
   });
 
   function createPlayers() {
@@ -104,6 +162,7 @@
       draggedPlayer = el;
       el.classList.add("is-dragging");
       el.setPointerCapture(e.pointerId);
+      setInteractionLock(true);
 
       const stageRect = stage.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
@@ -115,6 +174,7 @@
 
     el.addEventListener("pointermove", (e) => {
       if (!draggedPlayer || draggedPlayer !== el) return;
+      e.preventDefault();
       const stageRect = stage.getBoundingClientRect();
       let x = ((e.clientX - stageRect.left - dragOffsetX) / stageRect.width) * 100;
       let y = ((e.clientY - stageRect.top - dragOffsetY) / stageRect.height) * 100;
@@ -128,6 +188,7 @@
       el.classList.remove("is-dragging");
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
       draggedPlayer = null;
+      setInteractionLock(false);
     };
 
     el.addEventListener("pointerup", endDrag);
@@ -139,7 +200,7 @@
 
     const w = image.offsetWidth;
     const h = image.offsetHeight;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
@@ -174,7 +235,9 @@
 
   function startDraw(e) {
     if (activeTool !== "brush" || !hasMap) return;
+    e.preventDefault();
     isDrawing = true;
+    setInteractionLock(true);
     const { x, y } = getCanvasPoint(e);
     ctx.strokeStyle = brushColorInput?.value || "#7cfc3b";
     ctx.lineWidth = Number(brushSizeInput?.value) || 8;
@@ -185,6 +248,7 @@
 
   function draw(e) {
     if (!isDrawing) return;
+    e.preventDefault();
     const { x, y } = getCanvasPoint(e);
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -195,15 +259,30 @@
   function endDraw(e) {
     if (!isDrawing) return;
     isDrawing = false;
+    setInteractionLock(false);
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     ctx.beginPath();
-    clearDrawingsBtn.disabled = false;
+    if (clearDrawingsBtn) clearDrawingsBtn.disabled = false;
   }
 
   canvas.addEventListener("pointerdown", startDraw);
   canvas.addEventListener("pointermove", draw);
   canvas.addEventListener("pointerup", endDraw);
   canvas.addEventListener("pointercancel", endDraw);
+
+  function handleMapFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      image.onload = () => {
+        showMapUI();
+        closeToolsPanel();
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
 
   function showMapUI() {
     hasMap = true;
@@ -212,11 +291,9 @@
     image.hidden = false;
     canvas.hidden = false;
     playersLayer.hidden = false;
-    clearMapBtn.disabled = false;
-    clearDrawingsBtn.disabled = false;
-    resetPlayersBtn.disabled = false;
     createPlayers();
     resetPlayerPositions();
+    updateMobileControls();
     requestAnimationFrame(resizeCanvas);
   }
 
@@ -230,45 +307,53 @@
     playersLayer.hidden = true;
     playersLayer.innerHTML = "";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    clearMapBtn.disabled = true;
-    clearDrawingsBtn.disabled = true;
-    resetPlayersBtn.disabled = true;
-    mapUpload.value = "";
+    if (mapUpload) mapUpload.value = "";
+    if (mapUploadMobile) mapUploadMobile.value = "";
+    updateMobileControls();
+    setInteractionLock(false);
   }
 
-  mapUpload.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      image.onload = () => {
-        showMapUI();
-      };
-      image.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+  mapUpload?.addEventListener("change", (e) => {
+    handleMapFile(e.target.files?.[0]);
   });
 
-  clearMapBtn.addEventListener("click", () => {
+  mapUploadMobile?.addEventListener("change", (e) => {
+    handleMapFile(e.target.files?.[0]);
+    e.target.value = "";
+  });
+
+  clearMapBtn?.addEventListener("click", () => {
     if (confirm("Remove the map and clear all drawings and player positions?")) {
       hideMapUI();
     }
   });
 
-  clearDrawingsBtn.addEventListener("click", () => {
+  clearDrawingsBtn?.addEventListener("click", () => {
     resizeCanvas();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     clearDrawingsBtn.disabled = true;
   });
 
-  resetPlayersBtn.addEventListener("click", resetPlayerPositions);
+  resetPlayersBtn?.addEventListener("click", resetPlayerPositions);
+  resetPlayersMobile?.addEventListener("click", resetPlayerPositions);
 
   image.addEventListener("load", resizeCanvas);
   window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(resizeCanvas, 150);
+  });
 
   const resizeObserver = new ResizeObserver(() => resizeCanvas());
   resizeObserver.observe(stage);
 
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (isDrawing || draggedPlayer) e.preventDefault();
+    },
+    { passive: false }
+  );
+
   setTool("select");
+  updateMobileControls();
 })();

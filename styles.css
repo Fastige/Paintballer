@@ -22,6 +22,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -31,6 +32,13 @@ body {
   color: var(--text);
   line-height: 1.6;
   overflow-x: hidden;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+body.nav-open {
+  overflow: hidden;
+  touch-action: none;
 }
 
 .sr-only {
@@ -75,9 +83,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: rgba(15, 18, 16, 0.85);
+  padding: 0.75rem 1rem;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  background: rgba(15, 18, 16, 0.92);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -104,20 +116,28 @@ body {
   font-weight: 600;
   font-size: 0.95rem;
   transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.site-nav a:hover {
-  color: var(--lime);
+@media (hover: hover) {
+  .site-nav a:hover {
+    color: var(--lime);
+  }
 }
 
 .nav-toggle {
   display: none;
   flex-direction: column;
+  justify-content: center;
   gap: 5px;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 0.65rem;
+  margin: -0.35rem -0.35rem -0.35rem 0;
+  min-width: 44px;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-toggle span {
@@ -181,17 +201,22 @@ main {
   align-items: center;
   justify-content: center;
   padding: 0.85rem 1.6rem;
+  min-height: 48px;
   border-radius: 999px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
   text-decoration: none;
   border: 2px solid transparent;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.btn:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .btn:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .btn-primary {
@@ -200,8 +225,10 @@ main {
   box-shadow: 0 8px 28px var(--accent-glow);
 }
 
-.btn-primary:hover {
-  box-shadow: 0 12px 36px var(--accent-glow);
+@media (hover: hover) {
+  .btn-primary:hover {
+    box-shadow: 0 12px 36px var(--accent-glow);
+  }
 }
 
 .btn-ghost {
@@ -210,9 +237,11 @@ main {
   border-color: var(--border);
 }
 
-.btn-ghost:hover {
-  border-color: var(--lime);
-  color: var(--lime);
+@media (hover: hover) {
+  .btn-ghost:hover {
+    border-color: var(--lime);
+    color: var(--lime);
+  }
 }
 
 .hero-stats {
@@ -333,9 +362,11 @@ main {
   transition: border-color 0.25s, transform 0.25s;
 }
 
-.feature-card:hover {
-  border-color: rgba(124, 252, 59, 0.35);
-  transform: translateY(-4px);
+@media (hover: hover) {
+  .feature-card:hover {
+    border-color: rgba(124, 252, 59, 0.35);
+    transform: translateY(-4px);
+  }
 }
 
 .feature-icon {
@@ -442,12 +473,13 @@ main {
   flex: 1 1 220px;
   min-width: 0;
   padding: 0.85rem 1.1rem;
+  min-height: 48px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .join-form input:focus {
@@ -465,6 +497,7 @@ main {
 .site-footer {
   border-top: 1px solid var(--border);
   padding: 2rem 1.5rem;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -506,7 +539,108 @@ main {
   }
 }
 
+@media (max-width: 768px) {
+  .splatter-1 {
+    width: 240px;
+    height: 240px;
+    right: -60px;
+  }
+
+  .splatter-2 {
+    width: 200px;
+    height: 200px;
+    left: -60px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 2rem 1rem 3rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.75rem, 14vw, 4rem);
+  }
+
+  .hero-lead {
+    font-size: 1.05rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem 2rem;
+  }
+
+  .hero-stats li {
+    min-width: 72px;
+    align-items: center;
+  }
+
+  .features,
+  .about,
+  .join {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .features {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .feature-card {
+    padding: 1.5rem;
+  }
+
+  .about {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .about-quote {
+    padding: 1.5rem;
+  }
+
+  .join {
+    padding-bottom: max(4rem, calc(3rem + env(safe-area-inset-bottom)));
+  }
+
+  .join-card {
+    padding: 2rem 1.25rem;
+  }
+
+  .join-card h2 {
+    font-size: 2rem;
+  }
+
+  .section-header {
+    margin-bottom: 2rem;
+    padding: 0 0.5rem;
+  }
+}
+
 @media (max-width: 640px) {
+  .site-header {
+    position: relative;
+  }
+
   .nav-toggle {
     display: flex;
   }
@@ -518,13 +652,28 @@ main {
     right: 0;
     flex-direction: column;
     background: var(--bg-elevated);
-    padding: 1rem 1.5rem 1.5rem;
-    gap: 1rem;
+    padding: 0.5rem 1rem 1.25rem;
+    gap: 0;
     border-bottom: 1px solid var(--border);
     transform: translateY(-8px);
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .site-nav a {
+    display: block;
+    padding: 0.9rem 0.5rem;
+    min-height: 48px;
+    font-size: 1.05rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .site-nav a:last-child {
+    border-bottom: none;
   }
 
   .site-nav.is-open {
@@ -545,16 +694,14 @@ main {
     transform: translateY(-7px) rotate(-45deg);
   }
 
-  .hero-stats {
-    flex-wrap: wrap;
-    gap: 1.5rem;
-  }
-
   .join-form {
     flex-direction: column;
+    width: 100%;
   }
 
+  .join-form input,
   .join-form .btn {
     width: 100%;
+    flex: none;
   }
 }
