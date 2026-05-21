@@ -6,7 +6,7 @@
 
   const body = document.body;
   const stage = document.getElementById("fm-stage");
-  const empty = document.getElementById("fm-empty");
+  const stageWrap = document.getElementById("fm-stage-wrap");
   const image = document.getElementById("fm-image");
   const canvas = document.getElementById("fm-canvas");
   const playersLayer = document.getElementById("fm-players");
@@ -287,7 +287,7 @@
   function showMapUI() {
     hasMap = true;
     stage.classList.add("has-map");
-    empty.hidden = true;
+    stageWrap?.classList.add("has-map");
     image.hidden = false;
     canvas.hidden = false;
     playersLayer.hidden = false;
@@ -300,7 +300,7 @@
   function hideMapUI() {
     hasMap = false;
     stage.classList.remove("has-map");
-    empty.hidden = false;
+    stageWrap?.classList.remove("has-map");
     image.hidden = true;
     image.removeAttribute("src");
     canvas.hidden = true;

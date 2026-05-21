@@ -180,7 +180,7 @@
 
 .fm-stage-wrap {
   flex: 1;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   min-height: 0;
@@ -189,6 +189,10 @@
   border-radius: var(--radius);
   overflow: auto;
   padding: 1rem;
+}
+
+.fm-stage-wrap.has-map {
+  display: flex;
 }
 
 .fm-stage {
@@ -202,15 +206,6 @@
 .fm-stage.has-map {
   line-height: 0;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-}
-
-.fm-empty {
-  min-width: 280px;
-  min-height: 200px;
-}
-
-.fm-stage.has-map .fm-empty {
-  display: none;
 }
 
 .fm-image {
@@ -356,12 +351,6 @@
 
   .fm-image {
     max-height: min(58dvh, 520px);
-  }
-
-  .fm-empty {
-    min-width: 0;
-    width: 100%;
-    min-height: 200px;
   }
 
   .fm-hint {
