@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Paintballer — your home for paintball gear, fields, and team tactics." />
+  <title>Paintballer — Play Hard. Aim True.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
+</head>
+<body>
+  <div class="splatter splatter-1" aria-hidden="true"></div>
+  <div class="splatter splatter-2" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="logo" href="#">Paint<span>baller</span></a>
+    <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="site-nav">
+      <a href="#features">Features</a>
+      <a href="#about">About</a>
+      <a href="#join">Join</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="hero-content">
+        <p class="eyebrow">Welcome to the field</p>
+        <h1>Play Hard.<br />Aim True.</h1>
+        <p class="hero-lead">
+          Paintballer is your launch point for gear guides, field finders, and squad tactics —
+          built for weekend warriors and tournament teams alike.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#join">Get on the list</a>
+          <a class="btn btn-ghost" href="#features">See what we offer</a>
+        </div>
+        <ul class="hero-stats" aria-label="Highlights">
+          <li><strong>120+</strong><span>Fields mapped</span></li>
+          <li><strong>48</strong><span>Gear guides</span></li>
+          <li><strong>Free</strong><span>Always</span></li>
+        </ul>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="target-ring ring-1"></div>
+        <div class="target-ring ring-2"></div>
+        <div class="target-ring ring-3"></div>
+        <div class="paint-blob blob-1"></div>
+        <div class="paint-blob blob-2"></div>
+        <div class="paint-blob blob-3"></div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <header class="section-header">
+        <p class="eyebrow">Why Paintballer</p>
+        <h2>Everything you need before you step on the field</h2>
+      </header>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🎯</div>
+          <h3>Field Finder</h3>
+          <p>Discover indoor and outdoor fields near you with hours, pricing, and player ratings.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🛡️</div>
+          <h3>Gear Guides</h3>
+          <p>Honest breakdowns of markers, masks, and hoppers — from budget rentals to pro setups.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⚡</div>
+          <h3>Squad Tactics</h3>
+          <p>Learn flanking routes, bunker clears, and communication drills used by winning teams.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="about" id="about">
+      <div class="about-inner">
+        <div class="about-copy">
+          <p class="eyebrow">Our mission</p>
+          <h2>Paintball should be easy to start and impossible to quit</h2>
+          <p>
+            Whether it is your first rental day or your hundredth tournament, Paintballer connects
+            you with the knowledge and community to play smarter and have more fun.
+          </p>
+          <p>
+            We are building tools, guides, and meetups — no paywalls, no fluff. Just the sport we love.
+          </p>
+        </div>
+        <blockquote class="about-quote">
+          <p>&ldquo;The best weekends still smell like compressed air and victory paint.&rdquo;</p>
+          <footer>— The Paintballer crew</footer>
+        </blockquote>
+      </div>
+    </section>
+
+    <section class="join" id="join">
+      <div class="join-card">
+        <p class="eyebrow">Early access</p>
+        <h2>Be first on the field</h2>
+        <p>Drop your email and we will send launch updates, field drops, and exclusive gear picks.</p>
+        <form class="join-form" id="join-form">
+          <label class="sr-only" for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="you@email.com" required autocomplete="email" />
+          <button type="submit" class="btn btn-primary">Join the squad</button>
+        </form>
+        <p class="form-note" id="form-note" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="logo" href="#">Paint<span>baller</span></a>
+    <p>&copy; <span id="year"></span> Paintballer. Built for players, by players.</p>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
