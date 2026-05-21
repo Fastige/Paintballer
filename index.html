@@ -22,7 +22,7 @@
     </button>
     <nav class="site-nav">
       <a href="#features">Features</a>
-      <a href="#field-mapper">Field Mapper</a>
+      <a href="field-mapper.html">Field Mapper</a>
       <a href="#about">About</a>
       <a href="#join">Join</a>
     </nav>
@@ -78,108 +78,6 @@
           <h3>Squad Tactics</h3>
           <p>Learn flanking routes, bunker clears, and communication drills used by winning teams.</p>
         </article>
-      </div>
-    </section>
-
-    <section class="field-mapper" id="field-mapper">
-      <header class="section-header">
-        <p class="eyebrow">Field Mapper</p>
-        <h2>Find your next battlefield</h2>
-        <p class="section-lead">Search fields by name, city, or type. More locations added every week.</p>
-      </header>
-
-      <div class="mapper-layout">
-        <aside class="mapper-panel">
-          <div class="mapper-map" aria-hidden="true">
-            <div class="map-grid"></div>
-            <div class="map-pin pin-1"></div>
-            <div class="map-pin pin-2"></div>
-            <div class="map-pin pin-3"></div>
-            <span class="map-label">Live map coming soon</span>
-          </div>
-          <p class="mapper-hint">Tip: use filters to narrow outdoor woodsball vs indoor speedball.</p>
-        </aside>
-
-        <div class="mapper-main">
-          <div class="mapper-toolbar">
-            <label class="sr-only" for="field-search">Search fields</label>
-            <input
-              type="search"
-              id="field-search"
-              class="mapper-search"
-              placeholder="Search by name or city..."
-              autocomplete="off"
-            />
-            <div class="mapper-filters" role="group" aria-label="Field type filters">
-              <button type="button" class="filter-chip is-active" data-filter="all">All</button>
-              <button type="button" class="filter-chip" data-filter="outdoor">Outdoor</button>
-              <button type="button" class="filter-chip" data-filter="indoor">Indoor</button>
-              <button type="button" class="filter-chip" data-filter="woodsball">Woodsball</button>
-              <button type="button" class="filter-chip" data-filter="speedball">Speedball</button>
-            </div>
-          </div>
-
-          <p class="mapper-results" id="mapper-results" aria-live="polite"></p>
-
-          <ul class="field-list" id="field-list">
-            <li class="field-card" data-name="Red Clay Outpost" data-city="Atlanta" data-type="outdoor woodsball">
-              <div class="field-card-head">
-                <h3>Red Clay Outpost</h3>
-                <span class="field-rating">4.8</span>
-              </div>
-              <p class="field-meta">Atlanta, GA · Outdoor · Woodsball</p>
-              <p class="field-desc">30-acre wooded course with castle fort, village, and night games on weekends.</p>
-              <span class="field-tag">Open Sat–Sun</span>
-            </li>
-            <li class="field-card" data-name="Urban Siege Arena" data-city="Chicago" data-type="indoor speedball">
-              <div class="field-card-head">
-                <h3>Urban Siege Arena</h3>
-                <span class="field-rating">4.6</span>
-              </div>
-              <p class="field-meta">Chicago, IL · Indoor · Speedball</p>
-              <p class="field-desc">Climate-controlled inflatable bunkers and rental packages for groups of 8+.</p>
-              <span class="field-tag">Walk-ins welcome</span>
-            </li>
-            <li class="field-card" data-name="Pine Ridge Rec" data-city="Portland" data-type="outdoor woodsball">
-              <div class="field-card-head">
-                <h3>Pine Ridge Rec</h3>
-                <span class="field-rating">4.9</span>
-              </div>
-              <p class="field-meta">Portland, OR · Outdoor · Woodsball</p>
-              <p class="field-desc">Miles of trails, scenario events monthly, and beginner-friendly staff on site.</p>
-              <span class="field-tag">Pro shop on site</span>
-            </li>
-            <li class="field-card" data-name="Velocity Zone" data-city="Phoenix" data-type="outdoor speedball">
-              <div class="field-card-head">
-                <h3>Velocity Zone</h3>
-                <span class="field-rating">4.5</span>
-              </div>
-              <p class="field-meta">Phoenix, AZ · Outdoor · Speedball</p>
-              <p class="field-desc">Tournament-style layout with chronograph station and league nights every Thursday.</p>
-              <span class="field-tag">League nights</span>
-            </li>
-            <li class="field-card" data-name="Bunker House" data-city="Denver" data-type="indoor speedball">
-              <div class="field-card-head">
-                <h3>Bunker House</h3>
-                <span class="field-rating">4.7</span>
-              </div>
-              <p class="field-meta">Denver, CO · Indoor · Speedball</p>
-              <p class="field-desc">Two-story indoor field, low-light sessions, and private party rooms for birthdays.</p>
-              <span class="field-tag">Private events</span>
-            </li>
-            <li class="field-card" data-name="Swamp Fox Fields" data-city="Jacksonville" data-type="outdoor woodsball">
-              <div class="field-card-head">
-                <h3>Swamp Fox Fields</h3>
-                <span class="field-rating">4.4</span>
-              </div>
-              <p class="field-meta">Jacksonville, FL · Outdoor · Woodsball</p>
-              <p class="field-desc">Muddy terrain, bridges, and scenario missions — bring boots and extra pods.</p>
-              <span class="field-tag">Scenario events</span>
-            </li>
-          </ul>
-
-          <p class="mapper-empty" id="mapper-empty" hidden>No fields match your search. Try another city or filter.</p>
-        </div>
       </div>
     </section>
 
