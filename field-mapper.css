@@ -379,6 +379,11 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .fm-upload-prompt {
+    min-height: min(50dvh, 400px);
+    width: 100%;
+  }
+
   .fm-image {
     max-height: min(58dvh, 520px);
   }
