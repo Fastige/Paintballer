@@ -30,3 +30,55 @@ if (joinForm && formNote) {
     joinForm.reset();
   });
 }
+
+const fieldSearch = document.getElementById("field-search");
+const fieldList = document.getElementById("field-list");
+const mapperResults = document.getElementById("mapper-results");
+const mapperEmpty = document.getElementById("mapper-empty");
+const filterChips = document.querySelectorAll(".filter-chip");
+const fieldCards = fieldList ? [...fieldList.querySelectorAll(".field-card")] : [];
+
+let activeFilter = "all";
+
+function applyFieldFilters() {
+  if (!fieldCards.length) return;
+
+  const query = (fieldSearch?.value || "").trim().toLowerCase();
+  let visible = 0;
+
+  fieldCards.forEach((card) => {
+    const name = card.dataset.name?.toLowerCase() || "";
+    const city = card.dataset.city?.toLowerCase() || "";
+    const type = card.dataset.type?.toLowerCase() || "";
+    const matchesSearch = !query || name.includes(query) || city.includes(query);
+    const matchesFilter = activeFilter === "all" || type.includes(activeFilter);
+    const show = matchesSearch && matchesFilter;
+
+    card.classList.toggle("is-hidden", !show);
+    if (show) visible += 1;
+  });
+
+  if (mapperResults) {
+    mapperResults.textContent =
+      visible === fieldCards.length
+        ? `Showing all ${fieldCards.length} fields`
+        : `Showing ${visible} of ${fieldCards.length} fields`;
+  }
+
+  if (mapperEmpty) mapperEmpty.hidden = visible > 0;
+}
+
+if (fieldSearch && fieldCards.length) {
+  fieldSearch.addEventListener("input", applyFieldFilters);
+
+  filterChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      filterChips.forEach((c) => c.classList.remove("is-active"));
+      chip.classList.add("is-active");
+      activeFilter = chip.dataset.filter || "all";
+      applyFieldFilters();
+    });
+  });
+
+  applyFieldFilters();
+}
