@@ -205,37 +205,12 @@
 }
 
 .fm-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  text-align: center;
-  line-height: 1.5;
   min-width: 280px;
   min-height: 200px;
-  padding: 2rem 1.5rem;
-  color: var(--text-muted);
 }
 
 .fm-stage.has-map .fm-empty {
   display: none;
-}
-
-.fm-empty-title {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  line-height: 1.15;
-  color: var(--text);
-  margin: 0;
-  letter-spacing: 0.03em;
-}
-
-.fm-empty-desc {
-  margin: 0;
-  max-width: 280px;
-  font-size: 0.95rem;
-  line-height: 1.55;
 }
 
 .fm-image {
@@ -387,16 +362,6 @@
     min-width: 0;
     width: 100%;
     min-height: 200px;
-    padding: 1.5rem 1rem;
-  }
-
-  .fm-empty-title {
-    font-size: 1.5rem;
-  }
-
-  .fm-empty-desc {
-    font-size: 0.9rem;
-    max-width: 260px;
   }
 
   .fm-hint {
