@@ -472,6 +472,7 @@ main {
 .join-form input {
   flex: 1 1 220px;
   min-width: 0;
+  max-width: 100%;
   padding: 0.85rem 1.1rem;
   min-height: 48px;
   border-radius: 999px;
@@ -480,6 +481,8 @@ main {
   color: var(--text);
   font-family: inherit;
   font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .join-form input:focus {
@@ -630,6 +633,19 @@ main {
     font-size: 2rem;
   }
 
+  .join-form {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .join-form input,
+  .join-form .btn {
+    width: 100%;
+    flex: none;
+    border-radius: var(--radius);
+  }
+
   .section-header {
     margin-bottom: 2rem;
     padding: 0 0.5rem;
@@ -694,14 +710,4 @@ main {
     transform: translateY(-7px) rotate(-45deg);
   }
 
-  .join-form {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .join-form input,
-  .join-form .btn {
-    width: 100%;
-    flex: none;
-  }
 }
