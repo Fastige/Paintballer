@@ -180,7 +180,7 @@
 
 .fm-stage-wrap {
   flex: 1;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
@@ -191,8 +191,38 @@
   padding: 1rem;
 }
 
-.fm-stage-wrap.has-map {
+.fm-upload-prompt {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 260px;
+  min-height: 180px;
+  width: 100%;
+  max-width: 100%;
+  padding: 2rem 1.5rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-upload-prompt:hover,
+.fm-upload-prompt:focus-within {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.fm-stage-wrap.has-map .fm-upload-prompt {
+  display: none;
 }
 
 .fm-stage {

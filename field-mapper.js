@@ -11,6 +11,7 @@
   const canvas = document.getElementById("fm-canvas");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
+  const mapUploadPrompt = document.getElementById("map-upload-prompt");
   const mapUploadMobile = document.getElementById("map-upload-mobile");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
@@ -308,12 +309,17 @@
     playersLayer.innerHTML = "";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (mapUpload) mapUpload.value = "";
+    if (mapUploadPrompt) mapUploadPrompt.value = "";
     if (mapUploadMobile) mapUploadMobile.value = "";
     updateMobileControls();
     setInteractionLock(false);
   }
 
   mapUpload?.addEventListener("change", (e) => {
+    handleMapFile(e.target.files?.[0]);
+  });
+
+  mapUploadPrompt?.addEventListener("change", (e) => {
     handleMapFile(e.target.files?.[0]);
   });
 
