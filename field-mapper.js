@@ -48,6 +48,14 @@
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const hint = document.getElementById("fm-hint");
+  const intelSection = document.getElementById("fm-intel-section");
+  const intelEmpty = document.getElementById("fm-intel-empty");
+  const intelForm = document.getElementById("fm-intel-form");
+  const intelPrompt = document.getElementById("fm-intel-prompt");
+  const intelMeta = document.getElementById("fm-intel-meta");
+  const intelName = document.getElementById("intel-name");
+  const intelBio = document.getElementById("intel-bio");
+  const intelList = document.getElementById("fm-intel-list");
 
   const SIZER_MIN_PCT = 0.5;
   const SIZER_MAX_PCT = 80;
@@ -69,7 +77,7 @@
   let draggedPlayer = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
-  /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean}>} */
+  /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean,name?:string,bio?:string}>} */
   let structures = [];
   let selectedStructureId = null;
   let visionPlayerEl = null;
@@ -156,22 +164,21 @@
     if (tool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
     }
-    if (tool !== "sizer") {
-      selectedStructureId = null;
-    }
     updateSizerPanel();
+    updateIntelReport();
     redrawStructures();
 
     if (hint) {
       const hints = {
-        select: "<strong>Move</strong> — drag players · <strong>Sizer</strong> — resize structures",
-        brush: "<strong>Brush</strong> — draw tactics on the map",
+        select:
+          "<strong>Move</strong> — drag players · click a structure to file <strong>Intel Report</strong>",
+        brush: "<strong>Brush</strong> — draw tactics on the map · click structures for intel",
         structure:
-          "<strong>Structure</strong> — drag to place shape · uses <span style=\"color:#00ff9d\">structure green</span>",
+          "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
         vision:
-          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines every 5° · blocked by structures",
+          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · structures for intel",
         sizer:
-          "<strong>Sizer</strong> — click a structure · resize or use <strong>arrows</strong> to move it",
+          "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
       };
       hint.innerHTML = hints[tool] || hints.select;
     }
@@ -556,10 +563,96 @@
     return null;
   }
 
+  function structureHasIntel(shape) {
+    return Boolean(shape?.name?.trim());
+  }
+
   function selectStructureAt(px, py) {
     const hit = hitTestStructure(px, py);
     selectedStructureId = hit ? hit.id : null;
     updateSizerPanel();
+    updateIntelReport();
+    redrawStructures();
+    return hit;
+  }
+
+  function renderIntelList() {
+    if (!intelList) return;
+    intelList.innerHTML = "";
+    const filed = structures.filter(structureHasIntel);
+    filed.forEach((shape) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fm-intel-list-item";
+      if (shape.id === selectedStructureId) btn.classList.add("is-active");
+      const nameEl = document.createElement("span");
+      nameEl.className = "fm-intel-list-name";
+      nameEl.textContent = shape.name.trim();
+      const snippetEl = document.createElement("span");
+      snippetEl.className = "fm-intel-list-snippet";
+      const bio = (shape.bio || "").trim();
+      snippetEl.textContent = bio.length > 72 ? `${bio.slice(0, 72)}…` : bio || "No bio";
+      btn.append(nameEl, snippetEl);
+      btn.addEventListener("click", () => {
+        selectedStructureId = shape.id;
+        updateSizerPanel();
+        updateIntelReport();
+        redrawStructures();
+      });
+      li.append(btn);
+      intelList.append(li);
+    });
+  }
+
+  function updateIntelReport() {
+    if (!intelSection) return;
+
+    if (!hasMap) {
+      intelSection.hidden = true;
+      return;
+    }
+
+    intelSection.hidden = false;
+    const shape = getSelectedStructure();
+    const hasSelection = Boolean(shape);
+
+    if (intelEmpty) intelEmpty.hidden = hasSelection;
+    if (intelForm) intelForm.hidden = !hasSelection;
+
+    if (!shape) {
+      renderIntelList();
+      return;
+    }
+
+    const hasIntel = structureHasIntel(shape);
+    const typeLabel = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+
+    if (intelPrompt) intelPrompt.hidden = hasIntel;
+    if (intelMeta) {
+      intelMeta.hidden = false;
+      intelMeta.textContent = `${typeLabel}${hasIntel ? " · on file" : " · no intel yet"}`;
+    }
+
+    if (intelName) intelName.value = shape.name || "";
+    if (intelBio) intelBio.value = shape.bio || "";
+
+    renderIntelList();
+  }
+
+  function saveIntelReport(e) {
+    e.preventDefault();
+    const shape = getSelectedStructure();
+    if (!shape) return;
+    const name = intelName?.value.trim() || "";
+    const bio = intelBio?.value.trim() || "";
+    if (!name) {
+      intelName?.focus();
+      return;
+    }
+    shape.name = name;
+    shape.bio = bio;
+    updateIntelReport();
     redrawStructures();
   }
 
@@ -649,7 +742,7 @@
     structures.forEach((s) => drawShapeOnContext(structCtx, s, w, h, false));
     if (placePreview) drawShapeOnContext(structCtx, placePreview, w, h, true);
     const selected = getSelectedStructure();
-    if (selected && activeTool === "sizer") {
+    if (selected) {
       drawSelectionOutline(structCtx, selected, w, h);
     }
     updateControlStates();
@@ -914,19 +1007,29 @@
     };
   }
 
-  function startStructureSizerPick(e) {
-    if (activeTool !== "sizer" || !hasMap) return;
-    e.preventDefault();
-    const { x, y } = getLayerPoint(e, structureCanvas);
-    selectStructureAt(x, y);
-  }
-
   function startStructurePlace(e) {
-    if (activeTool === "sizer") {
-      startStructureSizerPick(e);
+    if (!hasMap) return;
+
+    const { x, y } = getLayerPoint(e, structureCanvas);
+    const hit = hitTestStructure(x, y);
+
+    if (hit) {
+      e.preventDefault();
+      selectedStructureId = hit.id;
+      updateSizerPanel();
+      updateIntelReport();
+      redrawStructures();
+      if (activeTool === "sizer" || activeTool === "structure") return;
       return;
     }
-    if (activeTool !== "structure" || !hasMap) return;
+
+    if (activeTool === "sizer") {
+      e.preventDefault();
+      selectStructureAt(x, y);
+      return;
+    }
+
+    if (activeTool !== "structure") return;
     e.preventDefault();
     isPlacingStructure = true;
     setInteractionLock(true);
@@ -958,6 +1061,7 @@
     if (placePreview) {
       structures.push(placePreview);
       selectedStructureId = placePreview.id;
+      updateIntelReport();
     }
     placeStart = null;
     placePreview = null;
@@ -1004,6 +1108,7 @@
         redrawStructures();
       }
       updateControlStates();
+      updateIntelReport();
     });
   }
 
@@ -1014,6 +1119,7 @@
     selectedStructureId = null;
     clearVisionLines();
     updateSizerPanel();
+    updateIntelReport();
     stage.classList.remove("has-map");
     stageWrap?.classList.remove("has-map");
     image.hidden = true;
@@ -1055,13 +1161,20 @@
     const removed = structures.pop();
     if (selectedStructureId === removed?.id) {
       selectedStructureId = structures.length ? structures[structures.length - 1].id : null;
+      updateIntelReport();
     }
     placePreview = null;
     redrawStructures();
     updateSizerPanel();
+    updateIntelReport();
   });
 
+  function bindIntelForm() {
+    intelForm?.addEventListener("submit", saveIntelReport);
+  }
+
   bindSizerInputs();
+  bindIntelForm();
 
   resetPlayersBtn?.addEventListener("click", resetPlayerPositions);
   resetPlayersMobile?.addEventListener("click", resetPlayerPositions);

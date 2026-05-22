@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=14" />
+  <link rel="stylesheet" href="field-mapper.css?v=15" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -117,6 +117,24 @@
           </div>
         </div>
         <p class="fm-hint" id="fm-hint">Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
+
+        <section class="fm-intel-section" id="fm-intel-section" hidden aria-label="Intel report">
+          <div class="fm-intel-head">
+            <p class="eyebrow">Field intel</p>
+            <h2 class="fm-intel-title">Intel Report</h2>
+          </div>
+          <p class="fm-intel-empty" id="fm-intel-empty">Click a structure on the map to file or view intel.</p>
+          <form class="fm-intel-form" id="fm-intel-form" hidden>
+            <p class="fm-intel-prompt" id="fm-intel-prompt">This structure has no intel on file. Add a name and bio.</p>
+            <p class="fm-intel-meta" id="fm-intel-meta" hidden></p>
+            <label class="fm-range-label" for="intel-name">Name</label>
+            <input type="text" id="intel-name" class="fm-intel-input" maxlength="80" placeholder="e.g. Snake bunker" autocomplete="off" />
+            <label class="fm-range-label" for="intel-bio">Bio</label>
+            <textarea id="intel-bio" class="fm-intel-textarea" rows="4" maxlength="500" placeholder="Cover, angles, team notes…"></textarea>
+            <button type="submit" class="btn btn-primary fm-btn-full" id="intel-save">Save to Intel Report</button>
+          </form>
+          <ul class="fm-intel-list" id="fm-intel-list" aria-label="Filed intel reports"></ul>
+        </section>
       </div>
 
       <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls">
@@ -187,6 +205,6 @@
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=14"></script>
+  <script src="field-mapper.js?v=15"></script>
 </body>
 </html>
