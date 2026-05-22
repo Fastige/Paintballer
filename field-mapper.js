@@ -26,7 +26,7 @@
   const mapUploadMobile = document.getElementById("map-upload-mobile");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
-  const clearStructuresBtn = document.getElementById("clear-structures");
+  const undoStructureBtn = document.getElementById("undo-structure");
   const resetPlayersBtn = document.getElementById("reset-players");
   const resetPlayersMobile = document.getElementById("reset-players-mobile");
   const brushSizeInput = document.getElementById("brush-size");
@@ -110,7 +110,7 @@
     if (resetPlayersBtn) resetPlayersBtn.disabled = !hasMap;
     if (clearMapBtn) clearMapBtn.disabled = !hasMap;
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
-    if (clearStructuresBtn) clearStructuresBtn.disabled = !hasMap || !hasStructures;
+    if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
   }
 
   function setTool(tool) {
@@ -702,8 +702,9 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   });
 
-  clearStructuresBtn?.addEventListener("click", () => {
-    structures = [];
+  undoStructureBtn?.addEventListener("click", () => {
+    if (structures.length === 0) return;
+    structures.pop();
     placePreview = null;
     redrawStructures();
   });
