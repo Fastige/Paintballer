@@ -333,9 +333,10 @@
     const newH = Math.floor(h * dpr);
 
     [canvas, structureCanvas, visionCanvas].forEach((c) => {
+      const isVisionLayer = c === visionCanvas;
       let snapshot = null;
       const cctx = c.getContext("2d");
-      if (c.width > 0 && c.height > 0) {
+      if (!isVisionLayer && c.width > 0 && c.height > 0) {
         snapshot = document.createElement("canvas");
         snapshot.width = c.width;
         snapshot.height = c.height;
@@ -356,6 +357,7 @@
     });
 
     redrawStructures();
+    redrawVisionLines();
   }
 
   function classifyComponent(minX, maxX, minY, maxY) {
