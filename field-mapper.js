@@ -1,5 +1,8 @@
 (function () {
   /** Official structure color — must match baked-in map art for detection */
+  const VISION_LINE_COLOR = "#ff4fc8";
+  const VISION_LINE_COUNT = 360;
+
   const STRUCTURE_GREEN = "#00ff9d";
   const STRUCTURE_RGB = { r: 0, g: 255, b: 157 };
   const STRUCTURE_DETECT_TOLERANCE = 48;
@@ -16,6 +19,7 @@
   const image = document.getElementById("fm-image");
   const structureCanvas = document.getElementById("fm-structure-canvas");
   const canvas = document.getElementById("fm-canvas");
+  const visionCanvas = document.getElementById("fm-vision-canvas");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
   const mapUploadPrompt = document.getElementById("map-upload-prompt");
@@ -36,10 +40,11 @@
   const sidebar = document.getElementById("fm-sidebar");
   const hint = document.getElementById("fm-hint");
 
-  if (!stage || !canvas || !structureCanvas) return;
+  if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
 
   const ctx = canvas.getContext("2d");
   const structCtx = structureCanvas.getContext("2d");
+  const visionCtx = visionCanvas.getContext("2d");
 
   let activeTool = "select";
   let activeShape = "rectangle";
@@ -53,6 +58,7 @@
   let dragOffsetY = 0;
   /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean}>} */
   let structures = [];
+  let visionPlayerEl = null;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -120,16 +126,23 @@
 
     stage.classList.toggle("tool-brush", tool === "brush");
     stage.classList.toggle("tool-structure", tool === "structure");
+    stage.classList.toggle("tool-vision", tool === "vision");
 
     if (structurePanel) structurePanel.hidden = tool !== "structure";
     if (brushPanel) brushPanel.hidden = tool === "structure";
 
+    if (tool !== "vision") {
+      clearVisionLines();
+    }
+
     if (hint) {
       const hints = {
-        select: "<strong>Move</strong> — drag players · <strong>Structure</strong> — place walls",
+        select: "<strong>Move</strong> — drag players · <strong>Vision</strong> — 360° lines",
         brush: "<strong>Brush</strong> — draw tactics on the map",
         structure:
           "<strong>Structure</strong> — drag to place shape · uses <span style=\"color:#00ff9d\">structure green</span>",
+        vision:
+          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines (1 per degree)",
       };
       hint.innerHTML = hints[tool] || hints.select;
     }
@@ -175,6 +188,81 @@
       w: structureCanvas.clientWidth,
       h: structureCanvas.clientHeight,
     };
+  }
+
+  function clearVisionLines() {
+    visionPlayerEl = null;
+    playersLayer.querySelectorAll(".fm-player").forEach((p) => {
+      p.classList.remove("has-vision-lines");
+    });
+    visionCtx.clearRect(0, 0, visionCanvas.width, visionCanvas.height);
+  }
+
+  function getPlayerCenterPx(el) {
+    const { w, h } = getCanvasSize();
+    const x = (parseFloat(el.style.left) / 100) * w;
+    const y = (parseFloat(el.style.top) / 100) * h;
+    return { x, y, w, h };
+  }
+
+  function rayToRectEdge(cx, cy, angleRad, w, h) {
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+    let tMin = Infinity;
+
+    if (Math.abs(cos) > 1e-6) {
+      const tRight = (w - cx) / cos;
+      const tLeft = -cx / cos;
+      if (tRight > 0) tMin = Math.min(tMin, tRight);
+      if (tLeft > 0) tMin = Math.min(tMin, tLeft);
+    }
+    if (Math.abs(sin) > 1e-6) {
+      const tBottom = (h - cy) / sin;
+      const tTop = -cy / sin;
+      if (tBottom > 0) tMin = Math.min(tMin, tBottom);
+      if (tTop > 0) tMin = Math.min(tMin, tTop);
+    }
+
+    if (!Number.isFinite(tMin) || tMin <= 0) {
+      return { x: cx, y: cy };
+    }
+    return { x: cx + cos * tMin, y: cy + sin * tMin };
+  }
+
+  function redrawVisionLines() {
+    const { w, h } = getCanvasSize();
+    visionCtx.clearRect(0, 0, visionCanvas.width, visionCanvas.height);
+    if (!visionPlayerEl || !w || !h) return;
+
+    const { x: cx, y: cy } = getPlayerCenterPx(visionPlayerEl);
+    visionCtx.save();
+    visionCtx.strokeStyle = VISION_LINE_COLOR;
+    visionCtx.lineWidth = 1;
+    visionCtx.globalAlpha = 0.85;
+
+    for (let deg = 0; deg < VISION_LINE_COUNT; deg++) {
+      const rad = (deg * Math.PI) / 180;
+      const end = rayToRectEdge(cx, cy, rad, w, h);
+      visionCtx.beginPath();
+      visionCtx.moveTo(cx, cy);
+      visionCtx.lineTo(end.x, end.y);
+      visionCtx.stroke();
+    }
+
+    visionCtx.restore();
+  }
+
+  function toggleVisionOnPlayer(el) {
+    playersLayer.querySelectorAll(".fm-player").forEach((p) => {
+      p.classList.remove("has-vision-lines");
+    });
+    if (visionPlayerEl === el) {
+      visionPlayerEl = null;
+    } else {
+      visionPlayerEl = el;
+      el.classList.add("has-vision-lines");
+    }
+    redrawVisionLines();
   }
 
   function getLayerPoint(e, layer) {
@@ -244,7 +332,7 @@
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
-    [canvas, structureCanvas].forEach((c) => {
+    [canvas, structureCanvas, visionCanvas].forEach((c) => {
       let snapshot = null;
       const cctx = c.getContext("2d");
       if (c.width > 0 && c.height > 0) {
@@ -381,11 +469,21 @@
       const pos = defaultPositions[team]?.[num];
       if (pos) positionPlayer(el, pos.x, pos.y);
     });
+    if (visionPlayerEl) redrawVisionLines();
   }
 
   function bindPlayerDrag(el) {
     el.addEventListener("pointerdown", (e) => {
-      if (activeTool !== "select" || !hasMap) return;
+      if (!hasMap) return;
+
+      if (activeTool === "vision") {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleVisionOnPlayer(el);
+        return;
+      }
+
+      if (activeTool !== "select") return;
       e.preventDefault();
       e.stopPropagation();
       draggedPlayer = el;
@@ -410,6 +508,7 @@
       x = Math.max(2, Math.min(98, x));
       y = Math.max(2, Math.min(98, y));
       positionPlayer(el, x, y);
+      if (visionPlayerEl === el) redrawVisionLines();
     });
 
     const endDrag = (e) => {
@@ -418,6 +517,7 @@
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
       draggedPlayer = null;
       setInteractionLock(false);
+      if (visionPlayerEl === el) redrawVisionLines();
     };
 
     el.addEventListener("pointerup", endDrag);
@@ -544,6 +644,7 @@
     image.hidden = false;
     canvas.hidden = false;
     structureCanvas.hidden = false;
+    visionCanvas.hidden = false;
     playersLayer.hidden = false;
     createPlayers();
     resetPlayerPositions();
@@ -562,12 +663,14 @@
     hasMap = false;
     structures = [];
     placePreview = null;
+    clearVisionLines();
     stage.classList.remove("has-map");
     stageWrap?.classList.remove("has-map");
     image.hidden = true;
     image.removeAttribute("src");
     canvas.hidden = true;
     structureCanvas.hidden = true;
+    visionCanvas.hidden = true;
     playersLayer.hidden = true;
     playersLayer.innerHTML = "";
     ctx.clearRect(0, 0, canvas.width, canvas.height);

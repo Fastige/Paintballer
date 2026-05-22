@@ -83,6 +83,10 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.fm-tool-row-4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .fm-structure-panel,
 .fm-brush-panel {
   display: flex;
@@ -325,6 +329,11 @@
   z-index: 3;
 }
 
+.fm-canvas-vision {
+  z-index: 4;
+  pointer-events: none;
+}
+
 .fm-stage.tool-brush .fm-canvas-draw {
   pointer-events: auto;
   cursor: crosshair;
@@ -393,6 +402,15 @@
 .fm-stage.tool-brush .fm-player,
 .fm-stage.tool-structure .fm-player {
   pointer-events: none;
+}
+
+.fm-stage.tool-vision .fm-player {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.fm-player.has-vision-lines {
+  box-shadow: 0 0 0 3px rgba(255, 79, 200, 0.85), 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .fm-hint {

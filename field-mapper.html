@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=7" />
+  <link rel="stylesheet" href="field-mapper.css?v=8" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -50,7 +50,7 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Tools</h2>
-        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="Map tools">
+        <div class="fm-tool-row fm-tool-row-4" role="group" aria-label="Map tools">
           <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players">
             <span aria-hidden="true">↖</span> Move
           </button>
@@ -59,6 +59,9 @@
           </button>
           <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers">
             <span aria-hidden="true">▣</span> Structure
+          </button>
+          <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player">
+            <span aria-hidden="true">◎</span> Vision
           </button>
         </div>
         <div class="fm-structure-panel" id="fm-structure-panel" hidden>
@@ -103,6 +106,7 @@
           <img id="fm-image" class="fm-image" alt="Uploaded field map" hidden />
           <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
           <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
+          <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
           <div id="fm-players" class="fm-players" hidden></div>
         </div>
       </div>
@@ -139,6 +143,6 @@
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=7"></script>
+  <script src="field-mapper.js?v=8"></script>
 </body>
 </html>
