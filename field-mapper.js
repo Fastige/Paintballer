@@ -1,7 +1,7 @@
 (function () {
   /** Official structure color — must match baked-in map art for detection */
   const VISION_LINE_COLOR = "#ff4fc8";
-  const VISION_LINE_COUNT = 360;
+  const VISION_LINE_STEP = 5;
 
   const STRUCTURE_GREEN = "#00ff9d";
   const STRUCTURE_RGB = { r: 0, g: 255, b: 157 };
@@ -168,7 +168,7 @@
         structure:
           "<strong>Structure</strong> — drag to place shape · uses <span style=\"color:#00ff9d\">structure green</span>",
         vision:
-          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines (1 per degree)",
+          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines every 5° · blocked by structures",
         sizer:
           "<strong>Sizer</strong> — click a structure · adjust <strong>width</strong> and <strong>height</strong> on the right",
       };
@@ -233,28 +233,130 @@
     return { x, y, w, h };
   }
 
-  function rayToRectEdge(cx, cy, angleRad, w, h) {
-    const cos = Math.cos(angleRad);
-    const sin = Math.sin(angleRad);
+  function rayMaxDistanceToStage(cx, cy, dx, dy, w, h) {
     let tMin = Infinity;
 
-    if (Math.abs(cos) > 1e-6) {
-      const tRight = (w - cx) / cos;
-      const tLeft = -cx / cos;
+    if (Math.abs(dx) > 1e-6) {
+      const tRight = (w - cx) / dx;
+      const tLeft = -cx / dx;
       if (tRight > 0) tMin = Math.min(tMin, tRight);
       if (tLeft > 0) tMin = Math.min(tMin, tLeft);
     }
-    if (Math.abs(sin) > 1e-6) {
-      const tBottom = (h - cy) / sin;
-      const tTop = -cy / sin;
+    if (Math.abs(dy) > 1e-6) {
+      const tBottom = (h - cy) / dy;
+      const tTop = -cy / dy;
       if (tBottom > 0) tMin = Math.min(tMin, tBottom);
       if (tTop > 0) tMin = Math.min(tMin, tTop);
     }
 
-    if (!Number.isFinite(tMin) || tMin <= 0) {
-      return { x: cx, y: cy };
+    return Number.isFinite(tMin) && tMin > 0 ? tMin : 0;
+  }
+
+  function smallestPositiveT(t1, t2) {
+    const hits = [];
+    if (t1 > 0.5) hits.push(t1);
+    if (t2 > 0.5) hits.push(t2);
+    return hits.length ? Math.min(...hits) : null;
+  }
+
+  function raySegmentHitT(ox, oy, dx, dy, x1, y1, x2, y2) {
+    const sx = x2 - x1;
+    const sy = y2 - y1;
+    const denom = dx * sy - dy * sx;
+    if (Math.abs(denom) < 1e-9) return null;
+    const t = ((x1 - ox) * sy - (y1 - oy) * sx) / denom;
+    const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
+    if (t > 0.5 && u >= 0 && u <= 1) return t;
+    return null;
+  }
+
+  function rayRectHitT(ox, oy, dx, dy, left, top, right, bottom) {
+    let tmin = -Infinity;
+    let tmax = Infinity;
+
+    if (Math.abs(dx) < 1e-9) {
+      if (ox < left || ox > right) return null;
+    } else {
+      const t1 = (left - ox) / dx;
+      const t2 = (right - ox) / dx;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
     }
-    return { x: cx + cos * tMin, y: cy + sin * tMin };
+
+    if (Math.abs(dy) < 1e-9) {
+      if (oy < top || oy > bottom) return null;
+    } else {
+      const t1 = (top - oy) / dy;
+      const t2 = (bottom - oy) / dy;
+      tmin = Math.max(tmin, Math.min(t1, t2));
+      tmax = Math.min(tmax, Math.max(t1, t2));
+    }
+
+    if (tmax < Math.max(tmin, 0)) return null;
+    if (tmin > 0.5) return tmin;
+    if (tmax > 0.5) return tmax;
+    return null;
+  }
+
+  function rayEllipseHitT(ox, oy, dx, dy, cx, cy, rx, ry) {
+    if (rx <= 0 || ry <= 0) return null;
+    const ex = ox - cx;
+    const ey = oy - cy;
+    const A = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+    const B = 2 * ((ex * dx) / (rx * rx) + (ey * dy) / (ry * ry));
+    const C = (ex * ex) / (rx * rx) + (ey * ey) / (ry * ry) - 1;
+    const disc = B * B - 4 * A * C;
+    if (disc < 0) return null;
+    const sqrt = Math.sqrt(disc);
+    return smallestPositiveT((-B - sqrt) / (2 * A), (-B + sqrt) / (2 * A));
+  }
+
+  function rayTriangleHitT(ox, oy, dx, dy, left, top, width, height) {
+    const right = left + width;
+    const bottom = top + height;
+    const ax = left + width / 2;
+    const ay = top;
+    const hits = [
+      raySegmentHitT(ox, oy, dx, dy, ax, ay, right, bottom),
+      raySegmentHitT(ox, oy, dx, dy, right, bottom, left, bottom),
+      raySegmentHitT(ox, oy, dx, dy, left, bottom, ax, ay),
+    ].filter((t) => t !== null);
+    return hits.length ? Math.min(...hits) : null;
+  }
+
+  function rayStructureHitT(ox, oy, dx, dy, shape, w, h) {
+    const b = getStructureBounds(shape);
+    const left = b.left * w;
+    const top = b.top * h;
+    const width = b.width * w;
+    const height = b.height * h;
+    const right = left + width;
+    const bottom = top + height;
+
+    if (shape.type === "rectangle") {
+      return rayRectHitT(ox, oy, dx, dy, left, top, right, bottom);
+    }
+    if (shape.type === "circle") {
+      return rayEllipseHitT(ox, oy, dx, dy, left + width / 2, top + height / 2, width / 2, height / 2);
+    }
+    if (shape.type === "triangle") {
+      return rayTriangleHitT(ox, oy, dx, dy, left, top, width, height);
+    }
+    return null;
+  }
+
+  function rayCastVisionEnd(cx, cy, angleRad, w, h) {
+    const dx = Math.cos(angleRad);
+    const dy = Math.sin(angleRad);
+    let tLimit = rayMaxDistanceToStage(cx, cy, dx, dy, w, h);
+
+    structures.forEach((shape) => {
+      const t = rayStructureHitT(cx, cy, dx, dy, shape, w, h);
+      if (t !== null && t < tLimit) tLimit = t;
+    });
+
+    if (tLimit <= 0) return { x: cx, y: cy };
+    return { x: cx + dx * tLimit, y: cy + dy * tLimit };
   }
 
   function redrawVisionLines() {
@@ -268,9 +370,9 @@
     visionCtx.lineWidth = 1;
     visionCtx.globalAlpha = 0.85;
 
-    for (let deg = 0; deg < VISION_LINE_COUNT; deg++) {
+    for (let deg = 0; deg < 360; deg += VISION_LINE_STEP) {
       const rad = (deg * Math.PI) / 180;
-      const end = rayToRectEdge(cx, cy, rad, w, h);
+      const end = rayCastVisionEnd(cx, cy, rad, w, h);
       visionCtx.beginPath();
       visionCtx.moveTo(cx, cy);
       visionCtx.lineTo(end.x, end.y);
@@ -518,6 +620,7 @@
       drawSelectionOutline(structCtx, selected, w, h);
     }
     updateControlStates();
+    if (visionPlayerEl) redrawVisionLines();
   }
 
   function resizeCanvases() {
