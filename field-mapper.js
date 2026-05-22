@@ -49,9 +49,9 @@
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const hint = document.getElementById("fm-hint");
 
-  const SIZER_MIN_PCT = 2;
+  const SIZER_MIN_PCT = 0.5;
   const SIZER_MAX_PCT = 80;
-  const SIZER_MOVE_STEP = 1.5;
+  const SIZER_MOVE_STEP = 0.75;
 
   if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
 
@@ -458,8 +458,8 @@
     if (!shape) return;
 
     const bounds = getStructureBounds(shape);
-    const widthPct = Math.round(bounds.width * 100);
-    const heightPct = Math.round(bounds.height * 100);
+    const widthPct = Math.round(bounds.width * 1000) / 10;
+    const heightPct = Math.round(bounds.height * 1000) / 10;
 
     if (sizerTypeLabel) {
       const label = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
@@ -480,10 +480,13 @@
     if (sizerSyncing) return;
     const shape = getSelectedStructure();
     if (!shape) return;
-    const n = Math.max(SIZER_MIN_PCT, Math.min(SIZER_MAX_PCT, Number(value) || SIZER_MIN_PCT));
+    const n = Math.max(
+      SIZER_MIN_PCT,
+      Math.min(SIZER_MAX_PCT, Math.round((Number(value) || SIZER_MIN_PCT) * 10) / 10)
+    );
     const bounds = getStructureBounds(shape);
-    const widthPct = Math.round(bounds.width * 100);
-    const heightPct = Math.round(bounds.height * 100);
+    const widthPct = Math.round(bounds.width * 1000) / 10;
+    const heightPct = Math.round(bounds.height * 1000) / 10;
     if (axis === "width") setStructureSize(shape, n, heightPct);
     else setStructureSize(shape, widthPct, n);
     updateSizerPanel();
