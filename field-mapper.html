@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=5" />
+  <link rel="stylesheet" href="field-mapper.css?v=7" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -50,19 +50,37 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Tools</h2>
-        <div class="fm-tool-row" role="group" aria-label="Drawing tools">
+        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="Map tools">
           <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players">
             <span aria-hidden="true">↖</span> Move
           </button>
           <button type="button" class="fm-tool-btn" data-tool="brush" title="Draw on map">
             <span aria-hidden="true">🖌</span> Brush
           </button>
+          <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers">
+            <span aria-hidden="true">▣</span> Structure
+          </button>
         </div>
+        <div class="fm-structure-panel" id="fm-structure-panel" hidden>
+          <p class="fm-range-label">Structure shape</p>
+          <div class="fm-shape-row" role="group" aria-label="Structure shape">
+            <button type="button" class="fm-shape-btn is-active" data-shape="rectangle">Rectangle</button>
+            <button type="button" class="fm-shape-btn" data-shape="circle">Circle</button>
+            <button type="button" class="fm-shape-btn" data-shape="triangle">Triangle</button>
+          </div>
+          <p class="fm-structure-note">
+            <span class="fm-structure-swatch" aria-hidden="true"></span>
+            Paintballer structure green — auto-detected on map upload
+          </p>
+          <button type="button" class="btn btn-ghost fm-btn-full" id="clear-structures" disabled>Clear structures</button>
+        </div>
+        <div class="fm-brush-panel" id="fm-brush-panel">
         <label class="fm-range-label" for="brush-size">Brush size</label>
         <input type="range" id="brush-size" min="2" max="40" value="8" />
         <label class="fm-range-label" for="brush-color">Brush color</label>
         <input type="color" id="brush-color" value="#7cfc3b" class="fm-color-input" />
         <button type="button" class="btn btn-ghost fm-btn-full" id="clear-drawings" disabled>Clear drawings</button>
+        </div>
       </div>
 
       <div class="fm-tool-group">
@@ -83,7 +101,8 @@
             <input type="file" id="map-upload-prompt" accept="image/*" hidden />
           </label>
           <img id="fm-image" class="fm-image" alt="Uploaded field map" hidden />
-          <canvas id="fm-canvas" class="fm-canvas" hidden></canvas>
+          <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
+          <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
           <div id="fm-players" class="fm-players" hidden></div>
         </div>
       </div>
@@ -99,6 +118,10 @@
     <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
       <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
       <span>Brush</span>
+    </button>
+    <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
+      <span class="fm-mobile-icon" aria-hidden="true">▣</span>
+      <span>Struct</span>
     </button>
     <label class="fm-mobile-btn fm-mobile-upload">
       <span class="fm-mobile-icon" aria-hidden="true">📷</span>
@@ -116,6 +139,6 @@
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=6"></script>
+  <script src="field-mapper.js?v=7"></script>
 </body>
 </html>
