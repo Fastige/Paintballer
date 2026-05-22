@@ -82,6 +82,8 @@
   let selectedStructureId = null;
   let visionPlayerEl = null;
   let sizerSyncing = false;
+  /** @type {{data:Uint8ClampedArray,w:number,h:number}|null} */
+  let mapPixelCache = null;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -171,7 +173,7 @@
     if (hint) {
       const hints = {
         select:
-          "<strong>Move</strong> — drag players · click a structure to file <strong>Intel Report</strong>",
+          "<strong>Move</strong> — drag players · click <span style=\"color:#00ff9d\">green bunkers</span> on the map to assign <strong>Intel</strong>",
         brush: "<strong>Brush</strong> — draw tactics on the map · click structures for intel",
         structure:
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
@@ -519,6 +521,172 @@
     });
   }
 
+  function refreshMapPixelCache() {
+    if (!hasMap || !image.naturalWidth) {
+      mapPixelCache = null;
+      return;
+    }
+    const nw = image.naturalWidth;
+    const nh = image.naturalHeight;
+    const off = document.createElement("canvas");
+    off.width = nw;
+    off.height = nh;
+    const octx = off.getContext("2d", { willReadFrequently: true });
+    octx.drawImage(image, 0, 0, nw, nh);
+    const { data } = octx.getImageData(0, 0, nw, nh);
+    mapPixelCache = { data, w: nw, h: nh };
+  }
+
+  function displayToImageCoords(px, py) {
+    const { w, h } = getCanvasSize();
+    if (!mapPixelCache || !w || !h) return null;
+    const ix = Math.min(
+      mapPixelCache.w - 1,
+      Math.max(0, Math.floor((px / w) * mapPixelCache.w))
+    );
+    const iy = Math.min(
+      mapPixelCache.h - 1,
+      Math.max(0, Math.floor((py / h) * mapPixelCache.h))
+    );
+    return { ix, iy };
+  }
+
+  function isStructureGreenAtDisplay(px, py) {
+    if (!mapPixelCache) return false;
+    const coords = displayToImageCoords(px, py);
+    if (!coords) return false;
+    const { ix, iy } = coords;
+    const i = (iy * mapPixelCache.w + ix) * 4;
+    return matchesStructureColor(
+      mapPixelCache.data[i],
+      mapPixelCache.data[i + 1],
+      mapPixelCache.data[i + 2],
+      mapPixelCache.data[i + 3]
+    );
+  }
+
+  function floodFillComponentFromImage(ix, iy, data, w, h, visited) {
+    const idx = (x, y) => y * w + x;
+    if (ix < 0 || iy < 0 || ix >= w || iy >= h || visited[idx(ix, iy)]) return null;
+
+    const isStruct = (x, y) => {
+      const i = (y * w + x) * 4;
+      return matchesStructureColor(data[i], data[i + 1], data[i + 2], data[i + 3]);
+    };
+
+    if (!isStruct(ix, iy)) return null;
+
+    let minX = ix;
+    let maxX = ix;
+    let minY = iy;
+    let maxY = iy;
+    let count = 0;
+    const stack = [[ix, iy]];
+    visited[idx(ix, iy)] = 1;
+
+    while (stack.length) {
+      const [cx, cy] = stack.pop();
+      count++;
+      minX = Math.min(minX, cx);
+      maxX = Math.max(maxX, cx);
+      minY = Math.min(minY, cy);
+      maxY = Math.max(maxY, cy);
+
+      for (const [nx, ny] of [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const id = idx(nx, ny);
+        if (!visited[id] && isStruct(nx, ny)) {
+          visited[id] = 1;
+          stack.push([nx, ny]);
+        }
+      }
+    }
+
+    if (count < STRUCTURE_MIN_PIXELS) return null;
+
+    return {
+      x1: minX / w,
+      y1: minY / h,
+      x2: (maxX + 1) / w,
+      y2: (maxY + 1) / h,
+      count,
+    };
+  }
+
+  function boundsContainPoint(b, nx, ny) {
+    return nx >= b.left && nx <= b.left + b.width && ny >= b.top && ny <= b.top + b.height;
+  }
+
+  function boundsOverlap(a, b) {
+    const left = Math.max(a.left, b.left);
+    const top = Math.max(a.top, b.top);
+    const right = Math.min(a.left + a.width, b.left + b.width);
+    const bottom = Math.min(a.top + a.height, b.top + b.height);
+    return right > left && bottom > top;
+  }
+
+  function assignStructureFromMapClick(px, py) {
+    if (!mapPixelCache || !isStructureGreenAtDisplay(px, py)) return null;
+
+    const coords = displayToImageCoords(px, py);
+    if (!coords) return null;
+
+    const { w, h } = getCanvasSize();
+    const nx = px / w;
+    const ny = py / h;
+
+    for (let i = structures.length - 1; i >= 0; i--) {
+      const s = structures[i];
+      if (boundsContainPoint(getStructureBounds(s), nx, ny)) return s;
+    }
+
+    const visited = new Uint8Array(mapPixelCache.w * mapPixelCache.h);
+    const component = floodFillComponentFromImage(
+      coords.ix,
+      coords.iy,
+      mapPixelCache.data,
+      mapPixelCache.w,
+      mapPixelCache.h,
+      visited
+    );
+    if (!component) return null;
+
+    const hitBounds = {
+      left: component.x1,
+      top: component.y1,
+      width: component.x2 - component.x1,
+      height: component.y2 - component.y1,
+    };
+
+    for (let i = structures.length - 1; i >= 0; i--) {
+      const s = structures[i];
+      if (boundsOverlap(getStructureBounds(s), hitBounds)) return s;
+    }
+
+    const shape = {
+      id: crypto.randomUUID(),
+      type: classifyComponent(
+        Math.floor(component.x1 * mapPixelCache.w),
+        Math.floor(component.x2 * mapPixelCache.w) - 1,
+        Math.floor(component.y1 * mapPixelCache.h),
+        Math.floor(component.y2 * mapPixelCache.h) - 1
+      ),
+      x1: component.x1,
+      y1: component.y1,
+      x2: component.x2,
+      y2: component.y2,
+      detected: true,
+    };
+    structures.push(shape);
+    updateControlStates();
+    return shape;
+  }
+
   function hitTestStructure(px, py) {
     const { w, h } = getCanvasSize();
     if (!w || !h) return null;
@@ -534,6 +702,11 @@
       const bottom = top + b.height;
       const cx = left + b.width / 2;
       const cy = top + b.height / 2;
+
+      if (s.detected) {
+        if (boundsContainPoint(b, nx, ny)) return s;
+        continue;
+      }
 
       if (s.type === "rectangle") {
         if (nx >= left && nx <= right && ny >= top && ny <= bottom) return s;
@@ -560,7 +733,8 @@
         if (a >= 0 && b2 >= 0 && c >= 0) return s;
       }
     }
-    return null;
+
+    return assignStructureFromMapClick(px, py);
   }
 
   function structureHasIntel(shape) {
@@ -621,6 +795,12 @@
     if (intelForm) intelForm.hidden = !hasSelection;
 
     if (!shape) {
+      const detectedCount = structures.filter((s) => s.detected).length;
+      if (intelEmpty && detectedCount > 0) {
+        intelEmpty.textContent = `${detectedCount} green structure${detectedCount === 1 ? "" : "s"} on the map — click one to assign intel.`;
+      } else if (intelEmpty) {
+        intelEmpty.textContent = "Click a structure on the map to file or view intel.";
+      }
       renderIntelList();
       return;
     }
@@ -782,6 +962,7 @@
       }
     });
 
+    refreshMapPixelCache();
     redrawStructures();
     redrawVisionLines();
   }
@@ -1101,6 +1282,7 @@
     createPlayers();
     resetPlayerPositions();
     requestAnimationFrame(() => {
+      refreshMapPixelCache();
       resizeCanvases();
       const detected = detectStructuresFromImage(image);
       if (detected.length) {
@@ -1114,6 +1296,7 @@
 
   function hideMapUI() {
     hasMap = false;
+    mapPixelCache = null;
     structures = [];
     placePreview = null;
     selectedStructureId = null;

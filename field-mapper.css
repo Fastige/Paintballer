@@ -519,7 +519,7 @@
   pointer-events: none;
 }
 
-.fm-stage.has-map .fm-players {
+.fm-stage.has-map .fm-player {
   pointer-events: auto;
 }
 
