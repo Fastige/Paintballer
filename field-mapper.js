@@ -500,16 +500,11 @@
     bindPair(sizerHeight, sizerHeightNum, "height");
 
     document.querySelectorAll(".fm-pad-btn[data-move]").forEach((btn) => {
-      const nudge = () => {
+      btn.addEventListener("click", () => {
         const shape = getSelectedStructure();
         if (!shape) return;
         moveStructure(shape, btn.dataset.move);
         redrawStructures();
-      };
-      btn.addEventListener("click", nudge);
-      btn.addEventListener("pointerdown", (e) => {
-        if (e.pointerType === "mouse" && e.button !== 0) return;
-        nudge();
       });
     });
   }
