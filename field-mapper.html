@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=10" />
+  <link rel="stylesheet" href="field-mapper.css?v=12" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -143,6 +143,16 @@
               <span class="fm-sizer-unit">%</span>
             </div>
           </div>
+          <div class="fm-sizer-position">
+            <p class="fm-range-label">Position</p>
+            <div class="fm-sizer-pad" role="group" aria-label="Move structure">
+              <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
+              <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
+              <span class="fm-pad-center" aria-hidden="true"></span>
+              <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
+              <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
+            </div>
+          </div>
         </div>
       </aside>
     </section>
@@ -177,6 +187,6 @@
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=11"></script>
+  <script src="field-mapper.js?v=13"></script>
 </body>
 </html>

@@ -51,6 +51,7 @@
 
   const SIZER_MIN_PCT = 2;
   const SIZER_MAX_PCT = 80;
+  const SIZER_MOVE_STEP = 1.5;
 
   if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
 
@@ -170,7 +171,7 @@
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines every 5° · blocked by structures",
         sizer:
-          "<strong>Sizer</strong> — click a structure · adjust <strong>width</strong> and <strong>height</strong> on the right",
+          "<strong>Sizer</strong> — click a structure · resize or use <strong>arrows</strong> to move it",
       };
       hint.innerHTML = hints[tool] || hints.select;
     }
@@ -426,6 +427,26 @@
     shape.y2 = Math.min(1, cy + hh);
   }
 
+  function moveStructure(shape, direction) {
+    const bounds = getStructureBounds(shape);
+    const step = SIZER_MOVE_STEP / 100;
+    let left = bounds.left;
+    let top = bounds.top;
+
+    if (direction === "left") left -= step;
+    if (direction === "right") left += step;
+    if (direction === "up") top -= step;
+    if (direction === "down") top += step;
+
+    left = Math.max(0, Math.min(1 - bounds.width, left));
+    top = Math.max(0, Math.min(1 - bounds.height, top));
+
+    shape.x1 = left;
+    shape.y1 = top;
+    shape.x2 = left + bounds.width;
+    shape.y2 = top + bounds.height;
+  }
+
   function updateSizerPanel() {
     const shape = getSelectedStructure();
     const hasSelection = Boolean(shape);
@@ -477,6 +498,20 @@
     };
     bindPair(sizerWidth, sizerWidthNum, "width");
     bindPair(sizerHeight, sizerHeightNum, "height");
+
+    document.querySelectorAll(".fm-pad-btn[data-move]").forEach((btn) => {
+      const nudge = () => {
+        const shape = getSelectedStructure();
+        if (!shape) return;
+        moveStructure(shape, btn.dataset.move);
+        redrawStructures();
+      };
+      btn.addEventListener("click", nudge);
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        nudge();
+      });
+    });
   }
 
   function hitTestStructure(px, py) {
