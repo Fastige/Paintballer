@@ -83,7 +83,7 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
-.fm-tool-row-4 {
+.fm-tool-row-2 {
   grid-template-columns: repeat(2, 1fr);
 }
 
@@ -239,10 +239,100 @@
 
 .fm-workspace {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.75rem;
   padding: 1rem 1.25rem 1.25rem;
   min-width: 0;
   background: var(--bg);
+}
+
+.fm-map-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fm-sizer-panel {
+  width: min(240px, 34vw);
+  flex-shrink: 0;
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  align-self: stretch;
+}
+
+.fm-workspace.tool-sizer-active .fm-sizer-panel {
+  display: flex;
+}
+
+.fm-sizer-head {
+  margin: 0;
+}
+
+.fm-sizer-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  line-height: 1;
+}
+
+.fm-sizer-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fm-sizer-type {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--structure-green, #00ff9d);
+}
+
+.fm-sizer-axis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fm-sizer-axis-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.fm-sizer-axis-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.fm-sizer-axis-row input[type="number"] {
+  width: 3.5rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.fm-sizer-unit {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .fm-stage-wrap {
@@ -339,9 +429,14 @@
   cursor: crosshair;
 }
 
-.fm-stage.tool-structure .fm-canvas-structure {
+.fm-stage.tool-structure .fm-canvas-structure,
+.fm-stage.tool-sizer .fm-canvas-structure {
   pointer-events: auto;
   cursor: crosshair;
+}
+
+.fm-stage.tool-sizer .fm-canvas-structure {
+  cursor: pointer;
 }
 
 .fm-players {
@@ -400,7 +495,8 @@
 }
 
 .fm-stage.tool-brush .fm-player,
-.fm-stage.tool-structure .fm-player {
+.fm-stage.tool-structure .fm-player,
+.fm-stage.tool-sizer .fm-player {
   pointer-events: none;
 }
 
@@ -440,9 +536,19 @@
 
   .fm-workspace {
     order: 1;
+    flex-direction: column;
     padding: 0.5rem 0.5rem 0;
     min-height: 0;
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .fm-sizer-panel {
+    width: 100%;
+    align-self: auto;
+  }
+
+  .fm-workspace.tool-sizer-active .fm-sizer-panel {
+    order: 2;
   }
 
   .fm-sidebar {

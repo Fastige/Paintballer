@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=8" />
+  <link rel="stylesheet" href="field-mapper.css?v=10" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -50,7 +50,7 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Tools</h2>
-        <div class="fm-tool-row fm-tool-row-4" role="group" aria-label="Map tools">
+        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="Map tools">
           <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players">
             <span aria-hidden="true">↖</span> Move
           </button>
@@ -60,8 +60,13 @@
           <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers">
             <span aria-hidden="true">▣</span> Structure
           </button>
+        </div>
+        <div class="fm-tool-row fm-tool-row-2" role="group" aria-label="More map tools">
           <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player">
             <span aria-hidden="true">◎</span> Vision
+          </button>
+          <button type="button" class="fm-tool-btn" data-tool="sizer" title="Resize structures">
+            <span aria-hidden="true">⇲</span> Sizer
           </button>
         </div>
         <div class="fm-structure-panel" id="fm-structure-panel" hidden>
@@ -96,21 +101,50 @@
       </div>
     </aside>
 
-    <section class="fm-workspace" aria-label="Map canvas workspace">
-      <div class="fm-stage-wrap" id="fm-stage-wrap">
-        <div class="fm-stage" id="fm-stage">
-          <label class="fm-upload-prompt" id="fm-upload-prompt">
-            Upload Map
-            <input type="file" id="map-upload-prompt" accept="image/*" hidden />
-          </label>
-          <img id="fm-image" class="fm-image" alt="Uploaded field map" hidden />
-          <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
-          <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
-          <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
-          <div id="fm-players" class="fm-players" hidden></div>
+    <section class="fm-workspace" id="fm-workspace" aria-label="Map canvas workspace">
+      <div class="fm-map-area">
+        <div class="fm-stage-wrap" id="fm-stage-wrap">
+          <div class="fm-stage" id="fm-stage">
+            <label class="fm-upload-prompt" id="fm-upload-prompt">
+              Upload Map
+              <input type="file" id="map-upload-prompt" accept="image/*" hidden />
+            </label>
+            <img id="fm-image" class="fm-image" alt="Uploaded field map" hidden />
+            <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
+            <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
+            <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
+            <div id="fm-players" class="fm-players" hidden></div>
+          </div>
         </div>
+        <p class="fm-hint" id="fm-hint">Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
       </div>
-      <p class="fm-hint" id="fm-hint">Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
+
+      <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls">
+        <div class="fm-sizer-head">
+          <p class="eyebrow">Sizer</p>
+          <h2 class="fm-sizer-title">Structure size</h2>
+        </div>
+        <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it.</p>
+        <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
+          <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
+          <div class="fm-sizer-axis">
+            <label class="fm-range-label" for="sizer-width">Width</label>
+            <div class="fm-sizer-axis-row">
+              <input type="range" id="sizer-width" min="2" max="80" value="20" />
+              <input type="number" id="sizer-width-num" min="2" max="80" value="20" aria-label="Width percent" />
+              <span class="fm-sizer-unit">%</span>
+            </div>
+          </div>
+          <div class="fm-sizer-axis">
+            <label class="fm-range-label" for="sizer-height">Height</label>
+            <div class="fm-sizer-axis-row">
+              <input type="range" id="sizer-height" min="2" max="80" value="20" />
+              <input type="number" id="sizer-height-num" min="2" max="80" value="20" aria-label="Height percent" />
+              <span class="fm-sizer-unit">%</span>
+            </div>
+          </div>
+        </div>
+      </aside>
     </section>
   </main>
 
@@ -143,6 +177,6 @@
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=9"></script>
+  <script src="field-mapper.js?v=10"></script>
 </body>
 </html>

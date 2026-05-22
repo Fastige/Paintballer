@@ -38,7 +38,19 @@
   const shapeBtns = document.querySelectorAll(".fm-shape-btn[data-shape]");
   const toggleToolsBtn = document.getElementById("toggle-tools");
   const sidebar = document.getElementById("fm-sidebar");
+  const workspace = document.getElementById("fm-workspace");
+  const sizerPanel = document.getElementById("fm-sizer-panel");
+  const sizerEmpty = document.getElementById("fm-sizer-empty");
+  const sizerControls = document.getElementById("fm-sizer-controls");
+  const sizerTypeLabel = document.getElementById("fm-sizer-type");
+  const sizerWidth = document.getElementById("sizer-width");
+  const sizerWidthNum = document.getElementById("sizer-width-num");
+  const sizerHeight = document.getElementById("sizer-height");
+  const sizerHeightNum = document.getElementById("sizer-height-num");
   const hint = document.getElementById("fm-hint");
+
+  const SIZER_MIN_PCT = 2;
+  const SIZER_MAX_PCT = 80;
 
   if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
 
@@ -58,7 +70,9 @@
   let dragOffsetY = 0;
   /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean}>} */
   let structures = [];
+  let selectedStructureId = null;
   let visionPlayerEl = null;
+  let sizerSyncing = false;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -127,22 +141,36 @@
     stage.classList.toggle("tool-brush", tool === "brush");
     stage.classList.toggle("tool-structure", tool === "structure");
     stage.classList.toggle("tool-vision", tool === "vision");
+    stage.classList.toggle("tool-sizer", tool === "sizer");
+    workspace?.classList.toggle("tool-sizer-active", tool === "sizer");
 
     if (structurePanel) structurePanel.hidden = tool !== "structure";
-    if (brushPanel) brushPanel.hidden = tool === "structure";
+    if (brushPanel) brushPanel.hidden = tool === "structure" || tool === "sizer";
+    if (sizerPanel) sizerPanel.hidden = tool !== "sizer";
 
     if (tool !== "vision") {
       clearVisionLines();
     }
 
+    if (tool === "sizer" && structures.length && !selectedStructureId) {
+      selectedStructureId = structures[structures.length - 1].id;
+    }
+    if (tool !== "sizer") {
+      selectedStructureId = null;
+    }
+    updateSizerPanel();
+    redrawStructures();
+
     if (hint) {
       const hints = {
-        select: "<strong>Move</strong> — drag players · <strong>Vision</strong> — 360° lines",
+        select: "<strong>Move</strong> — drag players · <strong>Sizer</strong> — resize structures",
         brush: "<strong>Brush</strong> — draw tactics on the map",
         structure:
           "<strong>Structure</strong> — drag to place shape · uses <span style=\"color:#00ff9d\">structure green</span>",
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines (1 per degree)",
+        sizer:
+          "<strong>Sizer</strong> — click a structure · adjust <strong>width</strong> and <strong>height</strong> on the right",
       };
       hint.innerHTML = hints[tool] || hints.select;
     }
@@ -265,6 +293,171 @@
     redrawVisionLines();
   }
 
+  function getSelectedStructure() {
+    return structures.find((s) => s.id === selectedStructureId) || null;
+  }
+
+  function getStructureBounds(shape) {
+    return {
+      left: Math.min(shape.x1, shape.x2),
+      top: Math.min(shape.y1, shape.y2),
+      width: Math.abs(shape.x2 - shape.x1),
+      height: Math.abs(shape.y2 - shape.y1),
+    };
+  }
+
+  function clampPct(n) {
+    return Math.max(SIZER_MIN_PCT / 100, Math.min(SIZER_MAX_PCT / 100, n));
+  }
+
+  function setStructureSize(shape, widthPct, heightPct) {
+    const w = clampPct(widthPct / 100);
+    const h = clampPct(heightPct / 100);
+    const bounds = getStructureBounds(shape);
+    const cx = bounds.left + bounds.width / 2;
+    const cy = bounds.top + bounds.height / 2;
+    const hw = w / 2;
+    const hh = h / 2;
+    shape.x1 = Math.max(0, cx - hw);
+    shape.x2 = Math.min(1, cx + hw);
+    shape.y1 = Math.max(0, cy - hh);
+    shape.y2 = Math.min(1, cy + hh);
+  }
+
+  function updateSizerPanel() {
+    const shape = getSelectedStructure();
+    const hasSelection = Boolean(shape);
+
+    workspace?.classList.toggle("has-sizer-selection", hasSelection);
+    if (sizerEmpty) sizerEmpty.hidden = hasSelection;
+    if (sizerControls) sizerControls.hidden = !hasSelection;
+
+    if (!shape) return;
+
+    const bounds = getStructureBounds(shape);
+    const widthPct = Math.round(bounds.width * 100);
+    const heightPct = Math.round(bounds.height * 100);
+
+    if (sizerTypeLabel) {
+      const label = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+      sizerTypeLabel.textContent = label;
+    }
+
+    sizerSyncing = true;
+    [sizerWidth, sizerWidthNum].forEach((el) => {
+      if (el) el.value = String(widthPct);
+    });
+    [sizerHeight, sizerHeightNum].forEach((el) => {
+      if (el) el.value = String(heightPct);
+    });
+    sizerSyncing = false;
+  }
+
+  function onSizerAxisInput(axis, value) {
+    if (sizerSyncing) return;
+    const shape = getSelectedStructure();
+    if (!shape) return;
+    const n = Math.max(SIZER_MIN_PCT, Math.min(SIZER_MAX_PCT, Number(value) || SIZER_MIN_PCT));
+    const bounds = getStructureBounds(shape);
+    const widthPct = Math.round(bounds.width * 100);
+    const heightPct = Math.round(bounds.height * 100);
+    if (axis === "width") setStructureSize(shape, n, heightPct);
+    else setStructureSize(shape, widthPct, n);
+    updateSizerPanel();
+    redrawStructures();
+  }
+
+  function bindSizerInputs() {
+    const bindPair = (rangeEl, numEl, axis) => {
+      rangeEl?.addEventListener("input", () => onSizerAxisInput(axis, rangeEl.value));
+      numEl?.addEventListener("input", () => onSizerAxisInput(axis, numEl.value));
+      numEl?.addEventListener("change", () => onSizerAxisInput(axis, numEl.value));
+    };
+    bindPair(sizerWidth, sizerWidthNum, "width");
+    bindPair(sizerHeight, sizerHeightNum, "height");
+  }
+
+  function hitTestStructure(px, py) {
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return null;
+    const nx = px / w;
+    const ny = py / h;
+
+    for (let i = structures.length - 1; i >= 0; i--) {
+      const s = structures[i];
+      const b = getStructureBounds(s);
+      const left = b.left;
+      const top = b.top;
+      const right = left + b.width;
+      const bottom = top + b.height;
+      const cx = left + b.width / 2;
+      const cy = top + b.height / 2;
+
+      if (s.type === "rectangle") {
+        if (nx >= left && nx <= right && ny >= top && ny <= bottom) return s;
+      } else if (s.type === "circle") {
+        const rx = b.width / 2;
+        const ry = b.height / 2;
+        if (rx <= 0 || ry <= 0) continue;
+        const dx = (nx - cx) / rx;
+        const dy = (ny - cy) / ry;
+        if (dx * dx + dy * dy <= 1) return s;
+      } else if (s.type === "triangle") {
+        if (nx < left || nx > right || ny < top || ny > bottom) continue;
+        const ax = left + b.width / 2;
+        const ay = top;
+        const bx = right;
+        const by = bottom;
+        const cx2 = left;
+        const cy2 = bottom;
+        const denom = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
+        if (Math.abs(denom) < 1e-8) continue;
+        const a = ((by - cy2) * (nx - cx2) + (cx2 - bx) * (ny - cy2)) / denom;
+        const b2 = ((cy2 - ay) * (nx - cx2) + (ax - cx2) * (ny - cy2)) / denom;
+        const c = 1 - a - b2;
+        if (a >= 0 && b2 >= 0 && c >= 0) return s;
+      }
+    }
+    return null;
+  }
+
+  function selectStructureAt(px, py) {
+    const hit = hitTestStructure(px, py);
+    selectedStructureId = hit ? hit.id : null;
+    updateSizerPanel();
+    redrawStructures();
+  }
+
+  function drawSelectionOutline(context, shape, w, h) {
+    const b = getStructureBounds(shape);
+    const left = b.left * w;
+    const top = b.top * h;
+    const width = b.width * w;
+    const height = b.height * h;
+
+    context.save();
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 2;
+    context.setLineDash([6, 4]);
+
+    if (shape.type === "rectangle") {
+      context.strokeRect(left, top, width, height);
+    } else if (shape.type === "circle") {
+      context.beginPath();
+      context.ellipse(left + width / 2, top + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+      context.stroke();
+    } else if (shape.type === "triangle") {
+      context.beginPath();
+      context.moveTo(left + width / 2, top);
+      context.lineTo(left + width, top + height);
+      context.lineTo(left, top + height);
+      context.closePath();
+      context.stroke();
+    }
+
+    context.restore();
+  }
+
   function getLayerPoint(e, layer) {
     const rect = layer.getBoundingClientRect();
     return {
@@ -320,6 +513,10 @@
     structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
     structures.forEach((s) => drawShapeOnContext(structCtx, s, w, h, false));
     if (placePreview) drawShapeOnContext(structCtx, placePreview, w, h, true);
+    const selected = getSelectedStructure();
+    if (selected && activeTool === "sizer") {
+      drawSelectionOutline(structCtx, selected, w, h);
+    }
     updateControlStates();
   }
 
@@ -581,7 +778,18 @@
     };
   }
 
+  function startStructureSizerPick(e) {
+    if (activeTool !== "sizer" || !hasMap) return;
+    e.preventDefault();
+    const { x, y } = getLayerPoint(e, structureCanvas);
+    selectStructureAt(x, y);
+  }
+
   function startStructurePlace(e) {
+    if (activeTool === "sizer") {
+      startStructureSizerPick(e);
+      return;
+    }
     if (activeTool !== "structure" || !hasMap) return;
     e.preventDefault();
     isPlacingStructure = true;
@@ -613,10 +821,12 @@
     }
     if (placePreview) {
       structures.push(placePreview);
+      selectedStructureId = placePreview.id;
     }
     placeStart = null;
     placePreview = null;
     redrawStructures();
+    updateSizerPanel();
   }
 
   structureCanvas.addEventListener("pointerdown", startStructurePlace);
@@ -665,7 +875,9 @@
     hasMap = false;
     structures = [];
     placePreview = null;
+    selectedStructureId = null;
     clearVisionLines();
+    updateSizerPanel();
     stage.classList.remove("has-map");
     stageWrap?.classList.remove("has-map");
     image.hidden = true;
@@ -704,10 +916,16 @@
 
   undoStructureBtn?.addEventListener("click", () => {
     if (structures.length === 0) return;
-    structures.pop();
+    const removed = structures.pop();
+    if (selectedStructureId === removed?.id) {
+      selectedStructureId = structures.length ? structures[structures.length - 1].id : null;
+    }
     placePreview = null;
     redrawStructures();
+    updateSizerPanel();
   });
+
+  bindSizerInputs();
 
   resetPlayersBtn?.addEventListener("click", resetPlayerPositions);
   resetPlayersMobile?.addEventListener("click", resetPlayerPositions);
