@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=25" />
+  <link rel="stylesheet" href="field-mapper.css?v=26" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -45,8 +45,11 @@
           Upload map image
           <input type="file" id="map-upload" accept="image/*" hidden />
         </label>
-        <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-image" disabled>Save map image</button>
-        <p class="fm-save-hint">Bakes bunkers in structure green so you can re-upload this file later.</p>
+        <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack">Upload map pack</button>
+        <input type="file" id="map-pack-zip" accept=".zip,application/zip" hidden />
+        <input type="file" id="map-pack-folder" webkitdirectory directory multiple hidden />
+        <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack" disabled>Save map pack</button>
+        <p class="fm-save-hint">Downloads a folder as a .zip with map.png and intel.json for re-upload.</p>
         <button type="button" class="btn btn-ghost fm-btn-full" id="clear-map" disabled>Remove map</button>
       </div>
 
@@ -209,10 +212,9 @@
               <span>More</span>
             </button>
           </div>
-          <button type="button" class="btn btn-primary fm-btn-full fm-save-map-mobile" id="save-map-image-mobile" disabled>
-            Save map image
-          </button>
-          <p class="fm-save-hint fm-save-hint-mobile">Re-upload the saved image to restore green bunkers and intel.</p>
+          <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack-mobile">Upload map pack</button>
+          <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack-mobile" disabled>Save map pack</button>
+          <p class="fm-save-hint fm-save-hint-mobile">.zip folder with map.png and intel.json, or pick the unpacked folder.</p>
         </section>
 
         <section class="fm-intel-section" id="fm-intel-section" hidden aria-label="Intel report">
@@ -291,6 +293,7 @@
   </div>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=25"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="field-mapper.js?v=26"></script>
 </body>
 </html>

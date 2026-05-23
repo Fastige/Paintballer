@@ -84,6 +84,7 @@
   margin-top: 0.35rem;
 }
 
+
 .fm-btn-full {
   width: 100%;
 }
@@ -1307,6 +1308,8 @@
   }
 
   .fm-tool-group:first-of-type .fm-upload-btn,
+  .fm-tool-group:first-of-type #upload-map-pack,
+  .fm-tool-group:first-of-type #save-map-pack,
   .fm-tool-group:first-of-type .fm-save-hint:not(.fm-save-hint-mobile) {
     display: none;
   }

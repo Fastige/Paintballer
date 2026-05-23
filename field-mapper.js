@@ -25,8 +25,12 @@
   const uploadPromptLabel = document.getElementById("fm-upload-prompt");
   const mapUploadPromptInput = document.getElementById("map-upload-prompt");
   const mapUploadMobile = document.getElementById("map-upload-mobile");
-  const saveMapImageBtn = document.getElementById("save-map-image");
-  const saveMapImageMobileBtn = document.getElementById("save-map-image-mobile");
+  const saveMapPackBtn = document.getElementById("save-map-pack");
+  const saveMapPackMobileBtn = document.getElementById("save-map-pack-mobile");
+  const uploadMapPackBtn = document.getElementById("upload-map-pack");
+  const uploadMapPackMobileBtn = document.getElementById("upload-map-pack-mobile");
+  const mapPackZipInput = document.getElementById("map-pack-zip");
+  const mapPackFolderInput = document.getElementById("map-pack-folder");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
   const undoStructureBtn = document.getElementById("undo-structure");
@@ -104,6 +108,8 @@
   let structurePointer = null;
   let fieldIntelReport = { name: "", bio: "" };
   let intelModalOpen = false;
+  /** @type {ReturnType<typeof serializeFieldState>|null} */
+  let pendingPackState = null;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -205,8 +211,8 @@
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
-    if (saveMapImageBtn) saveMapImageBtn.disabled = !hasMap;
-    if (saveMapImageMobileBtn) saveMapImageMobileBtn.disabled = !hasMap;
+    if (saveMapPackBtn) saveMapPackBtn.disabled = !hasMap;
+    if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
   }
 
   function setTool(tool) {
@@ -1189,43 +1195,169 @@
     setTimeout(() => URL.revokeObjectURL(url), 500);
   }
 
-  function saveMapImage() {
-    if (!hasMap || !image.naturalWidth) return;
+  function getPackFolderName() {
+    return `paintballer-field-${new Date().toISOString().slice(0, 10)}`;
+  }
 
-    const nw = image.naturalWidth;
-    const nh = image.naturalHeight;
-    const off = document.createElement("canvas");
-    off.width = nw;
-    off.height = nh;
-    const octx = off.getContext("2d");
-    if (!octx) return;
+  function renderMapToBlob() {
+    return new Promise((resolve) => {
+      if (!hasMap || !image.naturalWidth) {
+        resolve(null);
+        return;
+      }
+      const nw = image.naturalWidth;
+      const nh = image.naturalHeight;
+      const off = document.createElement("canvas");
+      off.width = nw;
+      off.height = nh;
+      const octx = off.getContext("2d");
+      if (!octx) {
+        resolve(null);
+        return;
+      }
+      octx.drawImage(image, 0, 0, nw, nh);
+      if (canvas.width > 0 && canvas.height > 0) {
+        octx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, nw, nh);
+      }
+      structures.forEach((s) => drawShapeOnContext(octx, s, nw, nh, false, true));
+      off.toBlob((blob) => resolve(blob), "image/png", 1);
+    });
+  }
 
-    octx.drawImage(image, 0, 0, nw, nh);
+  async function saveMapPack() {
+    if (!hasMap || !image.naturalWidth || typeof JSZip === "undefined") return;
 
-    if (canvas.width > 0 && canvas.height > 0) {
-      octx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, nw, nh);
-    }
-
-    structures.forEach((s) => drawShapeOnContext(octx, s, nw, nh, false, true));
+    const pngBlob = await renderMapToBlob();
+    if (!pngBlob) return;
 
     persistFieldState();
+    const folderName = getPackFolderName();
+    const state = serializeFieldState();
+    const zip = new JSZip();
+    const folder = zip.folder(folderName);
+    folder.file("map.png", pngBlob);
+    folder.file("intel.json", JSON.stringify(state, null, 2));
 
-    const stamp = new Date().toISOString().slice(0, 10);
-    const base = `paintballer-field-${stamp}`;
+    const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    downloadBlob(zipBlob, `${folderName}.zip`);
+  }
 
-    off.toBlob(
-      (pngBlob) => {
-        if (!pngBlob) return;
-        downloadBlob(pngBlob, `${base}.png`);
+  function findPackFiles(files) {
+    const list = Array.from(files);
+    const jsonFile =
+      list.find((f) => /^intel\.json$/i.test(f.name)) ||
+      list.find((f) => /\.json$/i.test(f.name) && /intel|paintballer/i.test(f.name)) ||
+      list.find((f) => /\.json$/i.test(f.name));
+    const imageFile =
+      list.find((f) => /^map\.(png|jpe?g|webp)$/i.test(f.name)) ||
+      list.find((f) => f.type.startsWith("image/"));
+    return { jsonFile, imageFile };
+  }
 
-        const jsonBlob = new Blob([JSON.stringify(serializeFieldState(), null, 2)], {
-          type: "application/json",
-        });
-        setTimeout(() => downloadBlob(jsonBlob, `${base}.json`), 400);
-      },
-      "image/png",
-      1
+  function parsePackState(text) {
+    const data = JSON.parse(text);
+    if (!data || typeof data !== "object") throw new Error("Invalid pack");
+    return data;
+  }
+
+  function applyPackState(state) {
+    if (state.report) {
+      fieldIntelReport = {
+        name: state.report.name || "",
+        bio: state.report.bio || "",
+      };
+    }
+    try {
+      localStorage.setItem(FIELD_STATE_KEY, JSON.stringify(state));
+    } catch {
+      /* ignore */
+    }
+    if (!Array.isArray(state.structures) || !state.structures.length) return;
+
+    structures = state.structures.map((s) => ({
+      id: crypto.randomUUID(),
+      type: s.type || "rectangle",
+      x1: s.x1,
+      y1: s.y1,
+      x2: s.x2,
+      y2: s.y2,
+      name: s.name || "",
+      bio: s.bio || "",
+      detected: true,
+    }));
+  }
+
+  function loadMapImageFromFile(file, packState) {
+    if (!file || !file.type.startsWith("image/")) return;
+    pendingPackState = packState || null;
+    const reader = new FileReader();
+    reader.onload = () => {
+      image.onload = () => {
+        showMapUI();
+        closeToolsPanel();
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleMapPackZip(file) {
+    if (!file || typeof JSZip === "undefined") return;
+    const zip = await JSZip.loadAsync(file);
+    const entries = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
+    const blobs = await Promise.all(
+      entries.map(async (path) => {
+        const name = path.split("/").pop();
+        const blob = await zip.files[path].async("blob");
+        return new File([blob], name, { type: blob.type || undefined });
+      })
     );
+    await handleMapPackFiles(blobs);
+  }
+
+  async function handleMapPackFiles(files) {
+    const { jsonFile, imageFile } = findPackFiles(files);
+    if (!imageFile) {
+      window.alert("Map pack needs map.png (or another image) in the folder.");
+      return;
+    }
+
+    let packState = null;
+    if (jsonFile) {
+      try {
+        packState = parsePackState(await jsonFile.text());
+      } catch {
+        window.alert("Could not read intel.json from the map pack.");
+        return;
+      }
+    }
+
+    loadMapImageFromFile(imageFile, packState);
+  }
+
+  async function openMapPackUpload() {
+    if (!isMobileLayout() && "showDirectoryPicker" in window) {
+      try {
+        const dir = await window.showDirectoryPicker({ mode: "read" });
+        const files = [];
+        for await (const entry of dir.values()) {
+          if (entry.kind === "file") files.push(await entry.getFile());
+        }
+        if (files.length) {
+          await handleMapPackFiles(files);
+          return;
+        }
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+
+    if (!isMobileLayout() && mapPackFolderInput) {
+      mapPackFolderInput.click();
+      return;
+    }
+
+    mapPackZipInput?.click();
   }
 
   function redrawStructures() {
@@ -1611,17 +1743,7 @@
   });
 
   function handleMapFile(file) {
-    if (!file || !file.type.startsWith("image/")) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      image.onload = () => {
-        showMapUI();
-        closeToolsPanel();
-      };
-      image.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+    loadMapImageFromFile(file, null);
   }
 
   function showMapUI() {
@@ -1641,13 +1763,19 @@
     requestAnimationFrame(() => {
       refreshMapPixelCache();
       resizeCanvases();
-      const detected = detectStructuresFromImage(image);
-      if (detected.length) {
-        structures = detected;
-        mergeIntelFromSavedState();
-        redrawStructures();
-        if (isMobileLayout()) setTool("intel");
+      if (pendingPackState) {
+        applyPackState(pendingPackState);
+        pendingPackState = null;
       }
+      if (!structures.length) {
+        const detected = detectStructuresFromImage(image);
+        if (detected.length) {
+          structures = detected;
+          mergeIntelFromSavedState();
+        }
+      }
+      redrawStructures();
+      if (structures.length && isMobileLayout()) setTool("intel");
       updateControlStates();
       updateIntelReport();
       updateMobileTip(uiTool);
@@ -1685,8 +1813,29 @@
     setInteractionLock(false);
   }
 
-  saveMapImageBtn?.addEventListener("click", saveMapImage);
-  saveMapImageMobileBtn?.addEventListener("click", saveMapImage);
+  saveMapPackBtn?.addEventListener("click", () => {
+    saveMapPack().catch(() => window.alert("Could not save map pack."));
+  });
+  saveMapPackMobileBtn?.addEventListener("click", () => {
+    saveMapPack().catch(() => window.alert("Could not save map pack."));
+  });
+  uploadMapPackBtn?.addEventListener("click", () => {
+    openMapPackUpload().catch(() => window.alert("Could not open map pack."));
+  });
+  uploadMapPackMobileBtn?.addEventListener("click", () => {
+    openMapPackUpload().catch(() => window.alert("Could not open map pack."));
+  });
+  mapPackZipInput?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleMapPackZip(file).catch(() => window.alert("Could not read map pack .zip."));
+    e.target.value = "";
+  });
+  mapPackFolderInput?.addEventListener("change", (e) => {
+    if (e.target.files?.length) {
+      handleMapPackFiles(e.target.files).catch(() => window.alert("Could not read map pack folder."));
+    }
+    e.target.value = "";
+  });
 
   mapUpload?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
   mapUploadPromptInput?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
