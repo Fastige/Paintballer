@@ -175,8 +175,12 @@
 
   function updateMobileTip(tool) {
     if (!mobileTip) return;
-    if (!isMobileLayout() || !hasMap) {
+    if (!isMobileLayout()) {
       mobileTip.textContent = "";
+      return;
+    }
+    if (!hasMap) {
+      mobileTip.textContent = "Tap Upload to add your field map.";
       return;
     }
     const tips = {

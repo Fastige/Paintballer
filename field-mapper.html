@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=19" />
+  <link rel="stylesheet" href="field-mapper.css?v=20" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -118,6 +118,48 @@
           </div>
         </div>
         <p class="fm-hint" id="fm-hint" hidden>Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
+
+        <section class="fm-tools-section" id="fm-tools-section" aria-label="Map tools">
+          <div class="fm-tools-section-head">
+            <h2 class="fm-tools-section-title">Tools</h2>
+            <p class="fm-mobile-tip" id="fm-mobile-tip" aria-live="polite"></p>
+          </div>
+          <div class="fm-tools-grid" id="fm-mobile-bar" role="group" aria-label="Map tool buttons">
+            <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
+              <span class="fm-mobile-icon" aria-hidden="true">↖</span>
+              <span>Move</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
+              <span>Brush</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">▣</span>
+              <span>Struct</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">◎</span>
+              <span>Vision</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">⇲</span>
+              <span>Sizer</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="intel" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">📋</span>
+              <span>Intel</span>
+            </button>
+            <label class="fm-mobile-btn fm-mobile-upload">
+              <span class="fm-mobile-icon" aria-hidden="true">📷</span>
+              <span>Upload</span>
+              <input type="file" id="map-upload-mobile" accept="image/*" hidden />
+            </label>
+            <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
+              <span class="fm-mobile-icon" aria-hidden="true">☰</span>
+              <span>More</span>
+            </button>
+          </div>
+        </section>
 
         <section class="fm-intel-section" id="fm-intel-section" hidden aria-label="Intel report">
           <div class="fm-intel-head-row">
@@ -231,47 +273,7 @@
     </div>
   </div>
 
-  <p class="fm-mobile-tip" id="fm-mobile-tip" aria-live="polite"></p>
-
-  <nav class="fm-mobile-bar" id="fm-mobile-bar" aria-label="Quick tools">
-    <div class="fm-mobile-bar-scroll">
-      <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
-        <span class="fm-mobile-icon" aria-hidden="true">↖</span>
-        <span>Move</span>
-      </button>
-      <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
-        <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
-        <span>Brush</span>
-      </button>
-      <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
-        <span class="fm-mobile-icon" aria-hidden="true">▣</span>
-        <span>Struct</span>
-      </button>
-      <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false">
-        <span class="fm-mobile-icon" aria-hidden="true">◎</span>
-        <span>Vision</span>
-      </button>
-      <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false">
-        <span class="fm-mobile-icon" aria-hidden="true">⇲</span>
-        <span>Sizer</span>
-      </button>
-      <button type="button" class="fm-mobile-btn" data-tool="intel" aria-pressed="false">
-        <span class="fm-mobile-icon" aria-hidden="true">📋</span>
-        <span>Intel</span>
-      </button>
-      <label class="fm-mobile-btn fm-mobile-upload">
-        <span class="fm-mobile-icon" aria-hidden="true">📷</span>
-        <span>Upload</span>
-        <input type="file" id="map-upload-mobile" accept="image/*" hidden />
-      </label>
-      <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
-        <span class="fm-mobile-icon" aria-hidden="true">☰</span>
-        <span>More</span>
-      </button>
-    </div>
-  </nav>
-
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=19"></script>
+  <script src="field-mapper.js?v=20"></script>
 </body>
 </html>
