@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=20" />
+  <link rel="stylesheet" href="field-mapper.css?v=22" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -119,6 +119,43 @@
         </div>
         <p class="fm-hint" id="fm-hint" hidden>Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
 
+        <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
+          <div class="fm-sizer-head">
+            <p class="eyebrow">Sizer</p>
+            <h2 class="fm-sizer-title">Structure size</h2>
+          </div>
+          <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it.</p>
+          <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
+            <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
+            <div class="fm-sizer-axis">
+              <label class="fm-range-label" for="sizer-width">Width</label>
+              <div class="fm-sizer-axis-row">
+                <input type="range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
+                <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" aria-label="Width percent" />
+                <span class="fm-sizer-unit">%</span>
+              </div>
+            </div>
+            <div class="fm-sizer-axis">
+              <label class="fm-range-label" for="sizer-height">Height</label>
+              <div class="fm-sizer-axis-row">
+                <input type="range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
+                <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
+                <span class="fm-sizer-unit">%</span>
+              </div>
+            </div>
+            <div class="fm-sizer-position">
+              <p class="fm-range-label">Position</p>
+              <div class="fm-sizer-pad" role="group" aria-label="Move structure">
+                <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
+                <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
+                <span class="fm-pad-center" aria-hidden="true"></span>
+                <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
+                <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
         <section class="fm-tools-section" id="fm-tools-section" aria-label="Map tools">
           <div class="fm-tools-section-head">
             <h2 class="fm-tools-section-title">Tools</h2>
@@ -184,43 +221,6 @@
           <ul class="fm-intel-list" id="fm-intel-list" aria-label="Filed intel reports"></ul>
         </section>
       </div>
-
-      <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
-        <div class="fm-sizer-head">
-          <p class="eyebrow">Sizer</p>
-          <h2 class="fm-sizer-title">Structure size</h2>
-        </div>
-        <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it.</p>
-        <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
-          <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
-          <div class="fm-sizer-axis">
-            <label class="fm-range-label" for="sizer-width">Width</label>
-            <div class="fm-sizer-axis-row">
-              <input type="range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
-              <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" aria-label="Width percent" />
-              <span class="fm-sizer-unit">%</span>
-            </div>
-          </div>
-          <div class="fm-sizer-axis">
-            <label class="fm-range-label" for="sizer-height">Height</label>
-            <div class="fm-sizer-axis-row">
-              <input type="range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
-              <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
-              <span class="fm-sizer-unit">%</span>
-            </div>
-          </div>
-          <div class="fm-sizer-position">
-            <p class="fm-range-label">Position</p>
-            <div class="fm-sizer-pad" role="group" aria-label="Move structure">
-              <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
-              <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
-              <span class="fm-pad-center" aria-hidden="true"></span>
-              <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
-              <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
-            </div>
-          </div>
-        </div>
-      </aside>
     </section>
   </main>
 
@@ -274,6 +274,6 @@
   </div>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=21"></script>
+  <script src="field-mapper.js?v=22"></script>
 </body>
 </html>

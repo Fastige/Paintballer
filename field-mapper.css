@@ -255,16 +255,16 @@
 }
 
 .fm-sizer-panel {
-  width: min(240px, 34vw);
+  width: 100%;
   flex-shrink: 0;
   display: none;
   flex-direction: column;
   gap: 0.85rem;
+  margin-top: 0.75rem;
   padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  align-self: stretch;
 }
 
 .fm-workspace.tool-sizer-active .fm-sizer-panel {
@@ -1005,7 +1005,6 @@
   }
 
   .fm-workspace.tool-sizer-active .fm-sizer-panel {
-    order: 2;
     display: flex;
   }
 
