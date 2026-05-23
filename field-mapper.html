@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=26" />
+  <link rel="stylesheet" href="field-mapper.css?v=29" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -66,9 +66,12 @@
             <span aria-hidden="true">▣</span> Structure
           </button>
         </div>
-        <div class="fm-tool-row fm-tool-row-2" role="group" aria-label="More map tools">
+        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="More map tools">
           <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player">
             <span aria-hidden="true">◎</span> Vision
+          </button>
+          <button type="button" class="fm-tool-btn" data-tool="shoot" title="Shoot and run timing">
+            <span aria-hidden="true">⌖</span> Shoot
           </button>
           <button type="button" class="fm-tool-btn" data-tool="sizer" title="Resize structures">
             <span aria-hidden="true">⇲</span> Sizer
@@ -106,6 +109,7 @@
             <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
             <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
             <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
+            <canvas id="fm-shoot-canvas" class="fm-canvas fm-canvas-shoot" hidden></canvas>
             <div id="fm-players" class="fm-players" hidden></div>
           </div>
         </div>
@@ -170,6 +174,32 @@
               </div>
             </div>
           </div>
+          <button type="button" class="btn btn-ghost fm-btn-full" id="undo-sizer" disabled>Undo Sizer change</button>
+        </aside>
+
+        <aside class="fm-shoot-panel fm-map-tool-panel" id="fm-shoot-panel" hidden aria-label="Shoot timing controls" data-mobile-panel="shoot">
+          <div class="fm-map-tool-head">
+            <p class="eyebrow">Shoot</p>
+            <h2 class="fm-map-tool-title">Shot and run</h2>
+          </div>
+          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shooting point and running point.</p>
+          <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
+            <p class="fm-sizer-type" id="fm-shoot-player">No player selected</p>
+            <label class="fm-range-label" for="shoot-time">Run time</label>
+            <div class="fm-sizer-axis-row">
+              <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
+              <span class="fm-sizer-unit">sec</span>
+            </div>
+            <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
+              <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shot</button>
+              <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
+            </div>
+            <p class="fm-structure-note">
+              Shot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above.
+            </p>
+            <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
+            <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
+          </div>
         </aside>
 
         <section class="fm-tools-section" id="fm-tools-section" aria-label="Map tools">
@@ -193,6 +223,10 @@
             <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false">
               <span class="fm-mobile-icon" aria-hidden="true">◎</span>
               <span>Vision</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="shoot" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">⌖</span>
+              <span>Shoot</span>
             </button>
             <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false">
               <span class="fm-mobile-icon" aria-hidden="true">⇲</span>
@@ -294,6 +328,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=27"></script>
+  <script src="field-mapper.js?v=29"></script>
 </body>
 </html>

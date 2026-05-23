@@ -20,6 +20,7 @@
   const structureCanvas = document.getElementById("fm-structure-canvas");
   const canvas = document.getElementById("fm-canvas");
   const visionCanvas = document.getElementById("fm-vision-canvas");
+  const shootCanvas = document.getElementById("fm-shoot-canvas");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
   const uploadPromptLabel = document.getElementById("fm-upload-prompt");
@@ -54,6 +55,15 @@
   const sizerWidthNum = document.getElementById("sizer-width-num");
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
+  const undoSizerBtn = document.getElementById("undo-sizer");
+  const shootPanel = document.getElementById("fm-shoot-panel");
+  const shootEmpty = document.getElementById("fm-shoot-empty");
+  const shootControls = document.getElementById("fm-shoot-controls");
+  const shootPlayerLabel = document.getElementById("fm-shoot-player");
+  const shootTimeInput = document.getElementById("shoot-time");
+  const shootRunBtn = document.getElementById("shoot-run");
+  const shootClearBtn = document.getElementById("shoot-clear");
+  const shootModeBtns = document.querySelectorAll(".fm-shoot-mode-btn[data-shoot-mode]");
   const hint = document.getElementById("fm-hint");
   const mobileTip = document.getElementById("fm-mobile-tip");
   const intelSection = document.getElementById("fm-intel-section");
@@ -79,12 +89,16 @@
   const SIZER_MAX_PCT = 80;
   const SIZER_MOVE_STEP = 0.75;
   const FIELD_STATE_KEY = "paintballer-field-state";
+  const SHOOT_LINE_COLOR = "#ffd43b";
+  const SHOOT_BLOCKED_COLOR = "#ff4f4f";
+  const RUN_POINT_COLOR = "#7cfc3b";
 
-  if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
+  if (!stage || !canvas || !structureCanvas || !visionCanvas || !shootCanvas) return;
 
   const ctx = canvas.getContext("2d");
   const structCtx = structureCanvas.getContext("2d");
   const visionCtx = visionCanvas.getContext("2d");
+  const shootCtx = shootCanvas.getContext("2d");
 
   let activeTool = "select";
   let uiTool = "select";
@@ -101,7 +115,14 @@
   let structures = [];
   let selectedStructureId = null;
   let visionPlayerEl = null;
+  let shootPlayerEl = null;
+  let shootMode = "shoot";
+  let shootPoint = null;
+  let runPoint = null;
+  let runAnimationFrame = null;
   let sizerSyncing = false;
+  let activeSizerEdit = null;
+  let sizerUndoState = null;
   /** @type {{data:Uint8ClampedArray,w:number,h:number}|null} */
   let mapPixelCache = null;
   /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
@@ -197,6 +218,7 @@
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
+      shoot: "Shoot — tap a player, set shot and run points, then run.",
       sizer: "Sizer — tap a bunker, then resize or use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -210,9 +232,11 @@
     if (clearMapBtn) clearMapBtn.disabled = !hasMap;
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
+    if (undoSizerBtn) undoSizerBtn.disabled = !hasMap || !hasSizerUndo();
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
     if (saveMapPackBtn) saveMapPackBtn.disabled = !hasMap;
     if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
+    if (shootRunBtn) shootRunBtn.disabled = !hasMap || !shootPlayerEl || !runPoint;
   }
 
   function setTool(tool) {
@@ -231,20 +255,24 @@
     stage.classList.toggle("tool-brush", activeTool === "brush");
     stage.classList.toggle("tool-structure", activeTool === "structure");
     stage.classList.toggle("tool-vision", activeTool === "vision");
+    stage.classList.toggle("tool-shoot", activeTool === "shoot");
     stage.classList.toggle("tool-sizer", activeTool === "sizer");
     stage.classList.toggle("tool-intel", tool === "intel");
     workspace?.classList.toggle("tool-sizer-active", activeTool === "sizer");
     workspace?.classList.toggle("tool-structure-active", activeTool === "structure");
+    workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
     if (structurePanel) structurePanel.hidden = activeTool !== "structure";
-    if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "sizer";
+    if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "sizer" || activeTool === "shoot";
     if (sizerPanel) sizerPanel.hidden = activeTool !== "sizer";
+    if (shootPanel) shootPanel.hidden = activeTool !== "shoot";
 
     if (activeTool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
     }
     updateSizerPanel();
+    updateShootPanel();
     updateIntelReport();
     redrawStructures();
     updateMobileTip(tool);
@@ -252,6 +280,7 @@
     if (tool === "intel") scrollMobilePanel(intelSection);
     if (activeTool === "sizer") scrollMobilePanel(sizerPanel);
     if (activeTool === "structure") scrollMobilePanel(structurePanel);
+    if (activeTool === "shoot") scrollMobilePanel(shootPanel);
 
     if (hint && !isMobileLayout()) {
       hint.hidden = !hasMap;
@@ -263,6 +292,8 @@
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
+        shoot:
+          "<strong>Shoot</strong> — click a player, set a shot point and run point, then run over the chosen time",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
         intel:
@@ -301,6 +332,14 @@
     btn.addEventListener("click", () => {
       activeShape = btn.dataset.shape || "rectangle";
       shapeBtns.forEach((b) => b.classList.toggle("is-active", b === btn));
+    });
+  });
+
+  shootModeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      shootMode = btn.dataset.shootMode || "shoot";
+      shootModeBtns.forEach((b) => b.classList.toggle("is-active", b === btn));
+      updateShootPanel();
     });
   });
 
@@ -493,8 +532,242 @@
     redrawVisionLines();
   }
 
+  function getPlayerLabel(el) {
+    if (!el) return "No player selected";
+    const team = el.dataset.team === "a" ? "Alpha" : "Bravo";
+    return `${team} ${el.dataset.num || ""}`.trim();
+  }
+
+  function selectShootPlayer(el) {
+    if (shootPlayerEl) shootPlayerEl.classList.remove("is-shoot-selected");
+    shootPlayerEl = el;
+    if (shootPlayerEl) shootPlayerEl.classList.add("is-shoot-selected");
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
+  function clearShootPlan() {
+    if (runAnimationFrame) {
+      cancelAnimationFrame(runAnimationFrame);
+      runAnimationFrame = null;
+    }
+    if (shootPlayerEl) shootPlayerEl.classList.remove("is-shoot-selected");
+    shootPlayerEl = null;
+    shootPoint = null;
+    runPoint = null;
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
+  function updateShootPanel() {
+    const hasPlayer = Boolean(shootPlayerEl);
+    if (shootEmpty) shootEmpty.hidden = hasPlayer;
+    if (shootControls) shootControls.hidden = !hasPlayer;
+    if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
+    if (shootRunBtn) shootRunBtn.disabled = !hasMap || !shootPlayerEl || !runPoint;
+    shootModeBtns.forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.shootMode === shootMode);
+    });
+  }
+
+  function normalizeLayerPoint(point) {
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return null;
+    return {
+      x: Math.max(0, Math.min(1, point.x / w)),
+      y: Math.max(0, Math.min(1, point.y / h)),
+    };
+  }
+
+  function denormalizePoint(point) {
+    const { w, h } = getCanvasSize();
+    return { x: point.x * w, y: point.y * h };
+  }
+
+  function rayCastToPoint(start, target, w, h) {
+    const vx = target.x - start.x;
+    const vy = target.y - start.y;
+    const distance = Math.hypot(vx, vy);
+    if (distance <= 0.5) return { end: target, blocked: false };
+
+    const dx = vx / distance;
+    const dy = vy / distance;
+    let tLimit = distance;
+
+    structures.forEach((shape) => {
+      const t = rayStructureHitT(start.x, start.y, dx, dy, shape, w, h);
+      if (t !== null && t < tLimit) tLimit = t;
+    });
+
+    return {
+      end: { x: start.x + dx * tLimit, y: start.y + dy * tLimit },
+      blocked: tLimit < distance - 0.5,
+    };
+  }
+
+  function drawPointMarker(context, point, color, label) {
+    const { x, y } = denormalizePoint(point);
+    context.save();
+    context.fillStyle = color;
+    context.strokeStyle = "#0f1210";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(x, y, 6, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.font = "700 11px Outfit, sans-serif";
+    context.textBaseline = "bottom";
+    context.fillStyle = "#ffffff";
+    context.strokeStyle = "rgba(0, 0, 0, 0.75)";
+    context.lineWidth = 3;
+    context.strokeText(label, x + 9, y - 7);
+    context.fillText(label, x + 9, y - 7);
+    context.restore();
+  }
+
+  function redrawShootOverlay() {
+    const { w, h } = getCanvasSize();
+    shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
+    if (!w || !h) return;
+
+    if (shootPoint) drawPointMarker(shootCtx, shootPoint, SHOOT_LINE_COLOR, "Shot");
+    if (runPoint) drawPointMarker(shootCtx, runPoint, RUN_POINT_COLOR, "Run");
+
+    if (!shootPlayerEl) return;
+
+    const player = getPlayerCenterPx(shootPlayerEl);
+    const start = { x: player.x, y: player.y };
+
+    shootCtx.save();
+    shootCtx.lineWidth = 3;
+    shootCtx.lineCap = "round";
+    shootCtx.setLineDash([]);
+
+    if (shootPoint) {
+      const target = denormalizePoint(shootPoint);
+      const shot = rayCastToPoint(start, target, w, h);
+      shootCtx.strokeStyle = shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR;
+      shootCtx.beginPath();
+      shootCtx.moveTo(start.x, start.y);
+      shootCtx.lineTo(shot.end.x, shot.end.y);
+      shootCtx.stroke();
+
+      if (shot.blocked) {
+        shootCtx.fillStyle = SHOOT_BLOCKED_COLOR;
+        shootCtx.beginPath();
+        shootCtx.arc(shot.end.x, shot.end.y, 5, 0, Math.PI * 2);
+        shootCtx.fill();
+      }
+    }
+
+    if (runPoint) {
+      const run = denormalizePoint(runPoint);
+      shootCtx.strokeStyle = RUN_POINT_COLOR;
+      shootCtx.setLineDash([8, 6]);
+      shootCtx.beginPath();
+      shootCtx.moveTo(start.x, start.y);
+      shootCtx.lineTo(run.x, run.y);
+      shootCtx.stroke();
+    }
+
+    shootCtx.restore();
+  }
+
+  function setShootPointFromEvent(e) {
+    if (activeTool !== "shoot" || !hasMap || !shootPlayerEl) return;
+    e.preventDefault();
+    const point = normalizeLayerPoint(getLayerPoint(e, shootCanvas));
+    if (!point) return;
+    if (shootMode === "run") runPoint = point;
+    else shootPoint = point;
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
+  function runShootPlayer() {
+    if (!shootPlayerEl || !runPoint) return;
+    if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
+
+    const duration = Math.max(0.5, Math.min(30, Number(shootTimeInput?.value) || 3)) * 1000;
+    const startX = parseFloat(shootPlayerEl.style.left) || 0;
+    const startY = parseFloat(shootPlayerEl.style.top) || 0;
+    const endX = runPoint.x * 100;
+    const endY = runPoint.y * 100;
+    const startedAt = performance.now();
+
+    const step = (now) => {
+      const t = Math.min(1, (now - startedAt) / duration);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      positionPlayer(shootPlayerEl, startX + (endX - startX) * eased, startY + (endY - startY) * eased);
+      if (visionPlayerEl === shootPlayerEl) redrawVisionLines();
+      redrawShootOverlay();
+      if (t < 1) {
+        runAnimationFrame = requestAnimationFrame(step);
+      } else {
+        runAnimationFrame = null;
+      }
+    };
+
+    runAnimationFrame = requestAnimationFrame(step);
+  }
+
   function getSelectedStructure() {
     return structures.find((s) => s.id === selectedStructureId) || null;
+  }
+
+  function snapshotSizerShape(shape) {
+    return {
+      id: shape.id,
+      x1: shape.x1,
+      y1: shape.y1,
+      x2: shape.x2,
+      y2: shape.y2,
+    };
+  }
+
+  function hasSizerUndo() {
+    return Boolean(sizerUndoState && structures.some((s) => s.id === sizerUndoState.id));
+  }
+
+  function rememberSizerUndo(shape) {
+    sizerUndoState = snapshotSizerShape(shape);
+    updateControlStates();
+  }
+
+  function clearSizerUndo() {
+    activeSizerEdit = null;
+    sizerUndoState = null;
+    updateControlStates();
+  }
+
+  function beginSizerEdit(shape, key) {
+    if (!shape) return;
+    if (activeSizerEdit?.key === key && activeSizerEdit.id === shape.id) return;
+    activeSizerEdit = { key, id: shape.id };
+    rememberSizerUndo(shape);
+  }
+
+  function endSizerEdit() {
+    activeSizerEdit = null;
+  }
+
+  function undoSizerChange() {
+    if (!hasSizerUndo()) {
+      clearSizerUndo();
+      return;
+    }
+    const shape = structures.find((s) => s.id === sizerUndoState.id);
+    if (!shape) return;
+    shape.x1 = sizerUndoState.x1;
+    shape.y1 = sizerUndoState.y1;
+    shape.x2 = sizerUndoState.x2;
+    shape.y2 = sizerUndoState.y2;
+    selectedStructureId = shape.id;
+    clearSizerUndo();
+    updateSizerPanel();
+    redrawStructures();
+    redrawShootOverlay();
+    updateIntelReport();
   }
 
   function getStructureBounds(shape) {
@@ -584,17 +857,30 @@
     const bounds = getStructureBounds(shape);
     const widthPct = Math.round(bounds.width * 1000) / 10;
     const heightPct = Math.round(bounds.height * 1000) / 10;
+    if ((axis === "width" && n === widthPct) || (axis === "height" && n === heightPct)) {
+      updateSizerPanel();
+      return;
+    }
+    beginSizerEdit(shape, axis);
     if (axis === "width") setStructureSize(shape, n, heightPct);
     else setStructureSize(shape, widthPct, n);
     updateSizerPanel();
     redrawStructures();
+    redrawShootOverlay();
   }
 
   function bindSizerInputs() {
     const bindPair = (rangeEl, numEl, axis) => {
       rangeEl?.addEventListener("input", () => onSizerAxisInput(axis, rangeEl.value));
+      rangeEl?.addEventListener("change", endSizerEdit);
+      rangeEl?.addEventListener("pointerup", endSizerEdit);
+      rangeEl?.addEventListener("blur", endSizerEdit);
       numEl?.addEventListener("input", () => onSizerAxisInput(axis, numEl.value));
-      numEl?.addEventListener("change", () => onSizerAxisInput(axis, numEl.value));
+      numEl?.addEventListener("change", () => {
+        onSizerAxisInput(axis, numEl.value);
+        endSizerEdit();
+      });
+      numEl?.addEventListener("blur", endSizerEdit);
     };
     bindPair(sizerWidth, sizerWidthNum, "width");
     bindPair(sizerHeight, sizerHeightNum, "height");
@@ -603,10 +889,15 @@
       btn.addEventListener("click", () => {
         const shape = getSelectedStructure();
         if (!shape) return;
+        rememberSizerUndo(shape);
+        endSizerEdit();
         moveStructure(shape, btn.dataset.move);
         redrawStructures();
+        redrawShootOverlay();
       });
     });
+
+    undoSizerBtn?.addEventListener("click", undoSizerChange);
   }
 
   function refreshMapPixelCache() {
@@ -1267,7 +1558,7 @@
       list.find((f) => /\.json$/i.test(f.name));
     const imageFile =
       list.find((f) => /^map\.(png|jpe?g|webp)$/i.test(f.name)) ||
-      list.find((f) => f.type.startsWith("image/"));
+      list.find(isImageFile);
     return { jsonFile, imageFile };
   }
 
@@ -1407,6 +1698,7 @@
     }
     updateControlStates();
     if (visionPlayerEl) redrawVisionLines();
+    redrawShootOverlay();
   }
 
   function resizeCanvases() {
@@ -1418,11 +1710,12 @@
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
-    [canvas, structureCanvas, visionCanvas].forEach((c) => {
+    [canvas, structureCanvas, visionCanvas, shootCanvas].forEach((c) => {
       const isVisionLayer = c === visionCanvas;
       let snapshot = null;
       const cctx = c.getContext("2d");
-      if (!isVisionLayer && c.width > 0 && c.height > 0) {
+      const shouldSnapshot = !isVisionLayer && c !== shootCanvas;
+      if (shouldSnapshot && c.width > 0 && c.height > 0) {
         snapshot = document.createElement("canvas");
         snapshot.width = c.width;
         snapshot.height = c.height;
@@ -1445,6 +1738,7 @@
     refreshMapPixelCache();
     redrawStructures();
     redrawVisionLines();
+    redrawShootOverlay();
   }
 
   function classifyComponent(minX, maxX, minY, maxY) {
@@ -1572,6 +1866,13 @@
         return;
       }
 
+      if (activeTool === "shoot") {
+        e.preventDefault();
+        e.stopPropagation();
+        selectShootPlayer(el);
+        return;
+      }
+
       if (activeTool !== "select") return;
       e.preventDefault();
       e.stopPropagation();
@@ -1598,6 +1899,7 @@
       y = Math.max(2, Math.min(98, y));
       positionPlayer(el, x, y);
       if (visionPlayerEl === el) redrawVisionLines();
+      if (shootPlayerEl === el) redrawShootOverlay();
     });
 
     const endDrag = (e) => {
@@ -1607,6 +1909,7 @@
       draggedPlayer = null;
       setInteractionLock(false);
       if (visionPlayerEl === el) redrawVisionLines();
+      if (shootPlayerEl === el) redrawShootOverlay();
     };
 
     el.addEventListener("pointerup", endDrag);
@@ -1648,6 +1951,11 @@
   canvas.addEventListener("pointermove", draw);
   canvas.addEventListener("pointerup", endDraw);
   canvas.addEventListener("pointercancel", endDraw);
+
+  shootCanvas.addEventListener("pointerdown", setShootPointFromEvent);
+  shootRunBtn?.addEventListener("click", runShootPlayer);
+  shootClearBtn?.addEventListener("click", clearShootPlan);
+  shootTimeInput?.addEventListener("change", updateShootPanel);
 
   function normalizedShapeFromPoints(x1, y1, x2, y2) {
     const { w, h } = getCanvasSize();
@@ -1783,6 +2091,8 @@
 
   function showMapUI() {
     hasMap = true;
+    clearSizerUndo();
+    clearShootPlan();
     const packToApply = pendingPackState;
     pendingPackState = null;
     if (!packToApply) structures = [];
@@ -1795,6 +2105,7 @@
     canvas.hidden = false;
     structureCanvas.hidden = false;
     visionCanvas.hidden = false;
+    shootCanvas.hidden = false;
     playersLayer.hidden = false;
 
     if (canvas.width > 0 && canvas.height > 0) {
@@ -1838,7 +2149,9 @@
     structures = [];
     placePreview = null;
     selectedStructureId = null;
+    clearSizerUndo();
     clearVisionLines();
+    clearShootPlan();
     updateSizerPanel();
     updateIntelReport();
     stage.classList.remove("has-map");
@@ -1850,10 +2163,12 @@
     canvas.hidden = true;
     structureCanvas.hidden = true;
     visionCanvas.hidden = true;
+    shootCanvas.hidden = true;
     playersLayer.hidden = true;
     playersLayer.innerHTML = "";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
+    shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
     if (mapUpload) mapUpload.value = "";
     if (mapUploadPromptInput) mapUploadPromptInput.value = "";
     if (mapUploadMobile) mapUploadMobile.value = "";

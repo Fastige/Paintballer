@@ -290,6 +290,19 @@
   display: flex;
 }
 
+.fm-map-tool-panel .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .fm-map-tool-panel .btn:disabled:hover {
+    border-color: var(--border);
+    color: var(--text);
+    transform: none;
+  }
+}
+
 .fm-map-tool-head {
   margin: 0;
 }
@@ -311,6 +324,10 @@
 }
 
 .fm-workspace.tool-structure-active .fm-structure-panel:not([hidden]) {
+  display: flex;
+}
+
+.fm-workspace.tool-shoot-active .fm-shoot-panel:not([hidden]) {
   display: flex;
 }
 
@@ -340,6 +357,50 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--structure-green, #00ff9d);
+}
+
+.fm-shoot-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fm-shoot-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.fm-shoot-controls[hidden] {
+  display: none !important;
+}
+
+.fm-shoot-mode-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.fm-shoot-mode-btn {
+  min-height: 44px;
+  padding: 0.55rem 0.45rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-shoot-mode-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0f08;
 }
 
 .fm-sizer-axis {
@@ -562,6 +623,11 @@
   pointer-events: none;
 }
 
+.fm-canvas-shoot {
+  z-index: 5;
+  pointer-events: none;
+}
+
 .fm-stage.tool-brush .fm-canvas-draw {
   pointer-events: auto;
   cursor: crosshair;
@@ -575,6 +641,11 @@
 
 .fm-stage.tool-sizer .fm-canvas-structure {
   cursor: pointer;
+}
+
+.fm-stage.tool-shoot .fm-canvas-shoot {
+  pointer-events: auto;
+  cursor: crosshair;
 }
 
 .fm-players {
@@ -638,13 +709,18 @@
   pointer-events: none;
 }
 
-.fm-stage.tool-vision .fm-player {
+.fm-stage.tool-vision .fm-player,
+.fm-stage.tool-shoot .fm-player {
   pointer-events: auto;
   cursor: pointer;
 }
 
 .fm-player.has-vision-lines {
   box-shadow: 0 0 0 3px rgba(255, 79, 200, 0.85), 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.fm-player.is-shoot-selected {
+  box-shadow: 0 0 0 3px rgba(255, 220, 90, 0.9), 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .fm-intel-section {
