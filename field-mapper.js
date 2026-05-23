@@ -58,6 +58,16 @@
   const intelName = document.getElementById("intel-name");
   const intelBio = document.getElementById("intel-bio");
   const intelList = document.getElementById("fm-intel-list");
+  const openFullIntelBtn = document.getElementById("open-full-intel-report");
+  const intelModal = document.getElementById("fm-intel-modal");
+  const intelModalBackdrop = document.getElementById("fm-intel-modal-backdrop");
+  const closeIntelModalBtn = document.getElementById("close-intel-modal");
+  const intelModalForm = document.getElementById("fm-intel-modal-form");
+  const intelReportName = document.getElementById("intel-report-name");
+  const intelReportBio = document.getElementById("intel-report-bio");
+  const intelModalList = document.getElementById("fm-intel-modal-list");
+  const intelModalEmpty = document.getElementById("fm-intel-modal-empty");
+  const intelModalTitle = document.getElementById("fm-intel-modal-title");
 
   const SIZER_MIN_PCT = 0.5;
   const SIZER_MAX_PCT = 80;
@@ -89,6 +99,8 @@
   let mapPixelCache = null;
   /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
   let structurePointer = null;
+  let fieldIntelReport = { name: "", bio: "" };
+  let intelModalOpen = false;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -120,6 +132,18 @@
     RGB: STRUCTURE_RGB,
     getAll: () => structures.map((s) => ({ ...s })),
     isStructureColor: matchesStructureColor,
+  };
+
+  window.PaintballerIntelReport = {
+    getReport: () => ({ ...fieldIntelReport }),
+    getStructures: () =>
+      structures.map((s) => ({
+        id: s.id,
+        type: s.type,
+        name: s.name || "",
+        bio: s.bio || "",
+        detected: Boolean(s.detected),
+      })),
   };
 
   function matchesStructureColor(r, g, b, a) {
@@ -173,6 +197,7 @@
     if (clearMapBtn) clearMapBtn.disabled = !hasMap;
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
+    if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
   }
 
   function setTool(tool) {
@@ -892,6 +917,96 @@
     shape.bio = bio;
     updateIntelReport();
     redrawStructures();
+    if (intelModalOpen) renderIntelModal();
+  }
+
+  function syncIntelModalFields() {
+    if (intelReportName) intelReportName.value = fieldIntelReport.name || "";
+    if (intelReportBio) intelReportBio.value = fieldIntelReport.bio || "";
+    if (intelModalTitle) {
+      intelModalTitle.textContent = fieldIntelReport.name?.trim()
+        ? fieldIntelReport.name.trim()
+        : "Intel Report";
+    }
+  }
+
+  function renderIntelModal() {
+    syncIntelModalFields();
+
+    if (!intelModalList || !intelModalEmpty) return;
+
+    intelModalList.innerHTML = "";
+    const hasStructures = structures.length > 0;
+    intelModalEmpty.hidden = hasStructures;
+
+    if (!hasStructures) return;
+
+    structures.forEach((shape, index) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const hasName = Boolean(shape.name?.trim());
+      const hasBio = Boolean(shape.bio?.trim());
+      btn.className = "fm-intel-modal-card";
+      if (!hasName) btn.classList.add("is-missing");
+      if (shape.id === selectedStructureId) btn.classList.add("is-active");
+
+      const typeEl = document.createElement("span");
+      typeEl.className = "fm-intel-modal-card-type";
+      const typeLabel = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+      typeEl.textContent = `${typeLabel}${shape.detected ? " · map" : ""} · #${index + 1}`;
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "fm-intel-modal-card-name";
+      nameEl.textContent = hasName ? shape.name.trim() : "Unnamed structure";
+
+      const bioEl = document.createElement("span");
+      bioEl.className = "fm-intel-modal-card-bio";
+      bioEl.textContent = hasBio ? shape.bio.trim() : "No bio filed.";
+
+      btn.append(typeEl, nameEl, bioEl);
+      btn.addEventListener("click", () => {
+        selectedStructureId = shape.id;
+        updateSizerPanel();
+        updateIntelReport();
+        redrawStructures();
+        renderIntelModal();
+        closeIntelModal();
+        if (isMobileLayout()) scrollMobilePanel(intelSection);
+      });
+
+      li.append(btn);
+      intelModalList.append(li);
+    });
+  }
+
+  function openIntelModal() {
+    if (!hasMap || !intelModal) return;
+    intelModalOpen = true;
+    intelModal.hidden = false;
+    intelModal.setAttribute("aria-hidden", "false");
+    body.classList.add("fm-intel-modal-open");
+    renderIntelModal();
+    intelReportName?.focus();
+  }
+
+  function closeIntelModal() {
+    if (!intelModal) return;
+    intelModalOpen = false;
+    intelModal.hidden = true;
+    intelModal.setAttribute("aria-hidden", "true");
+    body.classList.remove("fm-intel-modal-open");
+    openFullIntelBtn?.focus();
+  }
+
+  function saveFieldIntelReport(e) {
+    e.preventDefault();
+    fieldIntelReport = {
+      name: intelReportName?.value.trim() || "",
+      bio: intelReportBio?.value.trim() || "",
+    };
+    syncIntelModalFields();
+    renderIntelModal();
   }
 
   function drawSelectionOutline(context, shape, w, h) {
@@ -1398,6 +1513,8 @@
   function hideMapUI() {
     hasMap = false;
     mapPixelCache = null;
+    fieldIntelReport = { name: "", bio: "" };
+    closeIntelModal();
     structures = [];
     placePreview = null;
     selectedStructureId = null;
@@ -1457,7 +1574,15 @@
 
   function bindIntelForm() {
     intelForm?.addEventListener("submit", saveIntelReport);
+    intelModalForm?.addEventListener("submit", saveFieldIntelReport);
+    openFullIntelBtn?.addEventListener("click", openIntelModal);
+    closeIntelModalBtn?.addEventListener("click", closeIntelModal);
+    intelModalBackdrop?.addEventListener("click", closeIntelModal);
   }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && intelModalOpen) closeIntelModal();
+  });
 
   bindSizerInputs();
   bindIntelForm();
