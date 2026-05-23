@@ -378,8 +378,32 @@
 
 .fm-shoot-mode-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.45rem;
+}
+
+.fm-shoot-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-shoot-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
 }
 
 .fm-shoot-mode-btn {
@@ -401,6 +425,11 @@
   background: var(--accent);
   border-color: var(--accent);
   color: #1a0f08;
+}
+
+.fm-shoot-mode-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .fm-sizer-axis {
@@ -721,6 +750,10 @@
 
 .fm-player.is-shoot-selected {
   box-shadow: 0 0 0 3px rgba(255, 220, 90, 0.9), 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.fm-player.is-shoot-target {
+  box-shadow: 0 0 0 3px rgba(255, 79, 79, 0.9), 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .fm-intel-section {

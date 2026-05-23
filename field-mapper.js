@@ -61,7 +61,10 @@
   const shootControls = document.getElementById("fm-shoot-controls");
   const shootPlayerLabel = document.getElementById("fm-shoot-player");
   const shootTimeInput = document.getElementById("shoot-time");
+  const shootTargetPlayerInput = document.getElementById("shoot-target-player");
+  const shootTargetStatus = document.getElementById("fm-shoot-target-status");
   const shootRunBtn = document.getElementById("shoot-run");
+  const shootResetRunBtn = document.getElementById("shoot-reset-run");
   const shootClearBtn = document.getElementById("shoot-clear");
   const shootModeBtns = document.querySelectorAll(".fm-shoot-mode-btn[data-shoot-mode]");
   const hint = document.getElementById("fm-hint");
@@ -116,10 +119,14 @@
   let selectedStructureId = null;
   let visionPlayerEl = null;
   let shootPlayerEl = null;
+  let shootTargetPlayerEl = null;
+  let shootUseTargetPlayer = false;
   let shootMode = "shoot";
   let shootPoint = null;
   let runPoint = null;
+  let targetRunPoint = null;
   let runAnimationFrame = null;
+  let lastRunStartPositions = null;
   let sizerSyncing = false;
   let activeSizerEdit = null;
   let sizerUndoState = null;
@@ -218,7 +225,7 @@
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
-      shoot: "Shoot — tap a player, set shot and run points, then run.",
+      shoot: "Shoot — tap runner, set shot/run points, or target an opposing player.",
       sizer: "Sizer — tap a bunker, then resize or use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -293,7 +300,7 @@
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
-          "<strong>Shoot</strong> — click a player, set a shot point and run point, then run over the chosen time",
+          "<strong>Shoot</strong> — click a runner, set shot/run points, or target an opposing player with their own run point",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
         intel:
@@ -341,6 +348,21 @@
       shootModeBtns.forEach((b) => b.classList.toggle("is-active", b === btn));
       updateShootPanel();
     });
+  });
+
+  shootTargetPlayerInput?.addEventListener("change", () => {
+    shootUseTargetPlayer = Boolean(shootTargetPlayerInput.checked);
+    if (!shootUseTargetPlayer) {
+      if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
+      shootTargetPlayerEl = null;
+      targetRunPoint = null;
+      if (shootMode === "target-run") shootMode = "shoot";
+    } else {
+      shootPoint = null;
+      shootMode = "shoot";
+    }
+    updateShootPanel();
+    redrawShootOverlay();
   });
 
   toggleToolsBtn?.addEventListener("click", () => {
@@ -540,8 +562,29 @@
 
   function selectShootPlayer(el) {
     if (shootPlayerEl) shootPlayerEl.classList.remove("is-shoot-selected");
+    if (shootTargetPlayerEl === el) {
+      shootTargetPlayerEl.classList.remove("is-shoot-target");
+      shootTargetPlayerEl = null;
+      targetRunPoint = null;
+    }
     shootPlayerEl = el;
     if (shootPlayerEl) shootPlayerEl.classList.add("is-shoot-selected");
+    if (shootTargetPlayerEl && shootTargetPlayerEl.dataset.team === shootPlayerEl.dataset.team) {
+      shootTargetPlayerEl.classList.remove("is-shoot-target");
+      shootTargetPlayerEl = null;
+      targetRunPoint = null;
+    }
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
+  function selectShootTargetPlayer(el) {
+    if (!shootPlayerEl || !el || el === shootPlayerEl) return;
+    if (el.dataset.team === shootPlayerEl.dataset.team) return;
+    if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
+    shootTargetPlayerEl = el;
+    shootTargetPlayerEl.classList.add("is-shoot-target");
+    shootPoint = null;
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -552,9 +595,15 @@
       runAnimationFrame = null;
     }
     if (shootPlayerEl) shootPlayerEl.classList.remove("is-shoot-selected");
+    if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
     shootPlayerEl = null;
+    shootTargetPlayerEl = null;
+    shootUseTargetPlayer = false;
+    if (shootTargetPlayerInput) shootTargetPlayerInput.checked = false;
     shootPoint = null;
     runPoint = null;
+    targetRunPoint = null;
+    lastRunStartPositions = null;
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -564,9 +613,33 @@
     if (shootEmpty) shootEmpty.hidden = hasPlayer;
     if (shootControls) shootControls.hidden = !hasPlayer;
     if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
-    if (shootRunBtn) shootRunBtn.disabled = !hasMap || !shootPlayerEl || !runPoint;
+    if (shootTargetStatus) {
+      if (!shootUseTargetPlayer) {
+        shootTargetStatus.textContent = "Shooting point is a map spot.";
+      } else if (shootTargetPlayerEl) {
+        shootTargetStatus.textContent = `Target player: ${getPlayerLabel(shootTargetPlayerEl)}${
+          targetRunPoint ? " · target run point set" : " · set target run point"
+        }`;
+      } else {
+        shootTargetStatus.textContent = "Tap an opposing player to make them the shooting point.";
+      }
+    }
+    if (shootRunBtn) {
+      shootRunBtn.disabled =
+        !hasMap ||
+        !shootPlayerEl ||
+        !runPoint ||
+        (shootUseTargetPlayer && (!shootTargetPlayerEl || !targetRunPoint));
+    }
+    if (shootResetRunBtn) shootResetRunBtn.disabled = !lastRunStartPositions;
     shootModeBtns.forEach((btn) => {
-      btn.classList.toggle("is-active", btn.dataset.shootMode === shootMode);
+      const mode = btn.dataset.shootMode;
+      const isTargetRun = mode === "target-run";
+      btn.disabled = isTargetRun && !shootUseTargetPlayer;
+      btn.classList.toggle("is-active", mode === shootMode);
+      if (mode === "shoot") {
+        btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shot";
+      }
     });
   }
 
@@ -630,8 +703,9 @@
     shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
     if (!w || !h) return;
 
-    if (shootPoint) drawPointMarker(shootCtx, shootPoint, SHOOT_LINE_COLOR, "Shot");
+    if (shootPoint && !shootUseTargetPlayer) drawPointMarker(shootCtx, shootPoint, SHOOT_LINE_COLOR, "Shot");
     if (runPoint) drawPointMarker(shootCtx, runPoint, RUN_POINT_COLOR, "Run");
+    if (targetRunPoint) drawPointMarker(shootCtx, targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
 
     if (!shootPlayerEl) return;
 
@@ -643,8 +717,15 @@
     shootCtx.lineCap = "round";
     shootCtx.setLineDash([]);
 
-    if (shootPoint) {
-      const target = denormalizePoint(shootPoint);
+    const activeShotTarget =
+      shootUseTargetPlayer && shootTargetPlayerEl
+        ? getPlayerCenterPx(shootTargetPlayerEl)
+        : shootPoint
+        ? denormalizePoint(shootPoint)
+        : null;
+
+    if (activeShotTarget) {
+      const target = { x: activeShotTarget.x, y: activeShotTarget.y };
       const shot = rayCastToPoint(start, target, w, h);
       shootCtx.strokeStyle = shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR;
       shootCtx.beginPath();
@@ -678,37 +759,74 @@
     e.preventDefault();
     const point = normalizeLayerPoint(getLayerPoint(e, shootCanvas));
     if (!point) return;
-    if (shootMode === "run") runPoint = point;
-    else shootPoint = point;
+    if (shootMode === "run") {
+      runPoint = point;
+    } else if (shootMode === "target-run" && shootUseTargetPlayer) {
+      targetRunPoint = point;
+    } else if (!shootUseTargetPlayer) {
+      shootPoint = point;
+    }
     updateShootPanel();
     redrawShootOverlay();
   }
 
+  function getPlayerPercentPosition(el) {
+    return {
+      x: parseFloat(el.style.left) || 0,
+      y: parseFloat(el.style.top) || 0,
+    };
+  }
+
   function runShootPlayer() {
     if (!shootPlayerEl || !runPoint) return;
+    if (shootUseTargetPlayer && (!shootTargetPlayerEl || !targetRunPoint)) return;
     if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
 
     const duration = Math.max(0.5, Math.min(30, Number(shootTimeInput?.value) || 3)) * 1000;
-    const startX = parseFloat(shootPlayerEl.style.left) || 0;
-    const startY = parseFloat(shootPlayerEl.style.top) || 0;
-    const endX = runPoint.x * 100;
-    const endY = runPoint.y * 100;
     const startedAt = performance.now();
+    const runners = [{ el: shootPlayerEl, point: runPoint }];
+    if (shootUseTargetPlayer && shootTargetPlayerEl && targetRunPoint) {
+      runners.push({ el: shootTargetPlayerEl, point: targetRunPoint });
+    }
+    lastRunStartPositions = runners.map(({ el }) => ({ el, ...getPlayerPercentPosition(el) }));
+    updateShootPanel();
 
     const step = (now) => {
       const t = Math.min(1, (now - startedAt) / duration);
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      positionPlayer(shootPlayerEl, startX + (endX - startX) * eased, startY + (endY - startY) * eased);
-      if (visionPlayerEl === shootPlayerEl) redrawVisionLines();
+      runners.forEach(({ el, point }, index) => {
+        const start = lastRunStartPositions[index];
+        const endX = point.x * 100;
+        const endY = point.y * 100;
+        positionPlayer(el, start.x + (endX - start.x) * eased, start.y + (endY - start.y) * eased);
+        if (visionPlayerEl === el) redrawVisionLines();
+      });
       redrawShootOverlay();
       if (t < 1) {
         runAnimationFrame = requestAnimationFrame(step);
       } else {
         runAnimationFrame = null;
+        updateShootPanel();
       }
     };
 
     runAnimationFrame = requestAnimationFrame(step);
+  }
+
+  function resetShootRun() {
+    if (!lastRunStartPositions) return;
+    if (runAnimationFrame) {
+      cancelAnimationFrame(runAnimationFrame);
+      runAnimationFrame = null;
+    }
+    lastRunStartPositions.forEach(({ el, x, y }) => {
+      if (!el?.isConnected) return;
+      positionPlayer(el, x, y);
+      if (visionPlayerEl === el) redrawVisionLines();
+    });
+    lastRunStartPositions = null;
+    updateShootPanel();
+    redrawShootOverlay();
   }
 
   function getSelectedStructure() {
@@ -1846,13 +1964,20 @@
   }
 
   function resetPlayerPositions() {
+    if (runAnimationFrame) {
+      cancelAnimationFrame(runAnimationFrame);
+      runAnimationFrame = null;
+    }
     playersLayer.querySelectorAll(".fm-player").forEach((el) => {
       const team = el.dataset.team;
       const num = Number(el.dataset.num) - 1;
       const pos = defaultPositions[team]?.[num];
       if (pos) positionPlayer(el, pos.x, pos.y);
     });
+    lastRunStartPositions = null;
+    updateShootPanel();
     if (visionPlayerEl) redrawVisionLines();
+    redrawShootOverlay();
   }
 
   function bindPlayerDrag(el) {
@@ -1869,7 +1994,11 @@
       if (activeTool === "shoot") {
         e.preventDefault();
         e.stopPropagation();
-        selectShootPlayer(el);
+        if (shootUseTargetPlayer && shootPlayerEl && el !== shootPlayerEl) {
+          selectShootTargetPlayer(el);
+        } else {
+          selectShootPlayer(el);
+        }
         return;
       }
 
@@ -1954,6 +2083,7 @@
 
   shootCanvas.addEventListener("pointerdown", setShootPointFromEvent);
   shootRunBtn?.addEventListener("click", runShootPlayer);
+  shootResetRunBtn?.addEventListener("click", resetShootRun);
   shootClearBtn?.addEventListener("click", clearShootPlan);
   shootTimeInput?.addEventListener("change", updateShootPanel);
 

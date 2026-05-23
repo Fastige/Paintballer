@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=29" />
+  <link rel="stylesheet" href="field-mapper.css?v=30" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -190,14 +190,21 @@
               <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
               <span class="fm-sizer-unit">sec</span>
             </div>
+            <label class="fm-shoot-toggle">
+              <input type="checkbox" id="shoot-target-player" />
+              <span>Make shooting point a player</span>
+            </label>
+            <p class="fm-structure-note" id="fm-shoot-target-status">No target player selected.</p>
             <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
               <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shot</button>
               <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
+              <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="target-run">Target run</button>
             </div>
             <p class="fm-structure-note">
               Shot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above.
             </p>
             <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
+            <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-run" disabled>Reset run</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
           </div>
         </aside>
@@ -328,6 +335,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=29"></script>
+  <script src="field-mapper.js?v=30"></script>
 </body>
 </html>
