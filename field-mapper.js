@@ -187,7 +187,7 @@
       select: "Move — drag players. Tap green bunkers for Intel.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
-      vision: "Vision — tap a player for sight lines.",
+      vision: "Vision — tap a player for lines (stay on when you switch tools).",
       sizer: "Sizer — tap a bunker, then resize or use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -229,10 +229,6 @@
     if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "sizer";
     if (sizerPanel) sizerPanel.hidden = activeTool !== "sizer";
 
-    if (activeTool !== "vision") {
-      clearVisionLines();
-    }
-
     if (activeTool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
     }
@@ -253,7 +249,7 @@
         structure:
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
         vision:
-          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · structures for intel",
+          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
         intel:
