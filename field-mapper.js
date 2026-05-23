@@ -22,7 +22,8 @@
   const visionCanvas = document.getElementById("fm-vision-canvas");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
-  const mapUploadPrompt = document.getElementById("map-upload-prompt");
+  const uploadPromptLabel = document.getElementById("fm-upload-prompt");
+  const mapUploadPromptInput = document.getElementById("map-upload-prompt");
   const mapUploadMobile = document.getElementById("map-upload-mobile");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
@@ -48,6 +49,7 @@
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const hint = document.getElementById("fm-hint");
+  const mobileTip = document.getElementById("fm-mobile-tip");
   const intelSection = document.getElementById("fm-intel-section");
   const intelEmpty = document.getElementById("fm-intel-empty");
   const intelForm = document.getElementById("fm-intel-form");
@@ -68,6 +70,7 @@
   const visionCtx = visionCanvas.getContext("2d");
 
   let activeTool = "select";
+  let uiTool = "select";
   let activeShape = "rectangle";
   let isDrawing = false;
   let isPlacingStructure = false;
@@ -84,6 +87,8 @@
   let sizerSyncing = false;
   /** @type {{data:Uint8ClampedArray,w:number,h:number}|null} */
   let mapPixelCache = null;
+  /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
+  let structurePointer = null;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -129,6 +134,38 @@
     body.classList.toggle("fm-drawing", on);
   }
 
+  function setPlacingLock(on) {
+    body.classList.toggle("fm-placing", on);
+  }
+
+  function isMobileLayout() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function scrollMobilePanel(el) {
+    if (!isMobileLayout() || !el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
+  function updateMobileTip(tool) {
+    if (!mobileTip) return;
+    if (!isMobileLayout() || !hasMap) {
+      mobileTip.textContent = "";
+      return;
+    }
+    const tips = {
+      select: "Move — drag players. Tap green bunkers for Intel.",
+      brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
+      structure: "Struct — drag to place. Tap existing bunkers for Intel.",
+      vision: "Vision — tap a player for sight lines.",
+      sizer: "Sizer — tap a bunker, then resize or use arrows.",
+      intel: "Intel — tap a green bunker, then name it below.",
+    };
+    mobileTip.innerHTML = tips[tool] || tips.select;
+  }
+
   function updateControlStates() {
     const hasStructures = structures.length > 0;
     if (resetPlayersMobile) resetPlayersMobile.disabled = !hasMap;
@@ -139,9 +176,11 @@
   }
 
   function setTool(tool) {
-    activeTool = tool;
+    uiTool = tool;
+    activeTool = tool === "intel" ? "select" : tool;
+
     toolBtns.forEach((btn) => {
-      btn.classList.toggle("is-active", btn.dataset.tool === tool);
+      btn.classList.toggle("is-active", btn.dataset.tool === activeTool);
     });
     mobileToolBtns.forEach((btn) => {
       const isActive = btn.dataset.tool === tool;
@@ -149,28 +188,35 @@
       btn.setAttribute("aria-pressed", String(isActive));
     });
 
-    stage.classList.toggle("tool-brush", tool === "brush");
-    stage.classList.toggle("tool-structure", tool === "structure");
-    stage.classList.toggle("tool-vision", tool === "vision");
-    stage.classList.toggle("tool-sizer", tool === "sizer");
-    workspace?.classList.toggle("tool-sizer-active", tool === "sizer");
+    stage.classList.toggle("tool-brush", activeTool === "brush");
+    stage.classList.toggle("tool-structure", activeTool === "structure");
+    stage.classList.toggle("tool-vision", activeTool === "vision");
+    stage.classList.toggle("tool-sizer", activeTool === "sizer");
+    stage.classList.toggle("tool-intel", tool === "intel");
+    workspace?.classList.toggle("tool-sizer-active", activeTool === "sizer");
+    workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
-    if (structurePanel) structurePanel.hidden = tool !== "structure";
-    if (brushPanel) brushPanel.hidden = tool === "structure" || tool === "sizer";
-    if (sizerPanel) sizerPanel.hidden = tool !== "sizer";
+    if (structurePanel) structurePanel.hidden = activeTool !== "structure";
+    if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "sizer";
+    if (sizerPanel) sizerPanel.hidden = activeTool !== "sizer";
 
-    if (tool !== "vision") {
+    if (activeTool !== "vision") {
       clearVisionLines();
     }
 
-    if (tool === "sizer" && structures.length && !selectedStructureId) {
+    if (activeTool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
     }
     updateSizerPanel();
     updateIntelReport();
     redrawStructures();
+    updateMobileTip(tool);
 
-    if (hint) {
+    if (tool === "intel") scrollMobilePanel(intelSection);
+    if (activeTool === "sizer") scrollMobilePanel(sizerPanel);
+
+    if (hint && !isMobileLayout()) {
+      hint.hidden = !hasMap;
       const hints = {
         select:
           "<strong>Move</strong> — drag players · click <span style=\"color:#00ff9d\">green bunkers</span> on the map to assign <strong>Intel</strong>",
@@ -181,8 +227,12 @@
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · structures for intel",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
+        intel:
+          "<strong>Intel</strong> — click a green bunker on the map, then file name and bio below",
       };
       hint.innerHTML = hints[tool] || hints.select;
+    } else if (hint) {
+      hint.hidden = true;
     }
   }
 
@@ -750,6 +800,14 @@
     return hit;
   }
 
+  function pickStructureAt(px, py, scrollToIntel) {
+    const hit = selectStructureAt(px, py);
+    if (!hit) return null;
+    if (scrollToIntel && isMobileLayout()) scrollMobilePanel(intelSection);
+    if (activeTool === "sizer" && isMobileLayout()) scrollMobilePanel(sizerPanel);
+    return hit;
+  }
+
   function renderIntelList() {
     if (!intelList) return;
     intelList.innerHTML = "";
@@ -797,9 +855,9 @@
     if (!shape) {
       const detectedCount = structures.filter((s) => s.detected).length;
       if (intelEmpty && detectedCount > 0) {
-        intelEmpty.textContent = `${detectedCount} green structure${detectedCount === 1 ? "" : "s"} on the map — click one to assign intel.`;
+        intelEmpty.textContent = `${detectedCount} green bunker${detectedCount === 1 ? "" : "s"} found — tap one on the map to assign intel.`;
       } else if (intelEmpty) {
-        intelEmpty.textContent = "Click a structure on the map to file or view intel.";
+        intelEmpty.textContent = "Tap a green bunker on the map to assign intel.";
       }
       renderIntelList();
       return;
@@ -1194,29 +1252,60 @@
     const { x, y } = getLayerPoint(e, structureCanvas);
     const hit = hitTestStructure(x, y);
 
+    structurePointer = {
+      x: e.clientX,
+      y: e.clientY,
+      pid: e.pointerId,
+      handled: false,
+    };
+
     if (hit) {
       e.preventDefault();
-      selectedStructureId = hit.id;
-      updateSizerPanel();
-      updateIntelReport();
-      redrawStructures();
+      structurePointer.handled = true;
+      pickStructureAt(x, y, uiTool === "intel" || activeTool === "select");
       if (activeTool === "sizer" || activeTool === "structure") return;
       return;
     }
 
     if (activeTool === "sizer") {
       e.preventDefault();
+      structurePointer.handled = true;
       selectStructureAt(x, y);
       return;
     }
 
     if (activeTool !== "structure") return;
     e.preventDefault();
+    structurePointer.handled = true;
     isPlacingStructure = true;
     setInteractionLock(true);
+    setPlacingLock(true);
     placeStart = getLayerPoint(e, structureCanvas);
     placePreview = null;
     structureCanvas.setPointerCapture(e.pointerId);
+  }
+
+  function endStructurePointer(e) {
+    if (!structurePointer || structurePointer.pid !== e.pointerId) return;
+
+    const dx = e.clientX - structurePointer.x;
+    const dy = e.clientY - structurePointer.y;
+    const moved = dx * dx + dy * dy;
+    const wasTap = moved < 144;
+
+    if (
+      isMobileLayout() &&
+      wasTap &&
+      !structurePointer.handled &&
+      !isPlacingStructure &&
+      hasMap &&
+      activeTool !== "structure"
+    ) {
+      const { x, y } = getLayerPoint(e, structureCanvas);
+      pickStructureAt(x, y, uiTool === "intel" || activeTool === "select");
+    }
+
+    structurePointer = null;
   }
 
   function moveStructurePlace(e) {
@@ -1236,6 +1325,7 @@
     if (!isPlacingStructure) return;
     isPlacingStructure = false;
     setInteractionLock(false);
+    setPlacingLock(false);
     if (structureCanvas.hasPointerCapture(e.pointerId)) {
       structureCanvas.releasePointerCapture(e.pointerId);
     }
@@ -1243,6 +1333,7 @@
       structures.push(placePreview);
       selectedStructureId = placePreview.id;
       updateIntelReport();
+      if (isMobileLayout()) scrollMobilePanel(intelSection);
     }
     placeStart = null;
     placePreview = null;
@@ -1252,8 +1343,14 @@
 
   structureCanvas.addEventListener("pointerdown", startStructurePlace);
   structureCanvas.addEventListener("pointermove", moveStructurePlace);
-  structureCanvas.addEventListener("pointerup", endStructurePlace);
-  structureCanvas.addEventListener("pointercancel", endStructurePlace);
+  structureCanvas.addEventListener("pointerup", (e) => {
+    endStructurePlace(e);
+    endStructurePointer(e);
+  });
+  structureCanvas.addEventListener("pointercancel", (e) => {
+    endStructurePlace(e);
+    endStructurePointer(e);
+  });
 
   function handleMapFile(file) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -1274,6 +1371,8 @@
     structures = [];
     stage.classList.add("has-map");
     stageWrap?.classList.add("has-map");
+    if (uploadPromptLabel) uploadPromptLabel.hidden = true;
+    stage.hidden = false;
     image.hidden = false;
     canvas.hidden = false;
     structureCanvas.hidden = false;
@@ -1288,9 +1387,11 @@
       if (detected.length) {
         structures = detected;
         redrawStructures();
+        if (isMobileLayout()) setTool("intel");
       }
       updateControlStates();
       updateIntelReport();
+      updateMobileTip(uiTool);
     });
   }
 
@@ -1305,6 +1406,8 @@
     updateIntelReport();
     stage.classList.remove("has-map");
     stageWrap?.classList.remove("has-map");
+    if (uploadPromptLabel) uploadPromptLabel.hidden = false;
+    stage.hidden = true;
     image.hidden = true;
     image.removeAttribute("src");
     canvas.hidden = true;
@@ -1315,14 +1418,14 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
     if (mapUpload) mapUpload.value = "";
-    if (mapUploadPrompt) mapUploadPrompt.value = "";
+    if (mapUploadPromptInput) mapUploadPromptInput.value = "";
     if (mapUploadMobile) mapUploadMobile.value = "";
     updateControlStates();
     setInteractionLock(false);
   }
 
   mapUpload?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
-  mapUploadPrompt?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
+  mapUploadPromptInput?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
   mapUploadMobile?.addEventListener("change", (e) => {
     handleMapFile(e.target.files?.[0]);
     e.target.value = "";
@@ -1363,8 +1466,17 @@
   resetPlayersMobile?.addEventListener("click", resetPlayerPositions);
 
   image.addEventListener("load", resizeCanvases);
-  window.addEventListener("resize", resizeCanvases);
-  window.addEventListener("orientationchange", () => setTimeout(resizeCanvases, 150));
+  window.addEventListener("resize", () => {
+    resizeCanvases();
+    updateMobileTip(uiTool);
+    if (hint) hint.hidden = isMobileLayout() || !hasMap;
+  });
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => {
+      resizeCanvases();
+      updateMobileTip(uiTool);
+    }, 150);
+  });
 
   const resizeObserver = new ResizeObserver(() => resizeCanvases());
   resizeObserver.observe(stage);
@@ -1372,7 +1484,9 @@
   document.addEventListener(
     "touchmove",
     (e) => {
-      if (isDrawing || isPlacingStructure || draggedPlayer) e.preventDefault();
+      if (isDrawing || isPlacingStructure || draggedPlayer) {
+        e.preventDefault();
+      }
     },
     { passive: false }
   );

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=16" />
+  <link rel="stylesheet" href="field-mapper.css?v=18" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -104,26 +104,27 @@
     <section class="fm-workspace" id="fm-workspace" aria-label="Map canvas workspace">
       <div class="fm-map-area">
         <div class="fm-stage-wrap" id="fm-stage-wrap">
-          <div class="fm-stage" id="fm-stage">
-            <label class="fm-upload-prompt" id="fm-upload-prompt">
-              Upload Map
-              <input type="file" id="map-upload-prompt" accept="image/*" hidden />
-            </label>
-            <img id="fm-image" class="fm-image" alt="Uploaded field map" hidden />
+          <label class="fm-upload-prompt" id="fm-upload-prompt">
+            <span class="fm-upload-prompt-text">Upload map</span>
+            <span class="fm-upload-prompt-sub">PNG or JPG · green bunkers auto-detected</span>
+            <input type="file" id="map-upload-prompt" accept="image/*" hidden />
+          </label>
+          <div class="fm-stage" id="fm-stage" hidden>
+            <img id="fm-image" class="fm-image" alt="Field map" hidden />
             <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
             <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
             <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
             <div id="fm-players" class="fm-players" hidden></div>
           </div>
         </div>
-        <p class="fm-hint" id="fm-hint">Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
+        <p class="fm-hint" id="fm-hint" hidden>Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
 
         <section class="fm-intel-section" id="fm-intel-section" hidden aria-label="Intel report">
           <div class="fm-intel-head">
             <p class="eyebrow">Field intel</p>
             <h2 class="fm-intel-title">Intel Report</h2>
           </div>
-          <p class="fm-intel-empty" id="fm-intel-empty">Upload a map with green bunkers, then click any green shape to assign intel.</p>
+          <p class="fm-intel-empty" id="fm-intel-empty">Click a green bunker on the map to assign intel.</p>
           <form class="fm-intel-form" id="fm-intel-form" hidden>
             <p class="fm-intel-prompt" id="fm-intel-prompt">This structure has no intel on file. Add a name and bio.</p>
             <p class="fm-intel-meta" id="fm-intel-meta" hidden></p>
@@ -137,7 +138,7 @@
         </section>
       </div>
 
-      <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls">
+      <aside class="fm-sizer-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
         <div class="fm-sizer-head">
           <p class="eyebrow">Sizer</p>
           <h2 class="fm-sizer-title">Structure size</h2>
@@ -176,35 +177,47 @@
     </section>
   </main>
 
+  <p class="fm-mobile-tip" id="fm-mobile-tip" aria-live="polite"></p>
+
   <nav class="fm-mobile-bar" id="fm-mobile-bar" aria-label="Quick tools">
-    <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
-      <span class="fm-mobile-icon" aria-hidden="true">↖</span>
-      <span>Move</span>
-    </button>
-    <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
-      <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
-      <span>Brush</span>
-    </button>
-    <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
-      <span class="fm-mobile-icon" aria-hidden="true">▣</span>
-      <span>Struct</span>
-    </button>
-    <label class="fm-mobile-btn fm-mobile-upload">
-      <span class="fm-mobile-icon" aria-hidden="true">📷</span>
-      <span>Upload</span>
-      <input type="file" id="map-upload-mobile" accept="image/*" hidden />
-    </label>
-    <button type="button" class="fm-mobile-btn" id="reset-players-mobile" disabled aria-label="Reset player positions">
-      <span class="fm-mobile-icon" aria-hidden="true">↺</span>
-      <span>Reset</span>
-    </button>
-    <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
-      <span class="fm-mobile-icon" aria-hidden="true">☰</span>
-      <span>Tools</span>
-    </button>
+    <div class="fm-mobile-bar-scroll">
+      <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
+        <span class="fm-mobile-icon" aria-hidden="true">↖</span>
+        <span>Move</span>
+      </button>
+      <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
+        <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
+        <span>Brush</span>
+      </button>
+      <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
+        <span class="fm-mobile-icon" aria-hidden="true">▣</span>
+        <span>Struct</span>
+      </button>
+      <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false">
+        <span class="fm-mobile-icon" aria-hidden="true">◎</span>
+        <span>Vision</span>
+      </button>
+      <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false">
+        <span class="fm-mobile-icon" aria-hidden="true">⇲</span>
+        <span>Sizer</span>
+      </button>
+      <button type="button" class="fm-mobile-btn" data-tool="intel" aria-pressed="false">
+        <span class="fm-mobile-icon" aria-hidden="true">📋</span>
+        <span>Intel</span>
+      </button>
+      <label class="fm-mobile-btn fm-mobile-upload">
+        <span class="fm-mobile-icon" aria-hidden="true">📷</span>
+        <span>Upload</span>
+        <input type="file" id="map-upload-mobile" accept="image/*" hidden />
+      </label>
+      <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
+        <span class="fm-mobile-icon" aria-hidden="true">☰</span>
+        <span>More</span>
+      </button>
+    </div>
   </nav>
 
   <script src="main.js?v=5"></script>
-  <script src="field-mapper.js?v=16"></script>
+  <script src="field-mapper.js?v=18"></script>
 </body>
 </html>
