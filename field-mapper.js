@@ -1451,8 +1451,11 @@
     if (placePreview) {
       structures.push(placePreview);
       selectedStructureId = placePreview.id;
-      updateIntelReport();
-      if (isMobileLayout()) scrollMobilePanel(intelSection);
+      placeStart = null;
+      placePreview = null;
+      redrawStructures();
+      setTool("sizer");
+      return;
     }
     placeStart = null;
     placePreview = null;
