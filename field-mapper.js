@@ -25,6 +25,8 @@
   const uploadPromptLabel = document.getElementById("fm-upload-prompt");
   const mapUploadPromptInput = document.getElementById("map-upload-prompt");
   const mapUploadMobile = document.getElementById("map-upload-mobile");
+  const saveMapImageBtn = document.getElementById("save-map-image");
+  const saveMapImageMobileBtn = document.getElementById("save-map-image-mobile");
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
   const undoStructureBtn = document.getElementById("undo-structure");
@@ -72,6 +74,7 @@
   const SIZER_MIN_PCT = 0.5;
   const SIZER_MAX_PCT = 80;
   const SIZER_MOVE_STEP = 0.75;
+  const FIELD_STATE_KEY = "paintballer-field-state";
 
   if (!stage || !canvas || !structureCanvas || !visionCanvas) return;
 
@@ -202,6 +205,8 @@
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
+    if (saveMapImageBtn) saveMapImageBtn.disabled = !hasMap;
+    if (saveMapImageMobileBtn) saveMapImageMobileBtn.disabled = !hasMap;
   }
 
   function setTool(tool) {
@@ -917,6 +922,7 @@
     }
     shape.name = name;
     shape.bio = bio;
+    persistFieldState();
     updateIntelReport();
     redrawStructures();
     if (intelModalOpen) renderIntelModal();
@@ -1007,6 +1013,7 @@
       name: intelReportName?.value.trim() || "",
       bio: intelReportBio?.value.trim() || "",
     };
+    persistFieldState();
     syncIntelModalFields();
     renderIntelModal();
   }
@@ -1049,7 +1056,7 @@
     };
   }
 
-  function drawShapeOnContext(context, shape, w, h, preview) {
+  function drawShapeOnContext(context, shape, w, h, preview, bake) {
     const x1 = shape.x1 * w;
     const y1 = shape.y1 * h;
     const x2 = shape.x2 * w;
@@ -1061,13 +1068,17 @@
     if (width < 2 && height < 2) return;
 
     context.save();
-    context.fillStyle = preview ? "rgba(0, 255, 157, 0.35)" : STRUCTURE_GREEN;
-    context.strokeStyle = preview ? "rgba(0, 255, 157, 0.8)" : "#00cc7a";
-    context.lineWidth = preview ? 2 : 1.5;
+    if (bake) {
+      context.fillStyle = STRUCTURE_GREEN;
+    } else {
+      context.fillStyle = preview ? "rgba(0, 255, 157, 0.35)" : STRUCTURE_GREEN;
+      context.strokeStyle = preview ? "rgba(0, 255, 157, 0.8)" : "#00cc7a";
+      context.lineWidth = preview ? 2 : 1.5;
+    }
 
     if (shape.type === "rectangle") {
       context.fillRect(left, top, width, height);
-      context.strokeRect(left, top, width, height);
+      if (!bake) context.strokeRect(left, top, width, height);
     } else if (shape.type === "circle") {
       const cx = left + width / 2;
       const cy = top + height / 2;
@@ -1076,7 +1087,7 @@
       context.beginPath();
       context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       context.fill();
-      context.stroke();
+      if (!bake) context.stroke();
     } else if (shape.type === "triangle") {
       context.beginPath();
       context.moveTo(left + width / 2, top);
@@ -1084,10 +1095,137 @@
       context.lineTo(left, top + height);
       context.closePath();
       context.fill();
-      context.stroke();
+      if (!bake) context.stroke();
     }
 
     context.restore();
+  }
+
+  function serializeFieldState() {
+    return {
+      version: 1,
+      report: { name: fieldIntelReport.name || "", bio: fieldIntelReport.bio || "" },
+      structures: structures.map((s) => ({
+        type: s.type,
+        x1: s.x1,
+        y1: s.y1,
+        x2: s.x2,
+        y2: s.y2,
+        name: s.name || "",
+        bio: s.bio || "",
+      })),
+    };
+  }
+
+  function persistFieldState() {
+    try {
+      localStorage.setItem(FIELD_STATE_KEY, JSON.stringify(serializeFieldState()));
+    } catch {
+      /* storage full or blocked */
+    }
+  }
+
+  function boundsIoU(a, b) {
+    const left = Math.max(a.left, b.left);
+    const top = Math.max(a.top, b.top);
+    const right = Math.min(a.left + a.width, b.left + b.width);
+    const bottom = Math.min(a.top + a.height, b.top + b.height);
+    if (right <= left || bottom <= top) return 0;
+    const inter = (right - left) * (bottom - top);
+    const union = a.width * a.height + b.width * b.height - inter;
+    return union > 0 ? inter / union : 0;
+  }
+
+  function mergeIntelFromSavedState() {
+    try {
+      const raw = localStorage.getItem(FIELD_STATE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.report) {
+        fieldIntelReport = {
+          name: saved.report.name || "",
+          bio: saved.report.bio || "",
+        };
+      }
+      const prev = saved.structures || [];
+      if (!prev.length || !structures.length) return;
+
+      structures.forEach((shape) => {
+        const sb = getStructureBounds(shape);
+        let best = null;
+        let bestIoU = 0;
+        prev.forEach((p) => {
+          const pb = {
+            left: Math.min(p.x1, p.x2),
+            top: Math.min(p.y1, p.y2),
+            width: Math.abs(p.x2 - p.x1),
+            height: Math.abs(p.y2 - p.y1),
+          };
+          const iou = boundsIoU(sb, pb);
+          if (iou > bestIoU) {
+            bestIoU = iou;
+            best = p;
+          }
+        });
+        if (best && bestIoU >= 0.35) {
+          if (best.name) shape.name = best.name;
+          if (best.bio) shape.bio = best.bio;
+        }
+      });
+    } catch {
+      /* ignore corrupt storage */
+    }
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  function saveMapImage() {
+    if (!hasMap || !image.naturalWidth) return;
+
+    const nw = image.naturalWidth;
+    const nh = image.naturalHeight;
+    const off = document.createElement("canvas");
+    off.width = nw;
+    off.height = nh;
+    const octx = off.getContext("2d");
+    if (!octx) return;
+
+    octx.drawImage(image, 0, 0, nw, nh);
+
+    if (canvas.width > 0 && canvas.height > 0) {
+      octx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, nw, nh);
+    }
+
+    structures.forEach((s) => drawShapeOnContext(octx, s, nw, nh, false, true));
+
+    persistFieldState();
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const base = `paintballer-field-${stamp}`;
+
+    off.toBlob(
+      (pngBlob) => {
+        if (!pngBlob) return;
+        downloadBlob(pngBlob, `${base}.png`);
+
+        const jsonBlob = new Blob([JSON.stringify(serializeFieldState(), null, 2)], {
+          type: "application/json",
+        });
+        setTimeout(() => downloadBlob(jsonBlob, `${base}.json`), 400);
+      },
+      "image/png",
+      1
+    );
   }
 
   function redrawStructures() {
@@ -1506,6 +1644,7 @@
       const detected = detectStructuresFromImage(image);
       if (detected.length) {
         structures = detected;
+        mergeIntelFromSavedState();
         redrawStructures();
         if (isMobileLayout()) setTool("intel");
       }
@@ -1545,6 +1684,9 @@
     updateControlStates();
     setInteractionLock(false);
   }
+
+  saveMapImageBtn?.addEventListener("click", saveMapImage);
+  saveMapImageMobileBtn?.addEventListener("click", saveMapImage);
 
   mapUpload?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));
   mapUploadPromptInput?.addEventListener("change", (e) => handleMapFile(e.target.files?.[0]));

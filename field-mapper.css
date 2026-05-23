@@ -69,6 +69,21 @@
   text-align: center;
 }
 
+.fm-save-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.fm-save-hint-mobile {
+  margin-top: 0.35rem;
+}
+
+.fm-save-map-mobile {
+  margin-top: 0.35rem;
+}
+
 .fm-btn-full {
   width: 100%;
 }
@@ -1291,7 +1306,8 @@
     cursor: pointer;
   }
 
-  .fm-tool-group:first-of-type .fm-upload-btn {
+  .fm-tool-group:first-of-type .fm-upload-btn,
+  .fm-tool-group:first-of-type .fm-save-hint:not(.fm-save-hint-mobile) {
     display: none;
   }
 }
