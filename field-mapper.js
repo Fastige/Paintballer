@@ -1242,6 +1242,23 @@
     downloadBlob(zipBlob, `${folderName}.zip`);
   }
 
+  function mimeFromFilename(name) {
+    const match = String(name).match(/\.(png|jpe?g|webp|gif)$/i);
+    if (!match) return "";
+    const ext = match[1].toLowerCase();
+    if (ext === "png") return "image/png";
+    if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+    if (ext === "webp") return "image/webp";
+    if (ext === "gif") return "image/gif";
+    return "";
+  }
+
+  function isImageFile(file) {
+    if (!file) return false;
+    if (file.type && file.type.startsWith("image/")) return true;
+    return Boolean(mimeFromFilename(file.name));
+  }
+
   function findPackFiles(files) {
     const list = Array.from(files);
     const jsonFile =
@@ -1288,28 +1305,44 @@
   }
 
   function loadMapImageFromFile(file, packState) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!isImageFile(file)) return false;
+
     pendingPackState = packState || null;
     const reader = new FileReader();
     reader.onload = () => {
       image.onload = () => {
         showMapUI();
         closeToolsPanel();
+        stageWrap?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      };
+      image.onerror = () => {
+        pendingPackState = null;
+        window.alert("Could not load the map image from this pack.");
       };
       image.src = reader.result;
     };
+    reader.onerror = () => {
+      pendingPackState = null;
+      window.alert("Could not read the map image from this pack.");
+    };
     reader.readAsDataURL(file);
+    return true;
   }
 
   async function handleMapPackZip(file) {
-    if (!file || typeof JSZip === "undefined") return;
+    if (!file) return;
+    if (typeof JSZip === "undefined") {
+      window.alert("Map pack upload is not available. Check your connection and refresh the page.");
+      return;
+    }
     const zip = await JSZip.loadAsync(file);
     const entries = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
     const blobs = await Promise.all(
       entries.map(async (path) => {
         const name = path.split("/").pop();
         const blob = await zip.files[path].async("blob");
-        return new File([blob], name, { type: blob.type || undefined });
+        const mime = blob.type || mimeFromFilename(name);
+        return new File([blob], name, { type: mime || "application/octet-stream" });
       })
     );
     await handleMapPackFiles(blobs);
@@ -1332,7 +1365,9 @@
       }
     }
 
-    loadMapImageFromFile(imageFile, packState);
+    if (!loadMapImageFromFile(imageFile, packState)) {
+      window.alert("Could not load map.png from the map pack.");
+    }
   }
 
   async function openMapPackUpload() {
@@ -1748,7 +1783,10 @@
 
   function showMapUI() {
     hasMap = true;
-    structures = [];
+    const packToApply = pendingPackState;
+    pendingPackState = null;
+    if (!packToApply) structures = [];
+
     stage.classList.add("has-map");
     stageWrap?.classList.add("has-map");
     if (uploadPromptLabel) uploadPromptLabel.hidden = true;
@@ -1758,15 +1796,21 @@
     structureCanvas.hidden = false;
     visionCanvas.hidden = false;
     playersLayer.hidden = false;
+
+    if (canvas.width > 0 && canvas.height > 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    if (structureCanvas.width > 0 && structureCanvas.height > 0) {
+      structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
+    }
+
     createPlayers();
     resetPlayerPositions();
-    requestAnimationFrame(() => {
+
+    const finishMapSetup = () => {
       refreshMapPixelCache();
       resizeCanvases();
-      if (pendingPackState) {
-        applyPackState(pendingPackState);
-        pendingPackState = null;
-      }
+      if (packToApply) applyPackState(packToApply);
       if (!structures.length) {
         const detected = detectStructuresFromImage(image);
         if (detected.length) {
@@ -1779,6 +1823,10 @@
       updateControlStates();
       updateIntelReport();
       updateMobileTip(uiTool);
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(finishMapSetup);
     });
   }
 
