@@ -223,6 +223,7 @@
     stage.classList.toggle("tool-sizer", activeTool === "sizer");
     stage.classList.toggle("tool-intel", tool === "intel");
     workspace?.classList.toggle("tool-sizer-active", activeTool === "sizer");
+    workspace?.classList.toggle("tool-structure-active", activeTool === "structure");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
     if (structurePanel) structurePanel.hidden = activeTool !== "structure";
@@ -239,6 +240,7 @@
 
     if (tool === "intel") scrollMobilePanel(intelSection);
     if (activeTool === "sizer") scrollMobilePanel(sizerPanel);
+    if (activeTool === "structure") scrollMobilePanel(structurePanel);
 
     if (hint && !isMobileLayout()) {
       hint.hidden = !hasMap;
