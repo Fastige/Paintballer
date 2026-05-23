@@ -225,7 +225,7 @@
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
-      shoot: "Shoot — tap runner, set shot/run points, or target an opposing player.",
+      shoot: "Shoot — tap runner, set shoot/run points, or target an opposing player.",
       sizer: "Sizer — tap a bunker, then resize or use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -300,7 +300,7 @@
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
-          "<strong>Shoot</strong> — click a runner, set shot/run points, or target an opposing player with their own run point",
+          "<strong>Shoot</strong> — click a runner, set shoot/run points, or target an opposing player with their own run point",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
         intel:
@@ -615,13 +615,13 @@
     if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
     if (shootTargetStatus) {
       if (!shootUseTargetPlayer) {
-        shootTargetStatus.textContent = "Shooting point is a map spot.";
+        shootTargetStatus.textContent = "Shoot point is a map spot.";
       } else if (shootTargetPlayerEl) {
         shootTargetStatus.textContent = `Target player: ${getPlayerLabel(shootTargetPlayerEl)}${
           targetRunPoint ? " · target run point set" : " · set target run point"
         }`;
       } else {
-        shootTargetStatus.textContent = "Tap an opposing player to make them the shooting point.";
+        shootTargetStatus.textContent = "Tap an opposing player to make them the shoot point.";
       }
     }
     if (shootRunBtn) {
@@ -638,7 +638,7 @@
       btn.disabled = isTargetRun && !shootUseTargetPlayer;
       btn.classList.toggle("is-active", mode === shootMode);
       if (mode === "shoot") {
-        btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shot";
+        btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shoot";
       }
     });
   }
@@ -703,7 +703,7 @@
     shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
     if (!w || !h) return;
 
-    if (shootPoint && !shootUseTargetPlayer) drawPointMarker(shootCtx, shootPoint, SHOOT_LINE_COLOR, "Shot");
+    if (shootPoint && !shootUseTargetPlayer) drawPointMarker(shootCtx, shootPoint, SHOOT_LINE_COLOR, "Shoot");
     if (runPoint) drawPointMarker(shootCtx, runPoint, RUN_POINT_COLOR, "Run");
     if (targetRunPoint) drawPointMarker(shootCtx, targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
 
