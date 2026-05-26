@@ -44,6 +44,7 @@
   const toolBtns = document.querySelectorAll(".fm-tool-btn[data-tool]");
   const mobileToolBtns = document.querySelectorAll(".fm-mobile-btn[data-tool]");
   const shapeBtns = document.querySelectorAll(".fm-shape-btn[data-shape]");
+  const structureOutlineInput = document.getElementById("structure-outline-only");
   const toggleToolsBtn = document.getElementById("toggle-tools");
   const sidebar = document.getElementById("fm-sidebar");
   const workspace = document.getElementById("fm-workspace");
@@ -106,6 +107,7 @@
   let activeTool = "select";
   let uiTool = "select";
   let activeShape = "rectangle";
+  let activeStructureFill = "filled";
   let isDrawing = false;
   let isPlacingStructure = false;
   let placeStart = null;
@@ -114,7 +116,7 @@
   let draggedPlayer = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
-  /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean,name?:string,bio?:string}>} */
+  /** @type {Array<{id:string,type:string,x1:number,y1:number,x2:number,y2:number,detected?:boolean,name?:string,bio?:string,fill?:string}>} */
   let structures = [];
   let selectedStructureId = null;
   let visionPlayerEl = null;
@@ -340,6 +342,14 @@
       activeShape = btn.dataset.shape || "rectangle";
       shapeBtns.forEach((b) => b.classList.toggle("is-active", b === btn));
     });
+  });
+
+  structureOutlineInput?.addEventListener("change", () => {
+    activeStructureFill = structureOutlineInput.checked ? "outline" : "filled";
+    if (placePreview) {
+      placePreview.fill = activeStructureFill;
+      redrawStructures();
+    }
   });
 
   shootModeBtns.forEach((btn) => {
@@ -1173,6 +1183,7 @@
         Math.floor(component.y1 * mapPixelCache.h),
         Math.floor(component.y2 * mapPixelCache.h) - 1
       ),
+      fill: "filled",
       x1: component.x1,
       y1: component.y1,
       x2: component.x2,
@@ -1481,19 +1492,31 @@
     const width = Math.abs(x2 - x1);
     const height = Math.abs(y2 - y1);
     if (width < 2 && height < 2) return;
+    const isOutline = shape.fill === "outline";
 
     context.save();
     if (bake) {
       context.fillStyle = STRUCTURE_GREEN;
+      context.strokeStyle = STRUCTURE_GREEN;
+      context.lineWidth = Math.max(2, Math.min(w, h) * 0.006);
     } else {
-      context.fillStyle = preview ? "rgba(0, 255, 157, 0.35)" : STRUCTURE_GREEN;
+      context.fillStyle = isOutline
+        ? preview
+          ? "rgba(0, 255, 157, 0.12)"
+          : "rgba(0, 255, 157, 0.03)"
+        : preview
+        ? "rgba(0, 255, 157, 0.35)"
+        : STRUCTURE_GREEN;
       context.strokeStyle = preview ? "rgba(0, 255, 157, 0.8)" : "#00cc7a";
-      context.lineWidth = preview ? 2 : 1.5;
+      context.lineWidth = isOutline ? 2.5 : preview ? 2 : 1.5;
+      if (isOutline && !preview) context.setLineDash([8, 5]);
     }
+    const shouldFill = bake ? !isOutline : !isOutline || preview;
+    const shouldStroke = !bake || isOutline;
 
     if (shape.type === "rectangle") {
-      context.fillRect(left, top, width, height);
-      if (!bake) context.strokeRect(left, top, width, height);
+      if (shouldFill) context.fillRect(left, top, width, height);
+      if (shouldStroke) context.strokeRect(left, top, width, height);
     } else if (shape.type === "circle") {
       const cx = left + width / 2;
       const cy = top + height / 2;
@@ -1501,16 +1524,16 @@
       const ry = height / 2;
       context.beginPath();
       context.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      context.fill();
-      if (!bake) context.stroke();
+      if (shouldFill) context.fill();
+      if (shouldStroke) context.stroke();
     } else if (shape.type === "triangle") {
       context.beginPath();
       context.moveTo(left + width / 2, top);
       context.lineTo(left + width, top + height);
       context.lineTo(left, top + height);
       context.closePath();
-      context.fill();
-      if (!bake) context.stroke();
+      if (shouldFill) context.fill();
+      if (shouldStroke) context.stroke();
     }
 
     context.restore();
@@ -1526,6 +1549,7 @@
         y1: s.y1,
         x2: s.x2,
         y2: s.y2,
+        fill: s.fill || "filled",
         name: s.name || "",
         bio: s.bio || "",
       })),
@@ -1585,6 +1609,7 @@
         if (best && bestIoU >= 0.35) {
           if (best.name) shape.name = best.name;
           if (best.bio) shape.bio = best.bio;
+          if (best.fill) shape.fill = best.fill;
         }
       });
     } catch {
@@ -1709,6 +1734,7 @@
       y2: s.y2,
       name: s.name || "",
       bio: s.bio || "",
+      fill: s.fill || "filled",
       detected: true,
     }));
   }
@@ -1933,6 +1959,7 @@
           y1: minY / h,
           x2: (maxX + 1) / w,
           y2: (maxY + 1) / h,
+          fill: "filled",
           detected: true,
         });
       }
@@ -2102,6 +2129,7 @@
       y1: ny1,
       x2: nx2,
       y2: ny2,
+      fill: activeStructureFill,
       detected: false,
     };
   }

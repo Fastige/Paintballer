@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=30" />
+  <link rel="stylesheet" href="field-mapper.css?v=32" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -132,9 +132,13 @@
             <button type="button" class="fm-shape-btn" data-shape="circle">Circle</button>
             <button type="button" class="fm-shape-btn" data-shape="triangle">Triangle</button>
           </div>
+          <label class="fm-structure-outline-toggle">
+            <input type="checkbox" id="structure-outline-only" />
+            <span>Outline only / transparent wall</span>
+          </label>
           <p class="fm-structure-note">
             <span class="fm-structure-swatch" aria-hidden="true"></span>
-            Paintballer structure green — auto-detected on map upload
+            Filled structures save in Paintballer green. Outline-only structures are transparent but still block vision and shoot lines.
           </p>
           <button type="button" class="btn btn-ghost fm-btn-full" id="undo-structure" disabled>Back</button>
         </div>
@@ -335,6 +339,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=31"></script>
+  <script src="field-mapper.js?v=32"></script>
 </body>
 </html>
