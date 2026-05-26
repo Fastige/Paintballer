@@ -966,13 +966,19 @@
   function drawPointMarker(context, point, color, label) {
     const { x, y } = denormalizePoint(point);
     context.save();
+    context.beginPath();
+    context.setLineDash([]);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.miterLimit = 2;
     context.fillStyle = color;
     context.strokeStyle = "#0f1210";
     context.lineWidth = 2;
-    context.beginPath();
     context.arc(x, y, 6, 0, Math.PI * 2);
+    context.closePath();
     context.fill();
     context.stroke();
+    context.beginPath();
     context.font = "700 11px Outfit, sans-serif";
     context.textBaseline = "bottom";
     context.fillStyle = "#ffffff";
@@ -981,6 +987,35 @@
     context.strokeText(label, x + 9, y - 7);
     context.fillText(label, x + 9, y - 7);
     context.restore();
+    context.beginPath();
+  }
+
+  function strokeShootLine(context, start, end, color, width, dash) {
+    context.save();
+    context.beginPath();
+    context.setLineDash(dash || []);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.miterLimit = 2;
+    context.strokeStyle = color;
+    context.lineWidth = width;
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+    context.restore();
+    context.beginPath();
+  }
+
+  function drawShootDot(context, point, color, radius) {
+    context.save();
+    context.beginPath();
+    context.setLineDash([]);
+    context.fillStyle = color;
+    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    context.closePath();
+    context.fill();
+    context.restore();
+    context.beginPath();
   }
 
   function drawShootSetupOverlay(setup, muted) {
@@ -1000,6 +1035,11 @@
 
     shootCtx.save();
     shootCtx.globalAlpha = muted ? 0.55 : 1;
+    shootCtx.setLineDash([]);
+    shootCtx.lineCap = "round";
+    shootCtx.lineJoin = "round";
+    shootCtx.miterLimit = 2;
+    shootCtx.beginPath();
 
     if (setup.shootPoint && !setup.useTargetPlayer) {
       drawPointMarker(shootCtx, setup.shootPoint, SHOOT_LINE_COLOR, "Shoot");
@@ -1009,34 +1049,24 @@
       drawPointMarker(shootCtx, setup.targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
     }
 
-    shootCtx.lineWidth = muted ? 2 : 3;
-    shootCtx.lineCap = "round";
-    shootCtx.setLineDash([]);
-
     if (shootTarget) {
       const target = { x: shootTarget.x, y: shootTarget.y };
       const shot = rayCastToPoint(start, target, w, h);
-      shootCtx.strokeStyle = shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR;
-      shootCtx.beginPath();
-      shootCtx.moveTo(start.x, start.y);
-      shootCtx.lineTo(shot.end.x, shot.end.y);
-      shootCtx.stroke();
+      strokeShootLine(
+        shootCtx,
+        start,
+        shot.end,
+        shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR,
+        muted ? 2 : 3
+      );
       if (shot.blocked) {
-        shootCtx.fillStyle = SHOOT_BLOCKED_COLOR;
-        shootCtx.beginPath();
-        shootCtx.arc(shot.end.x, shot.end.y, muted ? 4 : 5, 0, Math.PI * 2);
-        shootCtx.fill();
+        drawShootDot(shootCtx, shot.end, SHOOT_BLOCKED_COLOR, muted ? 4 : 5);
       }
     }
 
     if (setup.runPoint) {
       const run = denormalizePoint(setup.runPoint);
-      shootCtx.strokeStyle = RUN_POINT_COLOR;
-      shootCtx.setLineDash([8, 6]);
-      shootCtx.beginPath();
-      shootCtx.moveTo(start.x, start.y);
-      shootCtx.lineTo(run.x, run.y);
-      shootCtx.stroke();
+      strokeShootLine(shootCtx, start, run, RUN_POINT_COLOR, muted ? 2 : 3, [8, 6]);
     }
 
     if (setup.useTargetPlayer && setup.targetPlayerKey && setup.targetRunPoint) {
@@ -1044,16 +1074,12 @@
       if (targetEl) {
         const targetStart = getPlayerCenterPx(targetEl);
         const targetRun = denormalizePoint(setup.targetRunPoint);
-        shootCtx.strokeStyle = SHOOT_BLOCKED_COLOR;
-        shootCtx.setLineDash([4, 6]);
-        shootCtx.beginPath();
-        shootCtx.moveTo(targetStart.x, targetStart.y);
-        shootCtx.lineTo(targetRun.x, targetRun.y);
-        shootCtx.stroke();
+        strokeShootLine(shootCtx, targetStart, targetRun, SHOOT_BLOCKED_COLOR, muted ? 2 : 3, [4, 6]);
       }
     }
 
     shootCtx.restore();
+    shootCtx.beginPath();
   }
 
   function redrawShootOverlay() {
