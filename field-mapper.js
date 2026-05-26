@@ -2416,16 +2416,15 @@
     return Array.from(playersLayer.querySelectorAll(`.fm-player[data-team="${team}"]`));
   }
 
-  function getTeamOffsets(count) {
-    if (count <= 1) return [{ x: 0, y: 0 }];
-    const radius = count <= 5 ? 3.2 : 4.2;
-    const offsets = [{ x: 0, y: 0 }];
-    for (let i = 1; i < count; i++) {
-      const angle = -Math.PI / 2 + ((i - 1) / Math.max(1, count - 1)) * Math.PI * 2;
-      const ring = i > 6 ? radius * 1.45 : radius;
-      offsets.push({ x: Math.cos(angle) * ring, y: Math.sin(angle) * ring });
-    }
-    return offsets;
+  function getTeamStackPositions(spawn, count) {
+    const x = Math.max(2, Math.min(98, spawn.x));
+    const preferredSpacing = count <= 5 ? 4 : 3.2;
+    const availableAbove = Math.max(0, spawn.y - 2);
+    const spacing = count > 0 ? Math.min(preferredSpacing, availableAbove / count) : 0;
+    return Array.from({ length: count }, (_, index) => ({
+      x,
+      y: Math.max(2, Math.min(98, spawn.y - spacing * (count - index))),
+    }));
   }
 
   function setTeamPlayerState(team) {
@@ -2521,7 +2520,7 @@
       const label = TEAM_LABELS[activePlacementTeam]?.short || "Team";
       teamHint.textContent = activeState.locked
         ? `${label} is locked. Use Move to adjust individual players.`
-        : `${label}: tap the map to preview ghost players, then use arrows before locking.`;
+        : `${label}: tap the map to preview a vertical stack above the click, then use arrows before locking.`;
     }
 
     renderTeamNudges();
@@ -2551,14 +2550,10 @@
       y: Math.max(4, Math.min(96, spawn.y)),
     };
     createTeamPlayers(team, count, !state.locked);
-    const offsets = getTeamOffsets(count);
+    const positions = getTeamStackPositions(state.spawn, count);
     getTeamPlayers(team).forEach((el, index) => {
-      const offset = offsets[index] || { x: 0, y: 0 };
-      positionPlayer(
-        el,
-        Math.max(2, Math.min(98, state.spawn.x + offset.x)),
-        Math.max(2, Math.min(98, state.spawn.y + offset.y))
-      );
+      const position = positions[index] || state.spawn;
+      positionPlayer(el, position.x, position.y);
     });
     setTeamPlayerState(team);
     updateTeamPlacementPanel();
