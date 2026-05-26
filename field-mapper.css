@@ -467,6 +467,12 @@
   cursor: not-allowed;
 }
 
+.fm-shoot-primary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
 .fm-team-status {
   margin: 0;
   font-size: 0.88rem;

@@ -224,6 +224,10 @@
           <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shoot point and running point.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
             <p class="fm-sizer-type" id="fm-shoot-player">No player selected</p>
+            <div class="fm-shoot-primary-actions">
+              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
+              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
+            </div>
             <label class="fm-range-label" for="shoot-time">Run time</label>
             <div class="fm-sizer-axis-row">
               <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
@@ -241,7 +245,6 @@
             <p class="fm-structure-note">
               Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above.
             </p>
-            <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-run" disabled>Reset run</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
             <section class="fm-shoot-scene" aria-label="Saved shoot scene">
@@ -253,10 +256,9 @@
               <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-new-setup">Add another player</button>
               <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
               <div class="fm-shoot-scene-actions">
-                <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
                 <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-scene" disabled>Reset scene</button>
+                <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear-scene" disabled>Clear scene</button>
               </div>
-              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear-scene" disabled>Clear scene</button>
             </section>
           </div>
         </aside>
