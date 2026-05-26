@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=32" />
+  <link rel="stylesheet" href="field-mapper.css?v=34" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -55,9 +55,12 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Tools</h2>
-        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="Map tools">
+        <div class="fm-tool-row fm-tool-row-4" role="group" aria-label="Map tools">
           <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players">
             <span aria-hidden="true">↖</span> Move
+          </button>
+          <button type="button" class="fm-tool-btn" data-tool="players" title="Place teams">
+            <span aria-hidden="true">⚑</span> Players
           </button>
           <button type="button" class="fm-tool-btn" data-tool="brush" title="Draw on map">
             <span aria-hidden="true">🖌</span> Brush
@@ -88,10 +91,11 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Teams</h2>
-        <button type="button" class="btn btn-ghost fm-btn-full" id="reset-players" disabled>Reset player positions</button>
+        <button type="button" class="btn btn-primary fm-btn-full" id="place-players" disabled>Place teams</button>
+        <button type="button" class="btn btn-ghost fm-btn-full" id="reset-players" disabled>Reset team placement</button>
         <ul class="fm-legend">
-          <li><span class="fm-legend-dot team-a"></span> Team Alpha — players 1–5 (left center)</li>
-          <li><span class="fm-legend-dot team-b"></span> Team Bravo — players 1–5 (right center)</li>
+          <li><span class="fm-legend-dot team-a"></span> Team 1 / Alpha — choose 1–10 players</li>
+          <li><span class="fm-legend-dot team-b"></span> Team 2 / Bravo — available after Team 1 is locked</li>
         </ul>
       </div>
     </aside>
@@ -132,13 +136,15 @@
             <button type="button" class="fm-shape-btn" data-shape="circle">Circle</button>
             <button type="button" class="fm-shape-btn" data-shape="triangle">Triangle</button>
           </div>
-          <label class="fm-structure-outline-toggle">
-            <input type="checkbox" id="structure-outline-only" />
-            <span>Outline only / transparent wall</span>
-          </label>
+          <p class="fm-range-label">Wall style</p>
+          <div class="fm-style-row" role="group" aria-label="Structure wall style">
+            <button type="button" class="fm-style-btn is-active" data-structure-style="filled">Filled</button>
+            <button type="button" class="fm-style-btn" data-structure-style="border">Border only</button>
+            <button type="button" class="fm-style-btn" data-structure-style="transparent">Transparent wall</button>
+          </div>
           <p class="fm-structure-note">
             <span class="fm-structure-swatch" aria-hidden="true"></span>
-            Filled structures save in Paintballer green. Outline-only structures are transparent but still block vision and shoot lines.
+            Border-only and transparent walls still block vision and shoot lines.
           </p>
           <button type="button" class="btn btn-ghost fm-btn-full" id="undo-structure" disabled>Back</button>
         </div>
@@ -151,6 +157,12 @@
           <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it.</p>
           <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
             <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
+            <p class="fm-range-label">Wall style</p>
+            <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
+              <button type="button" class="fm-style-btn is-active" data-sizer-style="filled">Filled</button>
+              <button type="button" class="fm-style-btn" data-sizer-style="border">Border only</button>
+              <button type="button" class="fm-style-btn" data-sizer-style="transparent">Transparent wall</button>
+            </div>
             <div class="fm-sizer-axis">
               <label class="fm-range-label" for="sizer-width">Width</label>
               <div class="fm-sizer-axis-row">
@@ -179,6 +191,27 @@
             </div>
           </div>
           <button type="button" class="btn btn-ghost fm-btn-full" id="undo-sizer" disabled>Undo Sizer change</button>
+        </aside>
+
+        <aside class="fm-team-panel fm-map-tool-panel" id="fm-team-panel" hidden aria-label="Team placement controls" data-mobile-panel="players">
+          <div class="fm-map-tool-head">
+            <p class="eyebrow">Players</p>
+            <h2 class="fm-map-tool-title">Team placement</h2>
+          </div>
+          <p class="fm-team-status" id="fm-team-status">Start with Team 1, choose a count, then tap the spawn point.</p>
+          <div class="fm-team-tabs" role="group" aria-label="Team to place">
+            <button type="button" class="fm-team-tab is-active" data-placement-team="a">Team 1</button>
+            <button type="button" class="fm-team-tab" data-placement-team="b">Team 2</button>
+          </div>
+          <label class="fm-range-label" for="player-count">Players on this team</label>
+          <div class="fm-player-count-row">
+            <button type="button" class="fm-count-btn" id="player-count-minus" aria-label="Remove player">−</button>
+            <input type="number" id="player-count" min="1" max="10" step="1" value="5" inputmode="numeric" />
+            <button type="button" class="fm-count-btn" id="player-count-plus" aria-label="Add player">+</button>
+          </div>
+          <p class="fm-structure-note" id="fm-team-hint">
+            Tap the map to spawn the active team. Use the ghost arrows to nudge, then tap ✓ to lock.
+          </p>
         </aside>
 
         <aside class="fm-shoot-panel fm-map-tool-panel" id="fm-shoot-panel" hidden aria-label="Shoot timing controls" data-mobile-panel="shoot">
@@ -210,6 +243,20 @@
             <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-run" disabled>Reset run</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
+            <section class="fm-shoot-scene" aria-label="Saved shoot scene">
+              <div class="fm-shoot-scene-head">
+                <p class="fm-range-label">Scene setups</p>
+                <p class="fm-shoot-scene-count" id="shoot-scene-count">0 saved</p>
+              </div>
+              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-save-setup" disabled>Save player setup</button>
+              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-new-setup">Add another player</button>
+              <div class="fm-shoot-scene-actions">
+                <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
+                <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-scene" disabled>Reset scene</button>
+              </div>
+              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear-scene" disabled>Clear scene</button>
+              <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
+            </section>
           </div>
         </aside>
 
@@ -222,6 +269,10 @@
             <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
               <span class="fm-mobile-icon" aria-hidden="true">↖</span>
               <span>Move</span>
+            </button>
+            <button type="button" class="fm-mobile-btn" data-tool="players" aria-pressed="false">
+              <span class="fm-mobile-icon" aria-hidden="true">⚑</span>
+              <span>Teams</span>
             </button>
             <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
               <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
@@ -339,6 +390,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=32"></script>
+  <script src="field-mapper.js?v=34"></script>
 </body>
 </html>

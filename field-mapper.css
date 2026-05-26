@@ -99,6 +99,10 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.fm-tool-row-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .fm-tool-row-2 {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -142,28 +146,31 @@
   color: #0a1a12;
 }
 
-.fm-structure-outline-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
+.fm-style-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.fm-style-btn {
+  padding: 0.55rem 0.35rem;
   min-height: 44px;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--border);
   border-radius: var(--radius);
+  border: 1px solid var(--border);
   background: var(--bg);
-  color: var(--text);
-  font-size: 0.88rem;
-  line-height: 1.3;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
-.fm-structure-outline-toggle input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--structure-green, #00ff9d);
-  flex-shrink: 0;
+.fm-style-btn.is-active {
+  background: var(--structure-green, #00ff9d);
+  border-color: var(--structure-green, #00ff9d);
+  color: #0a1a12;
 }
 
 .fm-structure-note {
@@ -351,6 +358,10 @@
   display: flex;
 }
 
+.fm-workspace.tool-players-active .fm-team-panel:not([hidden]) {
+  display: flex;
+}
+
 .fm-workspace.tool-shoot-active .fm-shoot-panel:not([hidden]) {
   display: flex;
 }
@@ -454,6 +465,162 @@
 .fm-shoot-mode-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.fm-team-status {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fm-team-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.fm-team-tab,
+.fm-count-btn {
+  min-height: 44px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-team-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0f08;
+}
+
+.fm-team-tab:disabled,
+.fm-count-btn:disabled,
+.fm-player-count-row input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fm-player-count-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.fm-player-count-row input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fm-count-btn {
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.fm-shoot-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.fm-shoot-scene-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fm-shoot-scene-count {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.fm-shoot-scene-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.fm-shoot-scene-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.fm-shoot-scene-list:empty {
+  display: none;
+}
+
+.fm-shoot-scene-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.fm-shoot-scene-load,
+.fm-shoot-scene-remove {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-shoot-scene-load {
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+}
+
+.fm-shoot-scene-load.is-active {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+.fm-shoot-scene-remove {
+  min-width: 44px;
+  padding: 0 0.65rem;
+  color: var(--text-muted);
+}
+
+.fm-shoot-scene-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.fm-shoot-scene-meta {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .fm-sizer-axis {
@@ -701,6 +868,11 @@
   cursor: crosshair;
 }
 
+.fm-stage.tool-players .fm-canvas-structure {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
 .fm-players {
   position: absolute;
   inset: 0;
@@ -758,8 +930,71 @@
 
 .fm-stage.tool-brush .fm-player,
 .fm-stage.tool-structure .fm-player,
-.fm-stage.tool-sizer .fm-player {
+.fm-stage.tool-sizer .fm-player,
+.fm-stage.tool-players .fm-player {
   pointer-events: none;
+}
+
+.fm-player.is-team-unlocked {
+  opacity: 0.86;
+  cursor: default;
+}
+
+.fm-team-nudges {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  margin-left: -56px;
+  margin-top: -56px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.fm-team-nudge {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(15, 18, 16, 0.58);
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-team-nudge[data-direction="up"] {
+  top: 0;
+  left: 37px;
+}
+
+.fm-team-nudge[data-direction="down"] {
+  bottom: 0;
+  left: 37px;
+}
+
+.fm-team-nudge[data-direction="left"] {
+  left: 0;
+  top: 37px;
+}
+
+.fm-team-nudge[data-direction="right"] {
+  right: 0;
+  top: 37px;
+}
+
+.fm-team-nudge[data-direction="lock"] {
+  left: 37px;
+  top: 37px;
+  background: rgba(124, 252, 59, 0.82);
+  color: #0f1210;
+  border-color: rgba(124, 252, 59, 0.9);
 }
 
 .fm-stage.tool-vision .fm-player,
@@ -1471,7 +1706,8 @@
   }
 
   .fm-tool-btn,
-  .fm-shape-btn {
+  .fm-shape-btn,
+  .fm-style-btn {
     min-height: 48px;
   }
 }
