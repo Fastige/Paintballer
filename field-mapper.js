@@ -377,7 +377,7 @@
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
-          "<strong>Shoot</strong> — click a runner, set shoot/run points, or target an opposing player with their own run point",
+          "<strong>Shoot</strong> — click a runner, set shoot/run points, or target an opposing player",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
         intel:
@@ -455,7 +455,6 @@
       if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
       shootTargetPlayerEl = null;
       targetRunPoint = null;
-      if (shootMode === "target-run") shootMode = "shoot";
     } else {
       shootPoint = null;
       shootMode = "shoot";
@@ -696,7 +695,7 @@
 
   function getShootSetupComplete(setup) {
     if (!setup?.playerKey || !setup.runPoint) return false;
-    if (setup.useTargetPlayer) return Boolean(setup.targetPlayerKey && setup.targetRunPoint);
+    if (setup.useTargetPlayer) return Boolean(setup.targetPlayerKey);
     return Boolean(setup.shootPoint);
   }
 
@@ -776,9 +775,7 @@
       if (!shootUseTargetPlayer) {
         shootTargetStatus.textContent = "Shoot point is a map spot.";
       } else if (shootTargetPlayerEl) {
-        shootTargetStatus.textContent = `Target player: ${getPlayerLabel(shootTargetPlayerEl)}${
-          targetRunPoint ? " · target run point set" : " · set target run point"
-        }`;
+        shootTargetStatus.textContent = `Target player: ${getPlayerLabel(shootTargetPlayerEl)}`;
       } else {
         shootTargetStatus.textContent = "Tap an opposing player to make them the shoot point.";
       }
@@ -788,7 +785,7 @@
         !hasMap ||
         !shootPlayerEl ||
         !runPoint ||
-        (shootUseTargetPlayer && (!shootTargetPlayerEl || !targetRunPoint));
+        (shootUseTargetPlayer && !shootTargetPlayerEl);
     }
     if (shootResetRunBtn) shootResetRunBtn.disabled = !lastRunStartPositions;
     if (shootSaveSetupBtn) {
@@ -803,8 +800,6 @@
     }
     shootModeBtns.forEach((btn) => {
       const mode = btn.dataset.shootMode;
-      const isTargetRun = mode === "target-run";
-      btn.disabled = isTargetRun && !shootUseTargetPlayer;
       btn.classList.toggle("is-active", mode === shootMode);
       if (mode === "shoot") {
         btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shoot";
@@ -871,7 +866,7 @@
     runPoint = clonePoint(setup.runPoint);
     targetRunPoint = clonePoint(setup.targetRunPoint);
     if (shootTimeInput) shootTimeInput.value = String(setup.timeSec || 3);
-    shootMode = shootUseTargetPlayer ? "target-run" : "shoot";
+    shootMode = "shoot";
 
     updateShootPanel();
     redrawShootOverlay();
@@ -1106,8 +1101,6 @@
     if (!point) return;
     if (shootMode === "run") {
       runPoint = point;
-    } else if (shootMode === "target-run" && shootUseTargetPlayer) {
-      targetRunPoint = point;
     } else if (!shootUseTargetPlayer) {
       shootPoint = point;
     }
