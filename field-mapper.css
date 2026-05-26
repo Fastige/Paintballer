@@ -99,8 +99,8 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
-.fm-tool-row-4 {
-  grid-template-columns: repeat(4, 1fr);
+.fm-tool-row-1 {
+  grid-template-columns: 1fr;
 }
 
 .fm-tool-row-2 {
@@ -935,9 +935,25 @@
   pointer-events: none;
 }
 
-.fm-player.is-team-unlocked {
-  opacity: 0.86;
+.fm-player.is-team-ghost {
+  opacity: 0.52;
   cursor: default;
+  filter: saturate(0.85);
+  border-style: dashed;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.fm-stage.has-map .fm-player.is-team-ghost,
+.fm-stage.tool-vision .fm-player.is-team-ghost,
+.fm-stage.tool-shoot .fm-player.is-team-ghost {
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .fm-player.is-team-ghost:hover {
+    transform: none;
+    z-index: 10;
+  }
 }
 
 .fm-team-nudges {
@@ -1628,7 +1644,7 @@
 
   .fm-tools-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
     gap: 0.4rem;
   }
 
@@ -1723,7 +1739,7 @@
   }
 
   .fm-tools-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
     gap: 0.35rem;
   }
 

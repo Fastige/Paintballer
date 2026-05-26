@@ -674,6 +674,22 @@
     return getPlayerLabel(getPlayerByKey(key));
   }
 
+  function playerMatchesKey(el, key) {
+    return Boolean(el && key && getPlayerKey(el) === key);
+  }
+
+  function playerAffectsShootOverlay(el) {
+    if (!el) return false;
+    if (el === shootPlayerEl || el === shootTargetPlayerEl) return true;
+    return shootSceneSetups.some(
+      (setup) => playerMatchesKey(el, setup.playerKey) || playerMatchesKey(el, setup.targetPlayerKey)
+    );
+  }
+
+  function isGhostPlayer(el) {
+    return el?.dataset.ghost === "true";
+  }
+
   function clonePoint(point) {
     return point ? { x: point.x, y: point.y } : null;
   }
@@ -1042,7 +1058,11 @@
 
   function redrawShootOverlay() {
     const { w, h } = getCanvasSize();
+    shootCtx.save();
+    shootCtx.setTransform(1, 0, 0, 1, 0, 0);
     shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
+    shootCtx.restore();
+    shootCtx.beginPath();
     if (!w || !h) return;
 
     shootSceneSetups.forEach((setup) => {
@@ -2342,6 +2362,10 @@
 
   function removeTeamPlayers(team) {
     playersLayer.querySelectorAll(`.fm-player[data-team="${team}"]`).forEach((el) => {
+      if (isGhostPlayer(el)) {
+        el.remove();
+        return;
+      }
       if (visionPlayerEl === el) clearVisionLines();
       if (shootPlayerEl === el || shootTargetPlayerEl === el) clearShootPlan();
       el.remove();
@@ -2361,10 +2385,11 @@
     return el;
   }
 
-  function createTeamPlayers(team, count) {
+  function createTeamPlayers(team, count, ghost) {
     removeTeamPlayers(team);
     for (let n = 1; n <= count; n++) {
-      createPlayerElement(team, n);
+      const el = createPlayerElement(team, n);
+      el.dataset.ghost = ghost ? "true" : "false";
     }
   }
 
@@ -2384,10 +2409,16 @@
     return offsets;
   }
 
-  function setTeamLockClass(team) {
+  function setTeamPlayerState(team) {
     const state = teamPlacement[team];
     getTeamPlayers(team).forEach((el) => {
-      el.classList.toggle("is-team-unlocked", state.placed && !state.locked);
+      const isGhost = state.placed && !state.locked;
+      el.dataset.ghost = isGhost ? "true" : "false";
+      el.classList.toggle("is-team-ghost", isGhost);
+      el.setAttribute(
+        "aria-label",
+        `${isGhost ? "Ghost " : ""}${getTeamLabel(team)} player ${el.dataset.num || ""}`.trim()
+      );
     });
   }
 
@@ -2455,13 +2486,13 @@
       if (!hasMap) {
         teamStatus.textContent = "Upload a map before placing teams.";
       } else if (!teamPlacement.a.placed) {
-        teamStatus.textContent = "Start with Team 1. Choose 1-10 players, then tap the spawn point.";
+        teamStatus.textContent = "Start with Team 1. Choose 1-10 players, then tap the spawn point to preview ghosts.";
       } else if (!teamPlacement.a.locked) {
-        teamStatus.textContent = "Nudge Team 1 with the ghost arrows, then tap ✓ to lock.";
+        teamStatus.textContent = "Previewing Team 1 ghosts. Nudge them, then tap ✓ to lock.";
       } else if (!teamPlacement.b.placed) {
-        teamStatus.textContent = "Team 1 is locked. Choose Team 2 count, then tap its spawn point.";
+        teamStatus.textContent = "Team 1 is locked. Choose Team 2 count, then tap its spawn point to preview ghosts.";
       } else if (!teamPlacement.b.locked) {
-        teamStatus.textContent = "Nudge Team 2 with the ghost arrows, then tap ✓ to lock.";
+        teamStatus.textContent = "Previewing Team 2 ghosts. Nudge them, then tap ✓ to lock.";
       } else {
         teamStatus.textContent = "Both teams are locked. Switch to Move to drag players individually.";
       }
@@ -2471,7 +2502,7 @@
       const label = TEAM_LABELS[activePlacementTeam]?.short || "Team";
       teamHint.textContent = activeState.locked
         ? `${label} is locked. Use Move to adjust individual players.`
-        : `${label}: tap the map to spawn, then use ghost arrows before locking.`;
+        : `${label}: tap the map to preview ghost players, then use arrows before locking.`;
     }
 
     renderTeamNudges();
@@ -2500,7 +2531,7 @@
       x: Math.max(4, Math.min(96, spawn.x)),
       y: Math.max(4, Math.min(96, spawn.y)),
     };
-    createTeamPlayers(team, count);
+    createTeamPlayers(team, count, !state.locked);
     const offsets = getTeamOffsets(count);
     getTeamPlayers(team).forEach((el, index) => {
       const offset = offsets[index] || { x: 0, y: 0 };
@@ -2510,7 +2541,7 @@
         Math.max(2, Math.min(98, state.spawn.y + offset.y))
       );
     });
-    setTeamLockClass(team);
+    setTeamPlayerState(team);
     updateTeamPlacementPanel();
     redrawVisionLines();
     redrawShootOverlay();
@@ -2556,7 +2587,7 @@
     const state = teamPlacement[team];
     if (!state.placed) return;
     state.locked = true;
-    setTeamLockClass(team);
+    setTeamPlayerState(team);
     if (team === "a" && !teamPlacement.b.placed) activePlacementTeam = "b";
     updateTeamPlacementPanel();
   }
@@ -2586,6 +2617,7 @@
   function bindPlayerDrag(el) {
     el.addEventListener("pointerdown", (e) => {
       if (!hasMap) return;
+      if (isGhostPlayer(el)) return;
 
       if (activeTool === "vision") {
         e.preventDefault();
@@ -2632,7 +2664,7 @@
       y = Math.max(2, Math.min(98, y));
       positionPlayer(el, x, y);
       if (visionPlayerEl === el) redrawVisionLines();
-      if (shootPlayerEl === el) redrawShootOverlay();
+      if (playerAffectsShootOverlay(el)) redrawShootOverlay();
     });
 
     const endDrag = (e) => {
@@ -2642,7 +2674,7 @@
       draggedPlayer = null;
       setInteractionLock(false);
       if (visionPlayerEl === el) redrawVisionLines();
-      if (shootPlayerEl === el) redrawShootOverlay();
+      if (playerAffectsShootOverlay(el)) redrawShootOverlay();
     };
 
     el.addEventListener("pointerup", endDrag);
