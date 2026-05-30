@@ -115,6 +115,8 @@
   const SHOOT_LINE_COLOR = "#ffd43b";
   const SHOOT_BLOCKED_COLOR = "#ff4f4f";
   const RUN_POINT_COLOR = "#7cfc3b";
+  const SHOOT_DOT_SPAWN_MS = 200;
+  const SHOOT_DOT_TRAVEL_MS = 700;
 
   if (!stage || !canvas || !structureCanvas || !visionCanvas || !shootCanvas) return;
 
@@ -148,6 +150,8 @@
   let targetRunPoint = null;
   let runAnimationFrame = null;
   let lastRunStartPositions = null;
+  /** @type {{setups:object[],setupIds:Set<string>,dots:object[],lastSpawnAt:Map<string,number>,startedAt:number,spawnMs:number,travelMs:number,spawning:boolean}|null} */
+  let shootSceneDotAnim = null;
   let shootSceneSetups = [];
   let activeShootSetupId = null;
   let activePlacementTeam = "a";
@@ -746,11 +750,16 @@
     redrawShootOverlay();
   }
 
+  function clearShootSceneDots() {
+    shootSceneDotAnim = null;
+  }
+
   function clearShootPlan() {
     if (runAnimationFrame) {
       cancelAnimationFrame(runAnimationFrame);
       runAnimationFrame = null;
     }
+    clearShootSceneDots();
     if (shootPlayerEl) shootPlayerEl.classList.remove("is-shoot-selected");
     if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
     shootPlayerEl = null;
@@ -1013,6 +1022,105 @@
     context.beginPath();
   }
 
+  function getSetupShootLine(setup) {
+    const { w, h } = getCanvasSize();
+    const playerEl = getPlayerByKey(setup.playerKey);
+    if (!playerEl || !w || !h) return null;
+
+    const player = getPlayerCenterPx(playerEl);
+    const start = { x: player.x, y: player.y };
+    const targetPlayerEl = setup.useTargetPlayer ? getPlayerByKey(setup.targetPlayerKey) : null;
+    const shootTarget =
+      setup.useTargetPlayer && targetPlayerEl
+        ? getPlayerCenterPx(targetPlayerEl)
+        : setup.shootPoint
+        ? denormalizePoint(setup.shootPoint)
+        : null;
+    if (!shootTarget) return null;
+
+    const target = { x: shootTarget.x, y: shootTarget.y };
+    const shot = rayCastToPoint(start, target, w, h);
+    return {
+      start,
+      end: shot.end,
+      blocked: shot.blocked,
+      color: shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR,
+    };
+  }
+
+  function isSetupInSceneDotAnim(setupId) {
+    return Boolean(shootSceneDotAnim?.setupIds.has(setupId));
+  }
+
+  function spawnShootSceneDot(setup, bornAt) {
+    const line = getSetupShootLine(setup);
+    if (!line || !shootSceneDotAnim) return;
+    shootSceneDotAnim.dots.push({
+      bornAt,
+      travelMs: shootSceneDotAnim.travelMs,
+      start: { x: line.start.x, y: line.start.y },
+      end: { x: line.end.x, y: line.end.y },
+      color: line.color,
+    });
+  }
+
+  function startShootSceneDots(setups) {
+    const lines = setups.filter((setup) => getSetupShootLine(setup));
+    if (!lines.length) {
+      clearShootSceneDots();
+      return;
+    }
+
+    const now = performance.now();
+    shootSceneDotAnim = {
+      setups: lines,
+      setupIds: new Set(lines.map((setup) => setup.id)),
+      dots: [],
+      lastSpawnAt: new Map(),
+      startedAt: now,
+      spawnMs: SHOOT_DOT_SPAWN_MS,
+      travelMs: SHOOT_DOT_TRAVEL_MS,
+      spawning: true,
+    };
+    lines.forEach((setup) => {
+      spawnShootSceneDot(setup, now);
+      shootSceneDotAnim.lastSpawnAt.set(setup.id, now);
+    });
+  }
+
+  function updateShootSceneDots(now) {
+    if (!shootSceneDotAnim) return;
+    shootSceneDotAnim.dots = shootSceneDotAnim.dots.filter((dot) => now - dot.bornAt < dot.travelMs);
+    if (!shootSceneDotAnim.spawning) return;
+
+    shootSceneDotAnim.setups.forEach((setup) => {
+      let last = shootSceneDotAnim.lastSpawnAt.get(setup.id) ?? shootSceneDotAnim.startedAt;
+      while (now - last >= shootSceneDotAnim.spawnMs) {
+        last += shootSceneDotAnim.spawnMs;
+        spawnShootSceneDot(setup, last);
+      }
+      shootSceneDotAnim.lastSpawnAt.set(setup.id, last);
+    });
+  }
+
+  function drawShootSceneDots() {
+    if (!shootSceneDotAnim?.dots.length) return;
+    const now = performance.now();
+    shootSceneDotAnim.dots.forEach((dot) => {
+      const t = Math.min(1, (now - dot.bornAt) / dot.travelMs);
+      const eased = t * (2 - t);
+      drawShootDot(
+        shootCtx,
+        {
+          x: dot.start.x + (dot.end.x - dot.start.x) * eased,
+          y: dot.start.y + (dot.end.y - dot.start.y) * eased,
+        },
+        dot.color,
+        4
+      );
+    });
+  }
+
   function drawShootSetupOverlay(setup, muted) {
     const { w, h } = getCanvasSize();
     const playerEl = getPlayerByKey(setup.playerKey);
@@ -1044,7 +1152,7 @@
       drawPointMarker(shootCtx, setup.targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
     }
 
-    if (shootTarget) {
+    if (shootTarget && !isSetupInSceneDotAnim(setup.id)) {
       const target = { x: shootTarget.x, y: shootTarget.y };
       const shot = rayCastToPoint(start, target, w, h);
       strokeShootLine(
@@ -1092,6 +1200,7 @@
 
     const currentSetup = getCurrentShootSetup(true);
     if (currentSetup) drawShootSetupOverlay(currentSetup, false);
+    drawShootSceneDots();
   }
 
   function setShootPointFromEvent(e) {
@@ -1140,10 +1249,14 @@
     return runners;
   }
 
-  function runShootSetups(setups) {
+  function runShootSetups(setups, options = {}) {
     const runners = setups.flatMap(getSetupRunners);
     if (!runners.length) return;
     if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
+
+    const useSceneDots = Boolean(options.sceneDots);
+    if (useSceneDots) startShootSceneDots(setups);
+    else clearShootSceneDots();
 
     const startedAt = performance.now();
     const startByKey = new Map();
@@ -1155,6 +1268,8 @@
 
     const step = (now) => {
       let stillRunning = false;
+      if (shootSceneDotAnim) updateShootSceneDots(now);
+
       runners.forEach(({ key, el, point, duration }) => {
         const start = startByKey.get(key);
         if (!start) return;
@@ -1167,12 +1282,27 @@
         if (visionPlayerEl === el) redrawVisionLines();
       });
       redrawShootOverlay();
+
+      const dotsRemaining = Boolean(shootSceneDotAnim?.dots.length);
       if (stillRunning) {
         runAnimationFrame = requestAnimationFrame(step);
-      } else {
-        runAnimationFrame = null;
-        updateShootPanel();
+        return;
       }
+
+      if (shootSceneDotAnim?.spawning) {
+        shootSceneDotAnim.spawning = false;
+        runAnimationFrame = requestAnimationFrame(step);
+        return;
+      }
+
+      if (dotsRemaining) {
+        runAnimationFrame = requestAnimationFrame(step);
+        return;
+      }
+
+      runAnimationFrame = null;
+      clearShootSceneDots();
+      updateShootPanel();
     };
 
     runAnimationFrame = requestAnimationFrame(step);
@@ -1187,7 +1317,7 @@
   function runShootScene() {
     const readySetups = shootSceneSetups.filter(getShootSetupComplete);
     if (!readySetups.length) return;
-    runShootSetups(readySetups);
+    runShootSetups(readySetups, { sceneDots: true });
   }
 
   function resetShootRun() {
@@ -1196,6 +1326,7 @@
       cancelAnimationFrame(runAnimationFrame);
       runAnimationFrame = null;
     }
+    clearShootSceneDots();
     lastRunStartPositions.forEach(({ el, x, y }) => {
       if (!el?.isConnected) return;
       positionPlayer(el, x, y);
@@ -2418,12 +2549,14 @@
 
   function getTeamStackPositions(spawn, count) {
     const x = Math.max(2, Math.min(98, spawn.x));
-    const preferredSpacing = count <= 5 ? 4 : 3.2;
-    const availableAbove = Math.max(0, spawn.y - 2);
-    const spacing = count > 0 ? Math.min(preferredSpacing, availableAbove / count) : 0;
+    if (count <= 0) return [];
+    const preferredSpacing = count <= 5 ? 2.6 : 2.2;
+    const halfCount = (count - 1) / 2;
+    const availableHalf = Math.max(0, Math.min(spawn.y - 2, 98 - spawn.y));
+    const spacing = halfCount > 0 ? Math.min(preferredSpacing, availableHalf / halfCount) : 0;
     return Array.from({ length: count }, (_, index) => ({
       x,
-      y: Math.max(2, Math.min(98, spawn.y - spacing * (count - index))),
+      y: Math.max(2, Math.min(98, spawn.y + spacing * (index - halfCount))),
     }));
   }
 
