@@ -1076,10 +1076,6 @@
     };
   }
 
-  function isSetupInSceneDotAnim(setupId) {
-    return Boolean(shootSceneDotAnim?.setupIds.has(setupId));
-  }
-
   function spawnShootSceneDot(setup, bornAt) {
     const line = getSetupShootLine(setup);
     if (!line || !shootSceneDotAnim) return;
@@ -1180,7 +1176,7 @@
       drawPointMarker(shootCtx, setup.targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
     }
 
-    if (shootTarget && !isSetupInSceneDotAnim(setup.id)) {
+    if (shootTarget) {
       const target = { x: shootTarget.x, y: shootTarget.y };
       const shot = rayCastToPoint(start, target, w, h);
       strokeShootLine(
