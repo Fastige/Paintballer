@@ -116,6 +116,7 @@
   const SHOOT_LINE_COLOR = "#ffd43b";
   const SHOOT_BLOCKED_COLOR = "#ff4f4f";
   const RUN_POINT_COLOR = "#7cfc3b";
+  const SHOOT_DOT_COLOR = "#7cfc3b";
   const SHOOT_DOT_SPAWN_MS = 200;
   const SHOOT_DOT_TRAVEL_MS = 700;
 
@@ -1043,9 +1044,12 @@
     context.beginPath();
     context.setLineDash([]);
     context.fillStyle = color;
+    context.strokeStyle = "#0f1210";
+    context.lineWidth = 2;
     context.arc(point.x, point.y, radius, 0, Math.PI * 2);
     context.closePath();
     context.fill();
+    context.stroke();
     context.restore();
     context.beginPath();
   }
@@ -1072,7 +1076,7 @@
       start,
       end: shot.end,
       blocked: shot.blocked,
-      color: shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_LINE_COLOR,
+      color: shot.blocked ? SHOOT_BLOCKED_COLOR : SHOOT_DOT_COLOR,
     };
   }
 
@@ -1140,7 +1144,7 @@
           y: dot.start.y + (dot.end.y - dot.start.y) * eased,
         },
         dot.color,
-        4
+        5.5
       );
     });
   }
