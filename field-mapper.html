@@ -221,7 +221,7 @@
             <p class="eyebrow">Shoot</p>
             <h2 class="fm-map-tool-title">Shoot and run</h2>
           </div>
-          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shoot point and running point.</p>
+          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shoot point. Add a run point, or choose stand still.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
             <p class="fm-sizer-type" id="fm-shoot-player">No player selected</p>
             <div class="fm-shoot-primary-actions">
@@ -237,13 +237,17 @@
               <input type="checkbox" id="shoot-target-player" />
               <span>Make shoot point a player</span>
             </label>
+            <label class="fm-shoot-toggle">
+              <input type="checkbox" id="shoot-stand-still" />
+              <span>Stand still (no run location)</span>
+            </label>
             <p class="fm-structure-note" id="fm-shoot-target-status">No target player selected.</p>
             <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
               <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shoot</button>
               <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
             </div>
             <p class="fm-structure-note">
-              Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above.
+              Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above. Stand still lets a player shoot without setting a run location.
             </p>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-run" disabled>Reset run</button>
             <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
@@ -393,6 +397,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=35"></script>
+  <script src="field-mapper.js?v=36"></script>
 </body>
 </html>

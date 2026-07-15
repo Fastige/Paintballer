@@ -75,6 +75,7 @@
   const shootPlayerLabel = document.getElementById("fm-shoot-player");
   const shootTimeInput = document.getElementById("shoot-time");
   const shootTargetPlayerInput = document.getElementById("shoot-target-player");
+  const shootStandStillInput = document.getElementById("shoot-stand-still");
   const shootTargetStatus = document.getElementById("fm-shoot-target-status");
   const shootRunBtn = document.getElementById("shoot-run");
   const shootResetRunBtn = document.getElementById("shoot-reset-run");
@@ -144,6 +145,7 @@
   let shootPlayerEl = null;
   let shootTargetPlayerEl = null;
   let shootUseTargetPlayer = false;
+  let shootStandStill = false;
   let shootMode = "shoot";
   let shootPoint = null;
   let runPoint = null;
@@ -467,6 +469,16 @@
     redrawShootOverlay();
   });
 
+  shootStandStillInput?.addEventListener("change", () => {
+    shootStandStill = Boolean(shootStandStillInput.checked);
+    if (shootStandStill) {
+      runPoint = null;
+      if (shootMode === "run") shootMode = "shoot";
+    }
+    updateShootPanel();
+    redrawShootOverlay();
+  });
+
   toggleToolsBtn?.addEventListener("click", () => {
     if (sidebar?.classList.contains("is-open")) closeToolsPanel();
     else openToolsPanel();
@@ -698,9 +710,13 @@
   }
 
   function getShootSetupComplete(setup) {
-    if (!setup?.playerKey || !setup.runPoint) return false;
-    if (setup.useTargetPlayer) return Boolean(setup.targetPlayerKey);
-    return Boolean(setup.shootPoint);
+    if (!setup?.playerKey) return false;
+    const hasShoot = setup.useTargetPlayer
+      ? Boolean(setup.targetPlayerKey)
+      : Boolean(setup.shootPoint);
+    if (!hasShoot) return false;
+    if (setup.standStill) return true;
+    return Boolean(setup.runPoint);
   }
 
   function getCurrentShootSetup(allowIncomplete) {
@@ -710,9 +726,10 @@
       playerKey: getPlayerKey(shootPlayerEl),
       timeSec: Math.max(0.5, Math.min(30, Number(shootTimeInput?.value) || 3)),
       useTargetPlayer: shootUseTargetPlayer,
+      standStill: shootStandStill,
       targetPlayerKey: shootUseTargetPlayer ? getPlayerKey(shootTargetPlayerEl) : "",
       shootPoint: shootUseTargetPlayer ? null : clonePoint(shootPoint),
-      runPoint: clonePoint(runPoint),
+      runPoint: shootStandStill ? null : clonePoint(runPoint),
       targetRunPoint: clonePoint(targetRunPoint),
     };
     if (!allowIncomplete && !getShootSetupComplete(setup)) return null;
@@ -765,7 +782,9 @@
     shootPlayerEl = null;
     shootTargetPlayerEl = null;
     shootUseTargetPlayer = false;
+    shootStandStill = false;
     if (shootTargetPlayerInput) shootTargetPlayerInput.checked = false;
+    if (shootStandStillInput) shootStandStillInput.checked = false;
     shootPoint = null;
     runPoint = null;
     targetRunPoint = null;
@@ -777,9 +796,11 @@
 
   function updateShootPanel() {
     const hasPlayer = Boolean(shootPlayerEl);
+    const currentSetup = getCurrentShootSetup(false);
     if (shootEmpty) shootEmpty.hidden = hasPlayer;
     if (shootControls) shootControls.hidden = !hasPlayer;
     if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
+    if (shootStandStillInput) shootStandStillInput.checked = shootStandStill;
     if (shootTargetStatus) {
       if (!shootUseTargetPlayer) {
         shootTargetStatus.textContent = "Shoot point is a map spot.";
@@ -790,18 +811,17 @@
       }
     }
     if (shootRunBtn) {
-      shootRunBtn.disabled =
-        !hasMap ||
-        !shootPlayerEl ||
-        !runPoint ||
-        (shootUseTargetPlayer && !shootTargetPlayerEl);
+      shootRunBtn.disabled = !hasMap || !currentSetup;
+      shootRunBtn.textContent = shootStandStill ? "Play shoot" : "Run selected player";
     }
     if (shootResetRunBtn) shootResetRunBtn.disabled = !lastRunStartPositions;
     if (shootSaveSetupBtn) {
-      shootSaveSetupBtn.disabled = !getCurrentShootSetup(false);
+      shootSaveSetupBtn.disabled = !currentSetup;
       shootSaveSetupBtn.textContent = activeShootSetupId ? "Update player setup" : "Save player setup";
     }
-    if (shootPlaySceneBtn) shootPlaySceneBtn.disabled = shootSceneSetups.length === 0;
+    if (shootPlaySceneBtn) {
+      shootPlaySceneBtn.disabled = !shootSceneSetups.some(getShootSetupComplete);
+    }
     if (shootResetSceneBtn) shootResetSceneBtn.disabled = !lastRunStartPositions;
     if (shootClearSceneBtn) shootClearSceneBtn.disabled = shootSceneSetups.length === 0;
     if (shootSceneCount) {
@@ -809,6 +829,8 @@
     }
     shootModeBtns.forEach((btn) => {
       const mode = btn.dataset.shootMode;
+      const isRun = mode === "run";
+      btn.disabled = isRun && shootStandStill;
       btn.classList.toggle("is-active", mode === shootMode);
       if (mode === "shoot") {
         btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shoot";
@@ -838,7 +860,9 @@
       const targetLabel = setup.useTargetPlayer
         ? `shoots ${getPlayerLabelByKey(setup.targetPlayerKey)}`
         : "shoots map point";
-      meta.textContent = `${targetLabel} · runs ${setup.timeSec || 3}s`;
+      meta.textContent = setup.standStill
+        ? `${targetLabel} · stands still`
+        : `${targetLabel} · runs ${setup.timeSec || 3}s`;
 
       loadBtn.append(name, meta);
       loadBtn.addEventListener("click", () => loadShootSetup(setup.id));
@@ -866,13 +890,15 @@
     activeShootSetupId = setup.id;
 
     shootUseTargetPlayer = Boolean(setup.useTargetPlayer);
+    shootStandStill = Boolean(setup.standStill) || !setup.runPoint;
     if (shootTargetPlayerInput) shootTargetPlayerInput.checked = shootUseTargetPlayer;
+    if (shootStandStillInput) shootStandStillInput.checked = shootStandStill;
     if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
     shootTargetPlayerEl = shootUseTargetPlayer ? getPlayerByKey(setup.targetPlayerKey) : null;
     if (shootTargetPlayerEl) shootTargetPlayerEl.classList.add("is-shoot-target");
 
     shootPoint = clonePoint(setup.shootPoint);
-    runPoint = clonePoint(setup.runPoint);
+    runPoint = shootStandStill ? null : clonePoint(setup.runPoint);
     targetRunPoint = clonePoint(setup.targetRunPoint);
     if (shootTimeInput) shootTimeInput.value = String(setup.timeSec || 3);
     shootMode = "shoot";
@@ -918,7 +944,9 @@
     runPoint = null;
     targetRunPoint = null;
     shootUseTargetPlayer = false;
+    shootStandStill = false;
     if (shootTargetPlayerInput) shootTargetPlayerInput.checked = false;
+    if (shootStandStillInput) shootStandStillInput.checked = false;
     shootMode = "shoot";
     updateShootPanel();
     redrawShootOverlay();
@@ -1209,7 +1237,10 @@
     const point = normalizeLayerPoint(getLayerPoint(e, shootCanvas));
     if (!point) return;
     if (shootMode === "run") {
+      if (shootStandStill) return;
       runPoint = point;
+      shootStandStill = false;
+      if (shootStandStillInput) shootStandStillInput.checked = false;
     } else if (!shootUseTargetPlayer) {
       shootPoint = point;
     }
@@ -1225,8 +1256,9 @@
   }
 
   function getSetupRunners(setup) {
+    if (setup.standStill || !setup.runPoint) return [];
     const playerEl = getPlayerByKey(setup.playerKey);
-    if (!playerEl || !setup.runPoint) return [];
+    if (!playerEl) return [];
     const runners = [
       {
         key: setup.playerKey,
@@ -1249,13 +1281,20 @@
     return runners;
   }
 
+  function getSetupDurationMs(setup) {
+    return Math.max(0.5, Math.min(30, Number(setup.timeSec) || 3)) * 1000;
+  }
+
   function runShootSetups(setups, options = {}) {
+    if (!setups.length) return;
     const runners = setups.flatMap(getSetupRunners);
-    if (!runners.length) return;
+    const useSceneDots = Boolean(options.sceneDots);
+    const playDots = useSceneDots || setups.every((setup) => setup.standStill || !setup.runPoint);
+    const holdMs = Math.max(0, ...setups.map(getSetupDurationMs));
+    if (!runners.length && !playDots) return;
     if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
 
-    const useSceneDots = Boolean(options.sceneDots);
-    if (useSceneDots) startShootSceneDots(setups);
+    if (playDots) startShootSceneDots(setups);
     else clearShootSceneDots();
 
     const startedAt = performance.now();
@@ -1263,24 +1302,29 @@
     runners.forEach(({ key, el }) => {
       if (!startByKey.has(key)) startByKey.set(key, { el, ...getPlayerPercentPosition(el) });
     });
-    lastRunStartPositions = Array.from(startByKey.values());
+    lastRunStartPositions = runners.length ? Array.from(startByKey.values()) : null;
     updateShootPanel();
 
     const step = (now) => {
       let stillRunning = false;
       if (shootSceneDotAnim) updateShootSceneDots(now);
 
-      runners.forEach(({ key, el, point, duration }) => {
-        const start = startByKey.get(key);
-        if (!start) return;
-        const t = Math.min(1, (now - startedAt) / duration);
-        if (t < 1) stillRunning = true;
-        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        const endX = point.x * 100;
-        const endY = point.y * 100;
-        positionPlayer(el, start.x + (endX - start.x) * eased, start.y + (endY - start.y) * eased);
-        if (visionPlayerEl === el) redrawVisionLines();
-      });
+      if (runners.length) {
+        runners.forEach(({ key, el, point, duration }) => {
+          const start = startByKey.get(key);
+          if (!start) return;
+          const t = Math.min(1, (now - startedAt) / duration);
+          if (t < 1) stillRunning = true;
+          const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          const endX = point.x * 100;
+          const endY = point.y * 100;
+          positionPlayer(el, start.x + (endX - start.x) * eased, start.y + (endY - start.y) * eased);
+          if (visionPlayerEl === el) redrawVisionLines();
+        });
+      } else if (playDots && now - startedAt < holdMs) {
+        stillRunning = true;
+      }
+
       redrawShootOverlay();
 
       const dotsRemaining = Boolean(shootSceneDotAnim?.dots.length);
@@ -2073,9 +2117,10 @@
         playerKey: setup.playerKey,
         timeSec: setup.timeSec,
         useTargetPlayer: Boolean(setup.useTargetPlayer),
+        standStill: Boolean(setup.standStill),
         targetPlayerKey: setup.targetPlayerKey || "",
         shootPoint: clonePoint(setup.shootPoint),
-        runPoint: clonePoint(setup.runPoint),
+        runPoint: setup.standStill ? null : clonePoint(setup.runPoint),
         targetRunPoint: clonePoint(setup.targetRunPoint),
       })),
     };
@@ -2244,16 +2289,20 @@
       };
     }
     shootSceneSetups = Array.isArray(state.shootScene)
-      ? state.shootScene.map((setup) => ({
-          id: crypto.randomUUID(),
-          playerKey: setup.playerKey || "",
-          timeSec: Math.max(0.5, Math.min(30, Number(setup.timeSec) || 3)),
-          useTargetPlayer: Boolean(setup.useTargetPlayer),
-          targetPlayerKey: setup.targetPlayerKey || "",
-          shootPoint: clonePoint(setup.shootPoint),
-          runPoint: clonePoint(setup.runPoint),
-          targetRunPoint: clonePoint(setup.targetRunPoint),
-        }))
+      ? state.shootScene.map((setup) => {
+          const standStill = Boolean(setup.standStill) || !setup.runPoint;
+          return {
+            id: crypto.randomUUID(),
+            playerKey: setup.playerKey || "",
+            timeSec: Math.max(0.5, Math.min(30, Number(setup.timeSec) || 3)),
+            useTargetPlayer: Boolean(setup.useTargetPlayer),
+            standStill,
+            targetPlayerKey: setup.targetPlayerKey || "",
+            shootPoint: clonePoint(setup.shootPoint),
+            runPoint: standStill ? null : clonePoint(setup.runPoint),
+            targetRunPoint: clonePoint(setup.targetRunPoint),
+          };
+        })
       : [];
     activeShootSetupId = null;
     try {
