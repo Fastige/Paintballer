@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=8" />
-  <link rel="stylesheet" href="field-mapper.css?v=41" />
+  <link rel="stylesheet" href="field-mapper.css?v=42" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -277,7 +277,7 @@
                   <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shoot</button>
                   <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
                 </div>
-                <p class="fm-editor-status" id="fm-shoot-target-status">No target player selected.</p>
+                <p class="fm-editor-status" id="fm-shoot-target-status" hidden></p>
               </div>
 
               <div class="fm-editor-inspector">
@@ -316,32 +316,32 @@
                 Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above. Stand still lets a player shoot without setting a run location. No shot lets a player just run. Shoot over draws the line straight through structures.
               </p>
             </details>
-
-            <section class="fm-shoot-scene fm-timeline" aria-label="Saved shoot scene">
-              <div class="fm-timeline-toolbar">
-                <div class="fm-shoot-scene-head">
-                  <p class="fm-editor-section-label">Timeline</p>
-                  <p class="fm-shoot-scene-count" id="shoot-scene-count">0 saved</p>
-                </div>
-                <div class="fm-timeline-actions">
-                  <button type="button" class="fm-timeline-btn fm-timeline-save" id="shoot-save-setup" disabled>Save player setup</button>
-                  <button type="button" class="fm-timeline-btn fm-timeline-add" id="shoot-new-setup">Add another player</button>
-                  <span class="fm-timeline-divider" aria-hidden="true"></span>
-                  <button type="button" class="fm-timeline-btn" id="shoot-reset-run" disabled>Reset scene</button>
-                  <button type="button" class="fm-timeline-btn" id="shoot-clear">Clear shoot points</button>
-                </div>
-              </div>
-              <div class="fm-timeline-body" id="shoot-timeline">
-                <div class="fm-timeline-ruler" id="shoot-timeline-ruler" aria-hidden="true"></div>
-                <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
-                <div class="fm-timeline-playhead" id="shoot-timeline-playhead" hidden aria-hidden="true"></div>
-              </div>
-              <div class="fm-shoot-scene-actions">
-                <button type="button" class="fm-timeline-btn" id="shoot-reset-scene" disabled>Reset scene</button>
-                <button type="button" class="fm-timeline-btn fm-timeline-danger" id="shoot-clear-scene" disabled>Clear scene</button>
-              </div>
-            </section>
           </div>
+
+          <section class="fm-shoot-scene fm-timeline" aria-label="Saved shoot scene">
+            <div class="fm-timeline-toolbar">
+              <div class="fm-shoot-scene-head">
+                <p class="fm-editor-section-label">Timeline</p>
+                <p class="fm-shoot-scene-count" id="shoot-scene-count">0 saved</p>
+              </div>
+              <div class="fm-timeline-actions">
+                <button type="button" class="fm-timeline-btn fm-timeline-save" id="shoot-save-setup" disabled>Save player setup</button>
+                <button type="button" class="fm-timeline-btn fm-timeline-add" id="shoot-new-setup">Add another player</button>
+                <span class="fm-timeline-divider" aria-hidden="true"></span>
+                <button type="button" class="fm-timeline-btn" id="shoot-reset-run" disabled>Reset scene</button>
+                <button type="button" class="fm-timeline-btn" id="shoot-clear">Clear shoot points</button>
+              </div>
+            </div>
+            <div class="fm-timeline-body" id="shoot-timeline">
+              <div class="fm-timeline-ruler" id="shoot-timeline-ruler" aria-hidden="true"></div>
+              <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
+              <div class="fm-timeline-playhead" id="shoot-timeline-playhead" hidden aria-hidden="true"></div>
+            </div>
+            <div class="fm-shoot-scene-actions">
+              <button type="button" class="fm-timeline-btn" id="shoot-reset-scene" disabled>Reset scene</button>
+              <button type="button" class="fm-timeline-btn fm-timeline-danger" id="shoot-clear-scene" disabled>Clear scene</button>
+            </div>
+          </section>
         </aside>
 
         <section class="fm-tools-section" id="fm-tools-section" aria-label="Map tools">
@@ -515,6 +515,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=48"></script>
+  <script src="field-mapper.js?v=49"></script>
 </body>
 </html>

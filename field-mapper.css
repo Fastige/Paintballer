@@ -1153,8 +1153,20 @@
   touch-action: manipulation;
 }
 
-.fm-shoot-scene-load:disabled {
+.fm-shoot-scene-load[aria-disabled="true"] {
   cursor: default;
+}
+
+.fm-timeline-body.is-dragging,
+.fm-timeline-body.is-dragging * {
+  cursor: ew-resize !important;
+}
+
+.fm-shoot-scene-item.is-resizing .fm-clip {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 16px color-mix(in srgb, var(--clip-color) 60%, transparent);
 }
 
 .fm-track-head {
@@ -1187,7 +1199,7 @@
 }
 
 @media (hover: hover) {
-  .fm-shoot-scene-load:not(:disabled):hover .fm-track-head {
+  .fm-shoot-scene-load:not([aria-disabled="true"]):hover .fm-track-head {
     border-color: rgba(255, 255, 255, 0.22);
   }
 }
@@ -1241,7 +1253,11 @@
   gap: 2px;
   width: calc(var(--clip-len, 1) * 100%);
   min-width: 72px;
-  padding: 6px 4px;
+  padding: 6px 14px 6px 4px;
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
   border: 1px solid color-mix(in srgb, var(--clip-color) 75%, transparent);
   border-radius: 6px;
   background: color-mix(in srgb, var(--clip-color) 26%, #101311);
@@ -1337,10 +1353,43 @@
   flex: 1 1 auto;
 }
 
-.fm-clip.is-hold .fm-clip-shot::after {
-  content: "· hold";
-  font-weight: 500;
-  opacity: 0.75;
+.fm-clip-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: ew-resize;
+  transition: background 0.15s;
+}
+
+.fm-clip-handle::before {
+  content: "";
+  width: 2px;
+  height: 45%;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.fm-shoot-scene-load.is-active .fm-clip-handle,
+.fm-shoot-scene-item.is-resizing .fm-clip-handle {
+  background: #fff;
+}
+
+.fm-shoot-scene-load.is-active .fm-clip-handle::before,
+.fm-shoot-scene-item.is-resizing .fm-clip-handle::before {
+  background: #1a1a1a;
+}
+
+@media (hover: hover) {
+  .fm-clip:hover .fm-clip-handle {
+    background: rgba(255, 255, 255, 0.35);
+  }
 }
 
 .fm-clip-badge {
@@ -2470,7 +2519,7 @@
 
   .fm-clip {
     min-width: 52px;
-    padding: 6px 3px;
+    padding: 6px 13px 6px 3px;
   }
 
   .fm-clip-seg {

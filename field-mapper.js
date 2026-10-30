@@ -203,6 +203,8 @@
   let shootSceneDotAnim = null;
   let shootSceneSetups = [];
   let timelineScaleSec = 5;
+  let timelineDrag = null;
+  let suppressTimelineClick = false;
   let activeShootSetupId = null;
   let activePlacementTeam = "a";
   let teamPlacement = createDefaultTeamPlacement();
@@ -1020,10 +1022,11 @@
     }
     if (shootTargetPlayerInput) shootTargetPlayerInput.disabled = shootNoShot;
     if (shootTargetStatus) {
+      shootTargetStatus.hidden = !shootNoShot && !shootUseTargetPlayer;
       if (shootNoShot) {
         shootTargetStatus.textContent = "No shot — set a run point for this player.";
       } else if (!shootUseTargetPlayer) {
-        shootTargetStatus.textContent = "Shoot point is a map spot.";
+        shootTargetStatus.textContent = "";
       } else if (shootTargetPlayerEl) {
         shootTargetStatus.textContent = `Target player: ${getPlayerLabel(shootTargetPlayerEl)}`;
       } else {
@@ -1088,6 +1091,7 @@
       } else {
         shot.textContent = "Shot";
       }
+      if (setup.standStill) shot.textContent += ` · hold ${setup.timeSec || 3}s`;
       const hasShot = setup.useTargetPlayer ? setup.targetPlayerKey : setup.shootPoint;
       shot.classList.toggle("is-missing", !hasShot);
       clip.append(shot);
@@ -1105,6 +1109,11 @@
       badge.textContent = "Over";
       clip.append(badge);
     }
+    const handle = document.createElement("span");
+    handle.className = "fm-clip-handle";
+    handle.setAttribute("aria-hidden", "true");
+    clip.append(handle);
+    clip.title = "Drag to change run time";
     return clip;
   }
 
@@ -1113,7 +1122,9 @@
     const li = document.createElement("li");
     li.className = "fm-shoot-scene-item";
     li.dataset.team = player?.dataset.team || "";
+    li.dataset.setupId = options.draft ? "draft" : setup.id;
     if (options.draft) li.classList.add("is-draft");
+    if (timelineDrag?.moved && timelineDrag.id === li.dataset.setupId) li.classList.add("is-resizing");
 
     const loadBtn = document.createElement("button");
     loadBtn.type = "button";
@@ -1143,7 +1154,7 @@
     lane.append(buildTimelineClip(setup, scaleSec));
 
     loadBtn.append(head, lane);
-    if (options.draft) loadBtn.disabled = true;
+    if (options.draft) loadBtn.setAttribute("aria-disabled", "true");
     else loadBtn.addEventListener("click", () => loadShootSetup(setup.id));
     li.append(loadBtn);
 
@@ -1178,7 +1189,8 @@
       shootPlayerEl && !activeShootSetupId ? getCurrentShootSetup(true) : null;
     const allSetups = draftSetup ? [...shootSceneSetups, draftSetup] : shootSceneSetups;
     const longestSec = Math.max(0, ...allSetups.map((setup) => getSetupDurationMs(setup) / 1000));
-    timelineScaleSec = Math.max(5, Math.ceil(longestSec));
+    const dragMinScale = timelineDrag?.moved ? timelineDrag.minScale : 0;
+    timelineScaleSec = Math.max(5, Math.ceil(longestSec), dragMinScale);
 
     renderTimelineRuler(timelineScaleSec);
     shootTimeline?.classList.toggle("is-empty", allSetups.length === 0);
@@ -1201,6 +1213,87 @@
     shootTimelinePlayhead.hidden = false;
     const progress = Math.min(1, elapsedMs / (timelineScaleSec * 1000));
     shootTimelinePlayhead.style.setProperty("--playhead", String(progress));
+  }
+
+  function getTimelineDragSec(clientX) {
+    const rect = shootTimelineRuler?.getBoundingClientRect();
+    if (!rect?.width || !timelineDrag) return null;
+    const current = timelineDrag.sec ?? timelineDrag.startSec;
+    if (clientX > rect.right) {
+      const now = performance.now();
+      if (now - timelineDrag.lastGrowAt < 120) return current;
+      timelineDrag.lastGrowAt = now;
+      return Math.min(30, Math.max(current, timelineScaleSec) + 0.5);
+    }
+    const sec = timelineDrag.startSec + (clientX - timelineDrag.startX) / timelineDrag.pxPerSec;
+    return Math.max(0.5, Math.min(30, Math.round(sec * 2) / 2));
+  }
+
+  function setTimelineClipTime(id, sec) {
+    if (id === "draft") {
+      if (shootTimeInput) shootTimeInput.value = String(sec);
+      return;
+    }
+    const setup = shootSceneSetups.find((s) => s.id === id);
+    if (!setup) return;
+    setup.timeSec = sec;
+    if (id === activeShootSetupId && shootTimeInput) shootTimeInput.value = String(sec);
+  }
+
+  function onTimelineDragMove(e) {
+    if (!timelineDrag || e.pointerId !== timelineDrag.pointerId) return;
+    if (!timelineDrag.moved && Math.abs(e.clientX - timelineDrag.startX) < 4) return;
+    if (!timelineDrag.moved) {
+      timelineDrag.moved = true;
+      shootTimeline?.classList.add("is-dragging");
+    }
+    e.preventDefault();
+    const sec = getTimelineDragSec(e.clientX);
+    if (sec == null || sec === timelineDrag.sec) return;
+    timelineDrag.sec = sec;
+    setTimelineClipTime(timelineDrag.id, sec);
+    renderShootSceneList();
+  }
+
+  function endTimelineDrag(e) {
+    if (!timelineDrag || e.pointerId !== timelineDrag.pointerId) return;
+    const { moved } = timelineDrag;
+    timelineDrag = null;
+    shootTimeline?.classList.remove("is-dragging");
+    window.removeEventListener("pointermove", onTimelineDragMove);
+    window.removeEventListener("pointerup", endTimelineDrag);
+    window.removeEventListener("pointercancel", endTimelineDrag);
+    if (!moved) return;
+    suppressTimelineClick = true;
+    setTimeout(() => {
+      suppressTimelineClick = false;
+    }, 0);
+    updateShootPanel();
+  }
+
+  function startTimelineDrag(e) {
+    if (e.button !== 0 || timelineDrag) return;
+    const item = e.target.closest(".fm-clip")?.closest(".fm-shoot-scene-item");
+    const rulerWidth = shootTimelineRuler?.getBoundingClientRect().width;
+    if (!item?.dataset.setupId || !rulerWidth) return;
+    const id = item.dataset.setupId;
+    const setup =
+      id === "draft" ? getCurrentShootSetup(true) : shootSceneSetups.find((s) => s.id === id);
+    if (!setup) return;
+    timelineDrag = {
+      id,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startSec: getSetupDurationMs(setup) / 1000,
+      pxPerSec: rulerWidth / timelineScaleSec,
+      moved: false,
+      sec: null,
+      minScale: timelineScaleSec,
+      lastGrowAt: 0,
+    };
+    window.addEventListener("pointermove", onTimelineDragMove);
+    window.addEventListener("pointerup", endTimelineDrag);
+    window.addEventListener("pointercancel", endTimelineDrag);
   }
 
   function loadShootSetup(id) {
@@ -3422,6 +3515,16 @@
   shootClearSceneBtn?.addEventListener("click", clearShootScene);
   shootTimeInput?.addEventListener("change", updateShootPanel);
   shootTimeInput?.addEventListener("input", renderShootSceneList);
+  shootSceneList?.addEventListener("pointerdown", startTimelineDrag);
+  shootSceneList?.addEventListener(
+    "click",
+    (e) => {
+      if (!suppressTimelineClick) return;
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true
+  );
   playerNameInput?.addEventListener("input", () => {
     if (syncingPlayerName || !namedPlayerEl) return;
     applyPlayerName(namedPlayerEl, playerNameInput.value, "panel");
