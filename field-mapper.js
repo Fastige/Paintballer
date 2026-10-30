@@ -24,6 +24,16 @@
   const canvas = document.getElementById("fm-canvas");
   const visionCanvas = document.getElementById("fm-vision-canvas");
   const shootCanvas = document.getElementById("fm-shoot-canvas");
+  const mirrorCanvas = document.getElementById("fm-mirror-canvas");
+  const mirrorPrompt = document.getElementById("fm-mirror-prompt");
+  const mirrorPromptText = document.getElementById("fm-mirror-prompt-text");
+  const mirrorCancelBtn = document.getElementById("mirror-cancel");
+  const mirrorLayoutBtn = document.getElementById("mirror-layout");
+  const mirrorLayoutMobileBtn = document.getElementById("mirror-layout-mobile");
+  const mirrorConfirm = document.getElementById("fm-mirror-confirm");
+  const mirrorConfirmBackdrop = document.getElementById("fm-mirror-confirm-backdrop");
+  const mirrorConfirmYes = document.getElementById("mirror-confirm-yes");
+  const mirrorConfirmNo = document.getElementById("mirror-confirm-no");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
   const uploadPromptLabel = document.getElementById("fm-upload-prompt");
@@ -169,6 +179,14 @@
   let activeShootSetupId = null;
   let activePlacementTeam = "a";
   let teamPlacement = createDefaultTeamPlacement();
+  /** @type {null|"box"|"line"} */
+  let mirrorStep = null;
+  /** Normalized 0–1 coordinates so the overlay survives canvas resizes */
+  let mirrorBox = null;
+  let mirrorDragStart = null;
+  let mirrorLinePoints = [];
+  let mirrorHoverPoint = null;
+  let mirrorToastTimer = null;
   /** @type {Record<string,string>} */
   let playerNames = {};
   let namedPlayerEl = null;
@@ -180,6 +198,7 @@
   let mapPixelCache = null;
   /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
   let structurePointer = null;
+  let structureDrag = null;
   let fieldIntelReport = { name: "", bio: "" };
   let intelModalOpen = false;
   /** @type {ReturnType<typeof serializeFieldState>|null} */
@@ -316,7 +335,7 @@
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
       shoot: "Shoot — tap runner, set shoot/run points, or target an opposing player.",
-      sizer: "Sizer — tap a bunker, then resize or use arrows.",
+      sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
     mobileTip.innerHTML = tips[tool] || tips.select;
@@ -336,11 +355,14 @@
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
     if (saveMapPackBtn) saveMapPackBtn.disabled = !hasMap;
     if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
+    if (mirrorLayoutBtn) mirrorLayoutBtn.disabled = !hasMap || !hasStructures;
+    if (mirrorLayoutMobileBtn) mirrorLayoutMobileBtn.disabled = !hasMap || !hasStructures;
     updateTeamPlacementPanel();
     updateShootPanel();
   }
 
   function setTool(tool) {
+    if (mirrorStep) cancelMirrorFlow();
     uiTool = tool;
     activeTool = tool === "intel" ? "select" : tool;
 
@@ -405,7 +427,7 @@
         shoot:
           "<strong>Shoot</strong> — click a runner, set shoot/run points, or target an opposing player",
         sizer:
-          "<strong>Sizer</strong> — resize structures · <strong>arrows</strong> to move · intel below map",
+          "<strong>Sizer</strong> — resize structures · <strong>drag</strong> or arrows to move · intel below map",
         intel:
           "<strong>Intel</strong> — click a green bunker on the map, then file name and bio below",
       };
@@ -604,15 +626,38 @@
     return smallestPositiveT((-B - sqrt) / (2 * A), (-B + sqrt) / (2 * A));
   }
 
-  function rayTriangleHitT(ox, oy, dx, dy, left, top, width, height) {
+  function getTrianglePoints(left, top, width, height, flipped) {
     const right = left + width;
     const bottom = top + height;
-    const ax = left + width / 2;
-    const ay = top;
+    const midX = left + width / 2;
+    return flipped
+      ? [
+          [midX, bottom],
+          [left, top],
+          [right, top],
+        ]
+      : [
+          [midX, top],
+          [right, bottom],
+          [left, bottom],
+        ];
+  }
+
+  function traceTrianglePath(context, left, top, width, height, flipped) {
+    const pts = getTrianglePoints(left, top, width, height, flipped);
+    context.beginPath();
+    context.moveTo(pts[0][0], pts[0][1]);
+    context.lineTo(pts[1][0], pts[1][1]);
+    context.lineTo(pts[2][0], pts[2][1]);
+    context.closePath();
+  }
+
+  function rayTriangleHitT(ox, oy, dx, dy, left, top, width, height, flipped) {
+    const [a, b, c] = getTrianglePoints(left, top, width, height, flipped);
     const hits = [
-      raySegmentHitT(ox, oy, dx, dy, ax, ay, right, bottom),
-      raySegmentHitT(ox, oy, dx, dy, right, bottom, left, bottom),
-      raySegmentHitT(ox, oy, dx, dy, left, bottom, ax, ay),
+      raySegmentHitT(ox, oy, dx, dy, a[0], a[1], b[0], b[1]),
+      raySegmentHitT(ox, oy, dx, dy, b[0], b[1], c[0], c[1]),
+      raySegmentHitT(ox, oy, dx, dy, c[0], c[1], a[0], a[1]),
     ].filter((t) => t !== null);
     return hits.length ? Math.min(...hits) : null;
   }
@@ -633,7 +678,7 @@
       return rayEllipseHitT(ox, oy, dx, dy, left + width / 2, top + height / 2, width / 2, height / 2);
     }
     if (shape.type === "triangle") {
-      return rayTriangleHitT(ox, oy, dx, dy, left, top, width, height);
+      return rayTriangleHitT(ox, oy, dx, dy, left, top, width, height, Boolean(shape.flip));
     }
     return null;
   }
@@ -1572,6 +1617,7 @@
       id: crypto.randomUUID(),
       type: shape.type,
       fill: normalizeStructureFill(shape.fill),
+      flip: Boolean(shape.flip),
       x1: left,
       y1: top,
       x2: left + bounds.width,
@@ -1948,12 +1994,13 @@
         if (dx * dx + dy * dy <= 1) return s;
       } else if (s.type === "triangle") {
         if (nx < left || nx > right || ny < top || ny > bottom) continue;
-        const ax = left + b.width / 2;
-        const ay = top;
-        const bx = right;
-        const by = bottom;
-        const cx2 = left;
-        const cy2 = bottom;
+        const [[ax, ay], [bx, by], [cx2, cy2]] = getTrianglePoints(
+          left,
+          top,
+          b.width,
+          b.height,
+          Boolean(s.flip)
+        );
         const denom = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
         if (Math.abs(denom) < 1e-8) continue;
         const a = ((by - cy2) * (nx - cx2) + (cx2 - bx) * (ny - cy2)) / denom;
@@ -1964,6 +2011,21 @@
     }
 
     return assignStructureFromMapClick(px, py);
+  }
+
+  function hitTestStructureBounds(px, py, padPx) {
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return null;
+    for (let i = structures.length - 1; i >= 0; i--) {
+      const s = structures[i];
+      const b = getStructureBounds(s);
+      const left = b.left * w - padPx;
+      const top = b.top * h - padPx;
+      const right = (b.left + b.width) * w + padPx;
+      const bottom = (b.top + b.height) * h + padPx;
+      if (px >= left && px <= right && py >= top && py <= bottom) return s;
+    }
+    return null;
   }
 
   function structureHasIntel(shape) {
@@ -2184,11 +2246,7 @@
       context.ellipse(left + width / 2, top + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
       context.stroke();
     } else if (shape.type === "triangle") {
-      context.beginPath();
-      context.moveTo(left + width / 2, top);
-      context.lineTo(left + width, top + height);
-      context.lineTo(left, top + height);
-      context.closePath();
+      traceTrianglePath(context, left, top, width, height, Boolean(shape.flip));
       context.stroke();
     }
 
@@ -2261,11 +2319,7 @@
       if (shouldFill) context.fill();
       if (shouldStroke) context.stroke();
     } else if (shape.type === "triangle") {
-      context.beginPath();
-      context.moveTo(left + width / 2, top);
-      context.lineTo(left + width, top + height);
-      context.lineTo(left, top + height);
-      context.closePath();
+      traceTrianglePath(context, left, top, width, height, Boolean(shape.flip));
       if (shouldFill) context.fill();
       if (shouldStroke) context.stroke();
     }
@@ -2284,6 +2338,7 @@
         x2: s.x2,
         y2: s.y2,
         fill: normalizeStructureFill(s.fill),
+        flip: Boolean(s.flip),
         name: s.name || "",
         bio: s.bio || "",
       })),
@@ -2494,18 +2549,21 @@
     }
     if (!Array.isArray(state.structures) || !state.structures.length) return;
 
-    structures = state.structures.map((s) => ({
-      id: crypto.randomUUID(),
-      type: s.type || "rectangle",
-      x1: s.x1,
-      y1: s.y1,
-      x2: s.x2,
-      y2: s.y2,
-      name: s.name || "",
-      bio: s.bio || "",
-      fill: normalizeStructureFill(s.fill),
-      detected: true,
-    }));
+    structures = state.structures
+      .filter((s) => Math.abs(s.x2 - s.x1) > 0.002 && Math.abs(s.y2 - s.y1) > 0.002)
+      .map((s) => ({
+        id: crypto.randomUUID(),
+        type: s.type || "rectangle",
+        x1: s.x1,
+        y1: s.y1,
+        x2: s.x2,
+        y2: s.y2,
+        name: s.name || "",
+        bio: s.bio || "",
+        fill: normalizeStructureFill(s.fill),
+        flip: Boolean(s.flip),
+        detected: true,
+      }));
   }
 
   function loadMapImageFromFile(file, packState) {
@@ -2623,11 +2681,11 @@
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
-    [canvas, structureCanvas, visionCanvas, shootCanvas].forEach((c) => {
+    [canvas, structureCanvas, visionCanvas, shootCanvas, mirrorCanvas].forEach((c) => {
       const isVisionLayer = c === visionCanvas;
       let snapshot = null;
       const cctx = c.getContext("2d");
-      const shouldSnapshot = !isVisionLayer && c !== shootCanvas;
+      const shouldSnapshot = !isVisionLayer && c !== shootCanvas && c !== mirrorCanvas;
       if (shouldSnapshot && c.width > 0 && c.height > 0) {
         snapshot = document.createElement("canvas");
         snapshot.width = c.width;
@@ -2652,6 +2710,7 @@
     redrawStructures();
     redrawVisionLines();
     redrawShootOverlay();
+    redrawMirrorOverlay();
   }
 
   function classifyComponent(minX, maxX, minY, maxY) {
@@ -3131,7 +3190,7 @@
     const ny1 = Math.max(0, Math.min(1, y1 / h));
     const nx2 = Math.max(0, Math.min(1, x2 / w));
     const ny2 = Math.max(0, Math.min(1, y2 / h));
-    if (Math.abs(nx2 - nx1) * w < 6 && Math.abs(ny2 - ny1) * h < 6) return null;
+    if (Math.abs(nx2 - nx1) * w < 8 || Math.abs(ny2 - ny1) * h < 8) return null;
     return {
       id: crypto.randomUUID(),
       type: activeShape,
@@ -3153,7 +3212,10 @@
     }
 
     const { x, y } = getLayerPoint(e, structureCanvas);
-    const hit = hitTestStructure(x, y);
+    const canDrag = activeTool === "sizer" || activeTool === "structure";
+    const hit =
+      hitTestStructure(x, y) ||
+      (canDrag ? hitTestStructureBounds(x, y, IS_COARSE ? 14 : 8) : null);
 
     structurePointer = {
       x: e.clientX,
@@ -3165,8 +3227,27 @@
     if (hit) {
       e.preventDefault();
       structurePointer.handled = true;
+      if (canDrag) {
+        selectedStructureId = hit.id;
+        updateSizerPanel();
+        updateIntelReport();
+        redrawStructures();
+        const { w, h } = getCanvasSize();
+        structureDrag = {
+          id: hit.id,
+          pid: e.pointerId,
+          startX: x,
+          startY: y,
+          bounds: getStructureBounds(hit),
+          w,
+          h,
+          moved: false,
+        };
+        setInteractionLock(true);
+        structureCanvas.setPointerCapture(e.pointerId);
+        return;
+      }
       pickStructureAt(x, y, uiTool === "intel" || activeTool === "select");
-      if (activeTool === "sizer" || activeTool === "structure") return;
       return;
     }
 
@@ -3211,7 +3292,49 @@
     structurePointer = null;
   }
 
+  function moveStructureDrag(e) {
+    if (!structureDrag || structureDrag.pid !== e.pointerId) return false;
+    e.preventDefault();
+    const shape = structures.find((s) => s.id === structureDrag.id);
+    if (!shape) return true;
+    const { x, y } = getLayerPoint(e, structureCanvas);
+    const dxPx = x - structureDrag.startX;
+    const dyPx = y - structureDrag.startY;
+    if (!structureDrag.moved) {
+      if (dxPx * dxPx + dyPx * dyPx < 16) return true;
+      structureDrag.moved = true;
+      endSizerEdit();
+      rememberSizerUndo(shape);
+    }
+    const b = structureDrag.bounds;
+    const left = Math.max(0, Math.min(1 - b.width, b.left + dxPx / (structureDrag.w || 1)));
+    const top = Math.max(0, Math.min(1 - b.height, b.top + dyPx / (structureDrag.h || 1)));
+    shape.x1 = left;
+    shape.y1 = top;
+    shape.x2 = left + b.width;
+    shape.y2 = top + b.height;
+    redrawStructures();
+    return true;
+  }
+
+  function endStructureDrag(e) {
+    if (!structureDrag || structureDrag.pid !== e.pointerId) return;
+    const moved = structureDrag.moved;
+    structureDrag = null;
+    setInteractionLock(false);
+    if (structureCanvas.hasPointerCapture(e.pointerId)) {
+      structureCanvas.releasePointerCapture(e.pointerId);
+    }
+    if (moved) {
+      persistFieldState();
+      updateSizerPanel();
+      updateIntelReport();
+      redrawStructures();
+    }
+  }
+
   function moveStructurePlace(e) {
+    if (moveStructureDrag(e)) return;
     if (!isPlacingStructure || !placeStart) return;
     e.preventDefault();
     const end = getLayerPoint(e, structureCanvas);
@@ -3251,10 +3374,12 @@
   structureCanvas.addEventListener("pointerdown", startStructurePlace);
   structureCanvas.addEventListener("pointermove", moveStructurePlace);
   structureCanvas.addEventListener("pointerup", (e) => {
+    endStructureDrag(e);
     endStructurePlace(e);
     endStructurePointer(e);
   });
   structureCanvas.addEventListener("pointercancel", (e) => {
+    endStructureDrag(e);
     endStructurePlace(e);
     endStructurePointer(e);
   });
@@ -3323,6 +3448,8 @@
   }
 
   function hideMapUI() {
+    cancelMirrorFlow();
+    closeMirrorConfirm();
     hasMap = false;
     mapPixelCache = null;
     fieldIntelReport = { name: "", bio: "" };
@@ -3426,8 +3553,369 @@
     intelModalBackdrop?.addEventListener("click", closeIntelModal);
   }
 
+  const MIRROR_COLOR = "#ff5c00";
+  const MIRROR_SNAP_DEG = 8;
+  const MIRROR_MIN_BOX_PX = 24;
+
+  function openMirrorConfirm() {
+    if (!hasMap || !structures.length || !mirrorConfirm) return;
+    if (mirrorStep) cancelMirrorFlow();
+    mirrorConfirm.hidden = false;
+    mirrorConfirm.setAttribute("aria-hidden", "false");
+    body.classList.add("fm-intel-modal-open");
+    mirrorConfirmYes?.focus();
+  }
+
+  function closeMirrorConfirm() {
+    if (!mirrorConfirm || mirrorConfirm.hidden) return;
+    mirrorConfirm.hidden = true;
+    mirrorConfirm.setAttribute("aria-hidden", "true");
+    if (!intelModalOpen) body.classList.remove("fm-intel-modal-open");
+  }
+
+  function showMirrorPrompt(text, isToast) {
+    if (!mirrorPrompt || !mirrorPromptText) return;
+    clearTimeout(mirrorToastTimer);
+    mirrorPromptText.textContent = text;
+    mirrorPrompt.hidden = false;
+    if (isToast) {
+      mirrorToastTimer = setTimeout(() => {
+        if (!mirrorStep) mirrorPrompt.hidden = true;
+      }, 2200);
+    }
+  }
+
+  function hideMirrorPrompt() {
+    clearTimeout(mirrorToastTimer);
+    if (mirrorPrompt) mirrorPrompt.hidden = true;
+  }
+
+  function startMirrorFlow() {
+    closeMirrorConfirm();
+    if (!hasMap) return;
+    mirrorStep = "box";
+    mirrorBox = null;
+    mirrorDragStart = null;
+    mirrorLinePoints = [];
+    mirrorHoverPoint = null;
+    stage.classList.add("is-mirroring");
+    mirrorCanvas.hidden = false;
+    if (mirrorCancelBtn) mirrorCancelBtn.hidden = false;
+    showMirrorPrompt("Draw a box around the field");
+    redrawMirrorOverlay();
+    if (isMobileLayout()) stage.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  function cancelMirrorFlow() {
+    mirrorStep = null;
+    mirrorBox = null;
+    mirrorDragStart = null;
+    mirrorLinePoints = [];
+    mirrorHoverPoint = null;
+    stage.classList.remove("is-mirroring");
+    if (mirrorCanvas) mirrorCanvas.hidden = true;
+    if (mirrorCancelBtn) mirrorCancelBtn.hidden = true;
+    hideMirrorPrompt();
+    redrawMirrorOverlay();
+  }
+
+  function getMirrorPoint(e) {
+    const { w, h } = getCanvasSize();
+    const p = getLayerPoint(e, mirrorCanvas);
+    return {
+      x: Math.max(0, Math.min(1, p.x / (w || 1))),
+      y: Math.max(0, Math.min(1, p.y / (h || 1))),
+    };
+  }
+
+  function snapMirrorLinePoint(start, point) {
+    const { w, h } = getCanvasSize();
+    const dx = (point.x - start.x) * w;
+    const dy = (point.y - start.y) * h;
+    if (Math.hypot(dx, dy) < 1) return point;
+    const angle = Math.abs((Math.atan2(dy, dx) * 180) / Math.PI);
+    if (angle < MIRROR_SNAP_DEG || angle > 180 - MIRROR_SNAP_DEG) {
+      return { x: point.x, y: start.y };
+    }
+    if (Math.abs(angle - 90) < MIRROR_SNAP_DEG) {
+      return { x: start.x, y: point.y };
+    }
+    return point;
+  }
+
+  function redrawMirrorOverlay() {
+    if (!mirrorCanvas) return;
+    const mctx = mirrorCanvas.getContext("2d");
+    mctx.save();
+    mctx.setTransform(1, 0, 0, 1, 0, 0);
+    mctx.clearRect(0, 0, mirrorCanvas.width, mirrorCanvas.height);
+    mctx.restore();
+    if (!mirrorStep) return;
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return;
+
+    mctx.save();
+    if (mirrorBox) {
+      const left = Math.min(mirrorBox.x1, mirrorBox.x2) * w;
+      const top = Math.min(mirrorBox.y1, mirrorBox.y2) * h;
+      const width = Math.abs(mirrorBox.x2 - mirrorBox.x1) * w;
+      const height = Math.abs(mirrorBox.y2 - mirrorBox.y1) * h;
+
+      mctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      mctx.beginPath();
+      mctx.rect(0, 0, w, h);
+      mctx.rect(left, top, width, height);
+      mctx.fill("evenodd");
+
+      mctx.strokeStyle = MIRROR_COLOR;
+      mctx.lineWidth = 2.5;
+      mctx.setLineDash([10, 6]);
+      mctx.strokeRect(left, top, width, height);
+      mctx.setLineDash([]);
+    }
+
+    if (mirrorStep === "line" && mirrorLinePoints.length) {
+      const a = mirrorLinePoints[0];
+      const b = mirrorLinePoints[1] || (mirrorHoverPoint && snapMirrorLinePoint(a, mirrorHoverPoint));
+      mctx.strokeStyle = MIRROR_COLOR;
+      mctx.lineWidth = 3;
+      if (b) {
+        if (!mirrorLinePoints[1]) mctx.setLineDash([8, 6]);
+        mctx.beginPath();
+        mctx.moveTo(a.x * w, a.y * h);
+        mctx.lineTo(b.x * w, b.y * h);
+        mctx.stroke();
+        mctx.setLineDash([]);
+      }
+      [a, b].forEach((p) => {
+        if (!p) return;
+        mctx.beginPath();
+        mctx.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
+        mctx.fillStyle = MIRROR_COLOR;
+        mctx.fill();
+        mctx.lineWidth = 2;
+        mctx.strokeStyle = "#000";
+        mctx.stroke();
+      });
+    }
+    mctx.restore();
+  }
+
+  function boundsIoU(a, b) {
+    const ix = Math.max(0, Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left));
+    const iy = Math.max(0, Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top));
+    const inter = ix * iy;
+    const union = a.width * a.height + b.width * b.height - inter;
+    return union > 0 ? inter / union : 0;
+  }
+
+  function mirrorStructuresAcrossLine(box, p1, p2) {
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return { error: "Map is not ready" };
+
+    const boxLeft = Math.min(box.x1, box.x2) * w;
+    const boxRight = Math.max(box.x1, box.x2) * w;
+    const boxTop = Math.min(box.y1, box.y2) * h;
+    const boxBottom = Math.max(box.y1, box.y2) * h;
+
+    const px = p1.x * w;
+    const py = p1.y * h;
+    let dx = (p2.x - p1.x) * w;
+    let dy = (p2.y - p1.y) * h;
+    const len = Math.hypot(dx, dy);
+    if (len < 4) return { error: "The 50 line is too short — try again" };
+    dx /= len;
+    dy /= len;
+
+    const sideOf = (cx, cy) => dx * (cy - py) - dy * (cx - px);
+    const reflect = (cx, cy) => {
+      const t = (cx - px) * dx + (cy - py) * dy;
+      return { x: 2 * (px + dx * t) - cx, y: 2 * (py + dy * t) - cy };
+    };
+
+    const inBox = structures
+      .map((s) => {
+        const b = getStructureBounds(s);
+        const cx = (b.left + b.width / 2) * w;
+        const cy = (b.top + b.height / 2) * h;
+        return { s, b, cx, cy, side: sideOf(cx, cy) };
+      })
+      .filter(
+        (item) =>
+          item.cx >= boxLeft &&
+          item.cx <= boxRight &&
+          item.cy >= boxTop &&
+          item.cy <= boxBottom &&
+          Math.abs(item.side) > 2
+      );
+
+    const positive = inBox.filter((item) => item.side > 0);
+    const negative = inBox.filter((item) => item.side < 0);
+    const source = positive.length >= negative.length ? positive : negative;
+    if (!source.length) return { error: "No structures found inside the box" };
+
+    const r00 = 2 * dx * dx - 1;
+    const r01 = 2 * dx * dy;
+    const r11 = 2 * dy * dy - 1;
+    const flipsVertically = Math.abs(dx) > Math.abs(dy);
+
+    let added = 0;
+    let skipped = 0;
+    source.forEach(({ s, b, cx, cy }) => {
+      const hw = (b.width * w) / 2;
+      const hh = (b.height * h) / 2;
+      const newHw = Math.abs(r00) * hw + Math.abs(r01) * hh;
+      const newHh = Math.abs(r01) * hw + Math.abs(r11) * hh;
+      const c = reflect(cx, cy);
+
+      let ncx = c.x;
+      let ncy = c.y;
+      if (boxRight - boxLeft >= newHw * 2) {
+        ncx = Math.max(boxLeft + newHw, Math.min(boxRight - newHw, ncx));
+      }
+      if (boxBottom - boxTop >= newHh * 2) {
+        ncy = Math.max(boxTop + newHh, Math.min(boxBottom - newHh, ncy));
+      }
+
+      const copyBounds = {
+        left: (ncx - newHw) / w,
+        top: (ncy - newHh) / h,
+        width: (newHw * 2) / w,
+        height: (newHh * 2) / h,
+      };
+
+      const overlapsExisting = structures.some(
+        (other) => boundsIoU(getStructureBounds(other), copyBounds) >= 0.5
+      );
+      if (overlapsExisting) {
+        skipped++;
+        return;
+      }
+
+      structures.push({
+        id: crypto.randomUUID(),
+        type: s.type,
+        fill: normalizeStructureFill(s.fill),
+        flip: s.type === "triangle" && flipsVertically ? !s.flip : Boolean(s.flip),
+        x1: copyBounds.left,
+        y1: copyBounds.top,
+        x2: copyBounds.left + copyBounds.width,
+        y2: copyBounds.top + copyBounds.height,
+        detected: false,
+        name: "",
+        bio: "",
+      });
+      added++;
+    });
+
+    return { added, skipped };
+  }
+
+  function finishMirror() {
+    const box = mirrorBox;
+    const [p1, p2] = mirrorLinePoints;
+    const result = mirrorStructuresAcrossLine(box, p1, p2);
+    cancelMirrorFlow();
+
+    if (result.error) {
+      showMirrorPrompt(result.error, true);
+      return;
+    }
+
+    clearSizerUndo();
+    persistFieldState();
+    updateSizerPanel();
+    updateControlStates();
+    updateIntelReport();
+    redrawStructures();
+    redrawVisionLines();
+    redrawShootOverlay();
+
+    let message = `Mirrored ${result.added} structure${result.added === 1 ? "" : "s"}`;
+    if (result.skipped) message += ` (${result.skipped} already there)`;
+    showMirrorPrompt(message, true);
+  }
+
+  mirrorCanvas?.addEventListener("pointerdown", (e) => {
+    if (!mirrorStep) return;
+    e.preventDefault();
+    const point = getMirrorPoint(e);
+
+    if (mirrorStep === "box") {
+      mirrorDragStart = point;
+      mirrorBox = { x1: point.x, y1: point.y, x2: point.x, y2: point.y };
+      mirrorCanvas.setPointerCapture?.(e.pointerId);
+      hideMirrorPrompt();
+      redrawMirrorOverlay();
+      return;
+    }
+
+    if (mirrorStep === "line") {
+      if (!mirrorLinePoints.length) {
+        mirrorLinePoints = [point];
+        mirrorHoverPoint = point;
+        hideMirrorPrompt();
+        redrawMirrorOverlay();
+        return;
+      }
+      mirrorLinePoints = [mirrorLinePoints[0], snapMirrorLinePoint(mirrorLinePoints[0], point)];
+      redrawMirrorOverlay();
+      finishMirror();
+    }
+  });
+
+  mirrorCanvas?.addEventListener("pointermove", (e) => {
+    if (!mirrorStep) return;
+    const point = getMirrorPoint(e);
+    if (mirrorStep === "box" && mirrorDragStart) {
+      mirrorBox = { x1: mirrorDragStart.x, y1: mirrorDragStart.y, x2: point.x, y2: point.y };
+      redrawMirrorOverlay();
+    } else if (mirrorStep === "line" && mirrorLinePoints.length === 1) {
+      mirrorHoverPoint = point;
+      redrawMirrorOverlay();
+    }
+  });
+
+  function endMirrorBoxDrag(e) {
+    if (mirrorStep !== "box" || !mirrorDragStart) return;
+    if (e) {
+      mirrorBox = { ...mirrorBox, x2: getMirrorPoint(e).x, y2: getMirrorPoint(e).y };
+    }
+    mirrorDragStart = null;
+    const { w, h } = getCanvasSize();
+    const boxW = Math.abs(mirrorBox.x2 - mirrorBox.x1) * w;
+    const boxH = Math.abs(mirrorBox.y2 - mirrorBox.y1) * h;
+    if (boxW < MIRROR_MIN_BOX_PX || boxH < MIRROR_MIN_BOX_PX) {
+      mirrorBox = null;
+      redrawMirrorOverlay();
+      showMirrorPrompt("Draw a box around the field");
+      return;
+    }
+    mirrorStep = "line";
+    mirrorLinePoints = [];
+    mirrorHoverPoint = null;
+    redrawMirrorOverlay();
+    showMirrorPrompt("Click two points to draw the 50 line");
+  }
+
+  mirrorCanvas?.addEventListener("pointerup", endMirrorBoxDrag);
+  mirrorCanvas?.addEventListener("pointercancel", () => endMirrorBoxDrag(null));
+
+  mirrorLayoutBtn?.addEventListener("click", openMirrorConfirm);
+  mirrorLayoutMobileBtn?.addEventListener("click", () => {
+    closeToolsPanel();
+    openMirrorConfirm();
+  });
+  mirrorConfirmYes?.addEventListener("click", startMirrorFlow);
+  mirrorConfirmNo?.addEventListener("click", closeMirrorConfirm);
+  mirrorConfirmBackdrop?.addEventListener("click", closeMirrorConfirm);
+  mirrorCancelBtn?.addEventListener("click", cancelMirrorFlow);
+
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && intelModalOpen) closeIntelModal();
+    if (e.key !== "Escape") return;
+    if (mirrorConfirm && !mirrorConfirm.hidden) closeMirrorConfirm();
+    else if (mirrorStep) cancelMirrorFlow();
+    else if (intelModalOpen) closeIntelModal();
   });
 
   bindSizerInputs();
@@ -3455,7 +3943,7 @@
   document.addEventListener(
     "touchmove",
     (e) => {
-      if (isDrawing || isPlacingStructure || draggedPlayer) {
+      if (isDrawing || isPlacingStructure || draggedPlayer || mirrorDragStart || structureDrag) {
         e.preventDefault();
       }
     },

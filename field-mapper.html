@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=36" />
+  <link rel="stylesheet" href="field-mapper.css?v=37" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -77,9 +77,12 @@
             <span aria-hidden="true">⌖</span> Shoot
           </button>
         </div>
-        <div class="fm-tool-row fm-tool-row-1" role="group" aria-label="Size tools">
+        <div class="fm-tool-row fm-tool-row-2" role="group" aria-label="Size and mirror tools">
           <button type="button" class="fm-tool-btn" data-tool="sizer" title="Resize structures">
             <span aria-hidden="true">⇲</span> Sizer
+          </button>
+          <button type="button" class="fm-tool-btn" id="mirror-layout" title="Mirror structures across the 50 line" disabled>
+            <span aria-hidden="true">⇋</span> 50 Mirror
           </button>
         </div>
         <div class="fm-brush-panel" id="fm-brush-panel">
@@ -117,6 +120,11 @@
             <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
             <canvas id="fm-shoot-canvas" class="fm-canvas fm-canvas-shoot" hidden></canvas>
             <div id="fm-players" class="fm-players" hidden></div>
+            <canvas id="fm-mirror-canvas" class="fm-canvas fm-canvas-mirror" hidden></canvas>
+            <div class="fm-mirror-prompt" id="fm-mirror-prompt" hidden aria-live="polite">
+              <p class="fm-mirror-prompt-text" id="fm-mirror-prompt-text"></p>
+            </div>
+            <button type="button" class="fm-mirror-cancel" id="mirror-cancel" hidden>Cancel mirror</button>
           </div>
         </div>
         <p class="fm-hint" id="fm-hint" hidden>Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
@@ -156,9 +164,23 @@
             <p class="eyebrow">Sizer</p>
             <h2 class="fm-sizer-title">Structure size</h2>
           </div>
-          <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it.</p>
+          <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it, or drag it to move it.</p>
           <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
             <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
+            <div class="fm-sizer-position">
+              <p class="fm-range-label">Position</p>
+              <div class="fm-sizer-pad" role="group" aria-label="Move structure">
+                <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
+                <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
+                <span class="fm-pad-center" aria-hidden="true"></span>
+                <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
+                <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
+              </div>
+            </div>
+            <div class="fm-sizer-actions">
+              <button type="button" class="btn btn-primary fm-btn-full" id="duplicate-structure">Duplicate</button>
+              <button type="button" class="btn btn-ghost fm-btn-full" id="delete-structure">Delete</button>
+            </div>
             <p class="fm-range-label">Wall style</p>
             <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
               <button type="button" class="fm-style-btn is-active" data-sizer-style="filled">Filled</button>
@@ -180,20 +202,6 @@
                 <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
                 <span class="fm-sizer-unit">%</span>
               </div>
-            </div>
-            <div class="fm-sizer-position">
-              <p class="fm-range-label">Position</p>
-              <div class="fm-sizer-pad" role="group" aria-label="Move structure">
-                <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
-                <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
-                <span class="fm-pad-center" aria-hidden="true"></span>
-                <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
-                <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
-              </div>
-            </div>
-            <div class="fm-sizer-actions">
-              <button type="button" class="btn btn-primary fm-btn-full" id="duplicate-structure">Duplicate</button>
-              <button type="button" class="btn btn-ghost fm-btn-full" id="delete-structure">Delete</button>
             </div>
           </div>
           <button type="button" class="btn btn-ghost fm-btn-full" id="undo-sizer" disabled>Undo Sizer change</button>
@@ -328,6 +336,10 @@
               <span class="fm-mobile-icon" aria-hidden="true">📋</span>
               <span>Intel</span>
             </button>
+            <button type="button" class="fm-mobile-btn" id="mirror-layout-mobile" disabled>
+              <span class="fm-mobile-icon" aria-hidden="true">⇋</span>
+              <span>50 Mirror</span>
+            </button>
             <label class="fm-mobile-btn fm-mobile-upload">
               <span class="fm-mobile-icon" aria-hidden="true">📷</span>
               <span>Upload</span>
@@ -368,6 +380,17 @@
       </div>
     </section>
   </main>
+
+  <div class="fm-confirm-modal" id="fm-mirror-confirm" hidden aria-hidden="true">
+    <div class="fm-intel-modal-backdrop" id="fm-mirror-confirm-backdrop" tabindex="-1"></div>
+    <div class="fm-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="fm-mirror-confirm-text">
+      <p class="fm-confirm-text" id="fm-mirror-confirm-text">Are you sure you want to mirror the layout?</p>
+      <div class="fm-confirm-actions">
+        <button type="button" class="fm-confirm-btn fm-confirm-yes" id="mirror-confirm-yes">Yes</button>
+        <button type="button" class="fm-confirm-btn fm-confirm-no" id="mirror-confirm-no">No</button>
+      </div>
+    </div>
+  </div>
 
   <div class="fm-intel-modal" id="fm-intel-modal" hidden aria-hidden="true">
     <div class="fm-intel-modal-backdrop" id="fm-intel-modal-backdrop" tabindex="-1"></div>
@@ -420,6 +443,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=41"></script>
+  <script src="field-mapper.js?v=42"></script>
 </body>
 </html>
