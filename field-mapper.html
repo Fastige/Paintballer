@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=34" />
+  <link rel="stylesheet" href="field-mapper.css?v=35" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -215,6 +215,23 @@
           <p class="fm-structure-note" id="fm-team-hint">
             Tap the map to preview a vertical ghost stack above the click. Use arrows to nudge, then tap ✓ to lock.
           </p>
+          <section class="fm-player-names" id="fm-player-names" hidden>
+            <p class="fm-range-label">Player names</p>
+            <p class="fm-structure-note">Leave a name blank to hide it over that player.</p>
+            <div class="fm-player-name-list" id="fm-player-name-list"></div>
+          </section>
+        </aside>
+
+        <aside class="fm-name-panel fm-map-tool-panel" id="fm-name-panel" hidden aria-label="Player name" data-mobile-panel="name">
+          <div class="fm-map-tool-head">
+            <p class="eyebrow">Name</p>
+            <h2 class="fm-map-tool-title" id="fm-name-player">No player selected</h2>
+          </div>
+          <p class="fm-shoot-empty" id="fm-name-empty">Tap a player, then type a name. Leave it blank to show nothing.</p>
+          <div class="fm-shoot-controls" id="fm-name-controls" hidden>
+            <label class="fm-range-label" for="player-name-input">Player name</label>
+            <input type="text" id="player-name-input" maxlength="24" placeholder="Optional" autocomplete="off" spellcheck="false" />
+          </div>
         </aside>
 
         <aside class="fm-shoot-panel fm-map-tool-panel" id="fm-shoot-panel" hidden aria-label="Shoot timing controls" data-mobile-panel="shoot">
@@ -225,6 +242,8 @@
           <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shoot point. Add a run point, or choose stand still.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
             <p class="fm-sizer-type" id="fm-shoot-player">No player selected</p>
+            <label class="fm-range-label" for="shoot-player-name">Player name</label>
+            <input type="text" id="shoot-player-name" maxlength="24" placeholder="Optional" autocomplete="off" spellcheck="false" />
             <div class="fm-shoot-primary-actions">
               <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
               <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
@@ -398,6 +417,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=39"></script>
+  <script src="field-mapper.js?v=40"></script>
 </body>
 </html>
