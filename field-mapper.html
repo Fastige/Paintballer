@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=39" />
+  <link rel="stylesheet" href="field-mapper.css?v=40" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -260,6 +260,10 @@
               <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
               <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
             </div>
+            <div class="fm-shoot-primary-actions">
+              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-play-window" disabled>Play in window</button>
+              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-download-gif" disabled>Download GIF</button>
+            </div>
             <label class="fm-range-label" for="shoot-time">Run time</label>
             <div class="fm-sizer-axis-row">
               <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
@@ -391,6 +395,22 @@
     </section>
   </main>
 
+  <div class="fm-theater" id="fm-theater" hidden aria-hidden="true">
+    <div class="fm-intel-modal-backdrop" id="fm-theater-backdrop" tabindex="-1"></div>
+    <div class="fm-theater-panel" role="dialog" aria-modal="true" aria-labelledby="fm-theater-title">
+      <div class="fm-theater-head">
+        <h2 class="fm-theater-title" id="fm-theater-title">Scene playback</h2>
+        <button type="button" class="fm-intel-modal-close" id="fm-theater-close" aria-label="Close scene window">×</button>
+      </div>
+      <canvas class="fm-theater-canvas" id="fm-theater-canvas"></canvas>
+      <div class="fm-theater-actions">
+        <button type="button" class="btn btn-primary" id="fm-theater-replay">Play again</button>
+        <button type="button" class="btn btn-ghost" id="fm-theater-gif">Download GIF</button>
+        <span class="fm-theater-status" id="fm-theater-status" aria-live="polite"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="fm-confirm-modal" id="fm-preset-modal" hidden aria-hidden="true">
     <div class="fm-intel-modal-backdrop" id="fm-preset-backdrop" tabindex="-1"></div>
     <div class="fm-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="fm-preset-title">
@@ -462,6 +482,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=46"></script>
+  <script src="field-mapper.js?v=47"></script>
 </body>
 </html>

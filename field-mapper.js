@@ -113,6 +113,15 @@
   const shootSaveSetupBtn = document.getElementById("shoot-save-setup");
   const shootNewSetupBtn = document.getElementById("shoot-new-setup");
   const shootPlaySceneBtn = document.getElementById("shoot-play-scene");
+  const shootPlayWindowBtn = document.getElementById("shoot-play-window");
+  const shootDownloadGifBtn = document.getElementById("shoot-download-gif");
+  const theater = document.getElementById("fm-theater");
+  const theaterBackdrop = document.getElementById("fm-theater-backdrop");
+  const theaterCanvas = document.getElementById("fm-theater-canvas");
+  const theaterCloseBtn = document.getElementById("fm-theater-close");
+  const theaterReplayBtn = document.getElementById("fm-theater-replay");
+  const theaterGifBtn = document.getElementById("fm-theater-gif");
+  const theaterStatus = document.getElementById("fm-theater-status");
   const shootResetSceneBtn = document.getElementById("shoot-reset-scene");
   const shootClearSceneBtn = document.getElementById("shoot-clear-scene");
   const shootSceneList = document.getElementById("shoot-scene-list");
@@ -1025,9 +1034,10 @@
       shootSaveSetupBtn.disabled = !currentSetup;
       shootSaveSetupBtn.textContent = activeShootSetupId ? "Update player setup" : "Save player setup";
     }
-    if (shootPlaySceneBtn) {
-      shootPlaySceneBtn.disabled = !shootSceneSetups.some(getShootSetupComplete);
-    }
+    const canPlayScene = hasMap && shootSceneSetups.some(getShootSetupComplete);
+    if (shootPlaySceneBtn) shootPlaySceneBtn.disabled = !canPlayScene;
+    if (shootPlayWindowBtn) shootPlayWindowBtn.disabled = !canPlayScene;
+    if (shootDownloadGifBtn) shootDownloadGifBtn.disabled = !canPlayScene;
     if (shootResetSceneBtn) shootResetSceneBtn.disabled = !lastRunStartPositions;
     if (shootClearSceneBtn) shootClearSceneBtn.disabled = shootSceneSetups.length === 0;
     if (shootSceneCount) {
@@ -1511,13 +1521,13 @@
   }
 
   function runShootSetups(setups, options = {}) {
-    if (!setups.length) return;
+    if (!setups.length) return false;
     clearSceneAutoReset();
     const runners = setups.flatMap(getSetupRunners);
     const useSceneDots = Boolean(options.sceneDots);
     const playDots = useSceneDots || setups.every((setup) => setup.standStill || !setup.runPoint);
     const holdMs = Math.max(0, ...setups.map(getSetupDurationMs));
-    if (!runners.length && !playDots) return;
+    if (!runners.length && !playDots) return false;
     if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
 
     if (playDots) startShootSceneDots(setups);
@@ -1579,9 +1589,11 @@
           resetShootRun();
         }, SCENE_AUTO_RESET_MS);
       }
+      options.onDone?.();
     };
 
     runAnimationFrame = requestAnimationFrame(step);
+    return true;
   }
 
   function runShootPlayer() {
@@ -1590,10 +1602,10 @@
     runShootSetups([setup]);
   }
 
-  function runShootScene() {
+  function runShootScene(onDone) {
     const readySetups = shootSceneSetups.filter(getShootSetupComplete);
-    if (!readySetups.length) return;
-    runShootSetups(readySetups, { sceneDots: true, autoReset: true });
+    if (!readySetups.length) return false;
+    return runShootSetups(readySetups, { sceneDots: true, autoReset: true, onDone });
   }
 
   function resetShootRun() {
@@ -3298,7 +3310,7 @@
   shootClearBtn?.addEventListener("click", clearShootPlan);
   shootSaveSetupBtn?.addEventListener("click", saveShootSetup);
   shootNewSetupBtn?.addEventListener("click", newShootSetup);
-  shootPlaySceneBtn?.addEventListener("click", runShootScene);
+  shootPlaySceneBtn?.addEventListener("click", () => runShootScene());
   shootResetSceneBtn?.addEventListener("click", resetShootRun);
   shootClearSceneBtn?.addEventListener("click", clearShootScene);
   shootTimeInput?.addEventListener("change", updateShootPanel);
@@ -3685,6 +3697,267 @@
     intelModalBackdrop?.addEventListener("click", closeIntelModal);
   }
 
+  const GIF_MAX_WIDTH = 640;
+  const GIF_FRAME_MS = 80;
+  const GIF_END_HOLD_MS = 1200;
+  const GIF_MAX_FRAMES = 600;
+  const GIF_FIXED_COLORS = [
+    SHOOT_LINE_COLOR,
+    SHOOT_BLOCKED_COLOR,
+    SHOOT_DOT_COLOR,
+    VISION_LINE_COLOR,
+    "#ff5c00",
+    "#3b9eff",
+    "#ffffff",
+    "#0f1210",
+  ];
+
+  let theaterOpen = false;
+  let theaterFrame = null;
+  let gifRecording = null;
+  let gifEncoderModule = null;
+
+  function hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function drawSceneComposite(context, W, H) {
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, W, H);
+    context.fillStyle = "#0f1210";
+    context.fillRect(0, 0, W, H);
+    if (image.naturalWidth) context.drawImage(image, 0, 0, W, H);
+    [structureCanvas, canvas, visionCanvas, shootCanvas].forEach((layer) => {
+      if (!layer.hidden && layer.width && layer.height) context.drawImage(layer, 0, 0, W, H);
+    });
+
+    const scale = W / (stage.clientWidth || W);
+    playersLayer.querySelectorAll(".fm-player").forEach((el) => {
+      if (isGhostPlayer(el)) return;
+      const x = ((parseFloat(el.style.left) || 0) / 100) * W;
+      const y = ((parseFloat(el.style.top) || 0) / 100) * H;
+      const r = Math.max(3, (el.offsetWidth / 2) * scale);
+      const style = getComputedStyle(el);
+
+      context.beginPath();
+      context.arc(x, y, r, 0, Math.PI * 2);
+      context.fillStyle = style.backgroundColor;
+      context.fill();
+      context.lineWidth = Math.max(1, scale);
+      context.strokeStyle = "rgba(15, 18, 16, 0.85)";
+      context.stroke();
+
+      context.fillStyle = style.color;
+      context.font = `${Math.max(7, Math.round(r * 1.15))}px "Bebas Neue", sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(el.dataset.num || "", x, y + r * 0.08);
+
+      const name = getStoredPlayerName(el);
+      if (name) {
+        const fontPx = Math.max(9, Math.round(10 * scale));
+        context.font = `700 ${fontPx}px Outfit, sans-serif`;
+        const textW = context.measureText(name).width;
+        const padX = fontPx * 0.35;
+        const boxH = fontPx * 1.35;
+        const boxY = y - r - 5 * scale - boxH;
+        context.fillStyle = "rgba(15, 18, 16, 0.78)";
+        context.fillRect(x - textW / 2 - padX, boxY, textW + padX * 2, boxH);
+        context.fillStyle = "#ffffff";
+        context.fillText(name, x, boxY + boxH / 2);
+      }
+    });
+    context.restore();
+  }
+
+  function sizeTheaterCanvas() {
+    const iw = image.naturalWidth || 16;
+    const ih = image.naturalHeight || 9;
+    const maxW = Math.min(window.innerWidth - 64, 1600);
+    const maxH = window.innerHeight - 200;
+    const s = Math.max(0.05, Math.min(maxW / iw, maxH / ih));
+    const cssW = Math.max(200, Math.floor(iw * s));
+    const cssH = Math.max(120, Math.floor(ih * s));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    theaterCanvas.style.width = `${cssW}px`;
+    theaterCanvas.style.height = `${cssH}px`;
+    theaterCanvas.width = Math.floor(cssW * dpr);
+    theaterCanvas.height = Math.floor(cssH * dpr);
+  }
+
+  function setTheaterStatus(text) {
+    if (theaterStatus) theaterStatus.textContent = text || "";
+  }
+
+  function theaterTick(now) {
+    if (!theaterOpen) return;
+    drawSceneComposite(theaterCanvas.getContext("2d"), theaterCanvas.width, theaterCanvas.height);
+    if (gifRecording) captureGifFrame(now);
+    theaterFrame = requestAnimationFrame(theaterTick);
+  }
+
+  function openTheater() {
+    if (!theater || !theaterCanvas || !hasMap) return false;
+    if (!theaterOpen) {
+      theaterOpen = true;
+      theater.hidden = false;
+      theater.setAttribute("aria-hidden", "false");
+      body.classList.add("fm-intel-modal-open");
+      sizeTheaterCanvas();
+      theaterFrame = requestAnimationFrame(theaterTick);
+    }
+    return true;
+  }
+
+  function closeTheater() {
+    if (!theaterOpen) return;
+    theaterOpen = false;
+    gifRecording = null;
+    if (theaterFrame) cancelAnimationFrame(theaterFrame);
+    theaterFrame = null;
+    theater.hidden = true;
+    theater.setAttribute("aria-hidden", "true");
+    if (!intelModalOpen) body.classList.remove("fm-intel-modal-open");
+    setTheaterStatus("");
+    updateTheaterButtons();
+  }
+
+  function updateTheaterButtons() {
+    const busy = Boolean(gifRecording);
+    if (theaterReplayBtn) theaterReplayBtn.disabled = busy;
+    if (theaterGifBtn) theaterGifBtn.disabled = busy;
+  }
+
+  function playSceneInTheater(onDone) {
+    if (!openTheater()) return false;
+    if (lastRunStartPositions) resetShootRun();
+    const started = runShootScene(onDone);
+    if (!started) setTheaterStatus("Save at least one complete player setup to play the scene.");
+    return started;
+  }
+
+  function playSceneWindow() {
+    if (gifRecording) return;
+    setTheaterStatus("");
+    playSceneInTheater(() => setTheaterStatus("Scene finished — players reset in 10 seconds."));
+  }
+
+  async function loadGifEncoder() {
+    if (!gifEncoderModule) {
+      gifEncoderModule = await import(new URL("vendor/gifenc.esm.js", document.baseURI).href);
+    }
+    return gifEncoderModule;
+  }
+
+  function captureGifFrame(now) {
+    const rec = gifRecording;
+    if (!rec) return;
+    if (rec.frames > 0 && now - rec.lastAt < GIF_FRAME_MS) return;
+    rec.lastAt = rec.frames > 0 ? rec.lastAt + GIF_FRAME_MS : now;
+    if (now - rec.lastAt > GIF_FRAME_MS) rec.lastAt = now;
+
+    drawSceneComposite(rec.ctx, rec.w, rec.h);
+    const { data } = rec.ctx.getImageData(0, 0, rec.w, rec.h);
+    const { quantize, applyPalette } = rec.lib;
+    if (!rec.palette) {
+      const palette = quantize(data, 256 - GIF_FIXED_COLORS.length);
+      GIF_FIXED_COLORS.forEach((hex) => {
+        const rgb = hexToRgb(hex);
+        if (rgb) palette.push(rgb);
+      });
+      rec.palette = palette.slice(0, 256);
+    }
+    const index = applyPalette(data, rec.palette);
+    rec.gif.writeFrame(index, rec.w, rec.h, {
+      palette: rec.frames === 0 ? rec.palette : undefined,
+      delay: GIF_FRAME_MS,
+    });
+    rec.frames++;
+
+    const finished = rec.endAt !== null && now >= rec.endAt;
+    if (finished || rec.frames >= GIF_MAX_FRAMES) finishGifRecording();
+    else setTheaterStatus(`Recording GIF… ${rec.frames} frames`);
+  }
+
+  function finishGifRecording() {
+    const rec = gifRecording;
+    if (!rec) return;
+    gifRecording = null;
+    rec.gif.finish();
+    const blob = new Blob([rec.gif.bytes()], { type: "image/gif" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "paintballer-scene.gif";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setTheaterStatus(`GIF saved (${Math.max(1, Math.round(blob.size / 1024))} KB).`);
+    updateTheaterButtons();
+  }
+
+  async function downloadSceneGif() {
+    if (gifRecording || !hasMap) return;
+    if (!openTheater()) return;
+    setTheaterStatus("Preparing GIF…");
+    let lib;
+    try {
+      lib = await loadGifEncoder();
+    } catch {
+      setTheaterStatus("Could not load the GIF encoder. Check your connection and try again.");
+      return;
+    }
+    if (!theaterOpen) return;
+
+    const iw = image.naturalWidth || 16;
+    const ih = image.naturalHeight || 9;
+    const w = Math.min(GIF_MAX_WIDTH, iw);
+    const h = Math.max(1, Math.round((w * ih) / iw));
+    const off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+
+    gifRecording = {
+      lib,
+      gif: lib.GIFEncoder(),
+      ctx: off.getContext("2d", { willReadFrequently: true }),
+      w,
+      h,
+      frames: 0,
+      lastAt: 0,
+      endAt: null,
+      palette: null,
+    };
+    updateTheaterButtons();
+
+    const started = playSceneInTheater(() => {
+      if (gifRecording) gifRecording.endAt = performance.now() + GIF_END_HOLD_MS;
+    });
+    if (!started) {
+      gifRecording = null;
+      updateTheaterButtons();
+      return;
+    }
+    setTheaterStatus("Recording GIF…");
+  }
+
+  shootPlayWindowBtn?.addEventListener("click", playSceneWindow);
+  shootDownloadGifBtn?.addEventListener("click", () => downloadSceneGif());
+  theaterReplayBtn?.addEventListener("click", playSceneWindow);
+  theaterGifBtn?.addEventListener("click", () => downloadSceneGif());
+  theaterCloseBtn?.addEventListener("click", closeTheater);
+  theaterBackdrop?.addEventListener("click", () => {
+    if (!gifRecording) closeTheater();
+  });
+  window.addEventListener("resize", () => {
+    if (theaterOpen) sizeTheaterCanvas();
+  });
+
   const MIRROR_COLOR = "#ff5c00";
   const MIRROR_SNAP_DEG = 8;
   const MIRROR_MIN_BOX_PX = 24;
@@ -4045,7 +4318,8 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if (presetModal && !presetModal.hidden) closePresetModal();
+    if (theaterOpen) closeTheater();
+    else if (presetModal && !presetModal.hidden) closePresetModal();
     else if (mirrorConfirm && !mirrorConfirm.hidden) closeMirrorConfirm();
     else if (mirrorStep) cancelMirrorFlow();
     else if (intelModalOpen) closeIntelModal();

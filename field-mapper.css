@@ -1055,6 +1055,68 @@
   text-align: center;
 }
 
+.fm-theater {
+  position: fixed;
+  inset: 0;
+  z-index: 540;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.fm-theater[hidden] {
+  display: none !important;
+}
+
+.fm-theater-panel {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.fm-theater-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fm-theater-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.fm-theater-canvas {
+  display: block;
+  border-radius: 6px;
+  background: #000;
+}
+
+.fm-theater-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fm-theater-status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 .fm-preset-list {
   display: flex;
   flex-direction: column;
