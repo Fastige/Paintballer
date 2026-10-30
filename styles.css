@@ -271,6 +271,7 @@ main {
 
 .hero-visual {
   position: relative;
+  width: 100%;
   aspect-ratio: 1;
   max-width: 420px;
   margin: 0 auto;
@@ -278,15 +279,48 @@ main {
 
 .target-ring {
   position: absolute;
-  inset: 50%;
+  top: 50%;
+  left: 50%;
   translate: -50% -50%;
   border-radius: 50%;
   border: 2px solid var(--border);
 }
 
-.ring-1 { width: 100%; height: 100%; }
-.ring-2 { width: 72%; height: 72%; border-color: rgba(255, 92, 0, 0.35); }
-.ring-3 { width: 44%; height: 44%; border-color: var(--lime); border-width: 3px; }
+.ring-1 {
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(59, 158, 255, 0.55);
+  background: radial-gradient(circle, rgba(59, 158, 255, 0.08), transparent 70%);
+  box-shadow: 0 0 40px rgba(59, 158, 255, 0.18), inset 0 0 40px rgba(59, 158, 255, 0.12);
+}
+
+.ring-2 {
+  width: 72%;
+  height: 72%;
+  border: 3px solid rgba(255, 92, 0, 0.7);
+  box-shadow: 0 0 30px rgba(255, 92, 0, 0.25);
+}
+
+.ring-3 {
+  width: 44%;
+  height: 44%;
+  border: 4px solid var(--lime);
+  background: radial-gradient(circle, rgba(124, 252, 59, 0.28), rgba(124, 252, 59, 0.06) 70%);
+  box-shadow: 0 0 34px rgba(124, 252, 59, 0.35);
+}
+
+.ring-3::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22%;
+  height: 22%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #ff4fc8;
+  box-shadow: 0 0 18px rgba(255, 79, 200, 0.7);
+}
 
 .paint-blob {
   position: absolute;
@@ -297,29 +331,51 @@ main {
 .blob-1 {
   width: 72px;
   height: 72px;
-  background: var(--accent);
-  top: 18%;
-  left: 22%;
+  background: radial-gradient(circle at 35% 30%, #ff9a5c, var(--accent) 60%);
+  box-shadow: 0 0 28px rgba(255, 92, 0, 0.6);
+  top: 14%;
+  left: 14%;
   animation-delay: 0s;
 }
 
 .blob-2 {
   width: 48px;
   height: 48px;
-  background: var(--lime);
-  bottom: 28%;
-  right: 18%;
+  background: radial-gradient(circle at 35% 30%, #c6ff9e, var(--lime) 60%);
+  box-shadow: 0 0 24px rgba(124, 252, 59, 0.55);
+  bottom: 18%;
+  right: 12%;
   animation-delay: -2s;
 }
 
 .blob-3 {
   width: 36px;
   height: 36px;
-  background: #fff;
-  opacity: 0.9;
-  top: 42%;
-  right: 32%;
+  background: radial-gradient(circle at 35% 30%, #a8d4ff, #3b9eff 60%);
+  box-shadow: 0 0 22px rgba(59, 158, 255, 0.6);
+  top: 20%;
+  right: 20%;
   animation-delay: -4s;
+}
+
+.blob-4 {
+  width: 42px;
+  height: 42px;
+  background: radial-gradient(circle at 35% 30%, #ffb3e6, #ff4fc8 60%);
+  box-shadow: 0 0 24px rgba(255, 79, 200, 0.6);
+  bottom: 14%;
+  left: 24%;
+  animation-delay: -3s;
+}
+
+.blob-5 {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 35% 30%, #fff2b3, #ffd43b 60%);
+  box-shadow: 0 0 20px rgba(255, 212, 59, 0.6);
+  top: 50%;
+  left: 4%;
+  animation-delay: -1s;
 }
 
 @keyframes float {
@@ -355,23 +411,69 @@ main {
 }
 
 .feature-card {
+  --card-color: var(--lime);
+  position: relative;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2rem;
-  transition: border-color 0.25s, transform 0.25s;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+
+.feature-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--card-color);
+}
+
+.feature-card:nth-child(5n + 1) {
+  --card-color: #ff5c00;
+}
+
+.feature-card:nth-child(5n + 2) {
+  --card-color: #7cfc3b;
+}
+
+.feature-card:nth-child(5n + 3) {
+  --card-color: #3b9eff;
+}
+
+.feature-card:nth-child(5n + 4) {
+  --card-color: #ff4fc8;
+}
+
+.feature-card:nth-child(5n + 5) {
+  --card-color: #ffd43b;
 }
 
 @media (hover: hover) {
   .feature-card:hover {
-    border-color: rgba(124, 252, 59, 0.35);
+    border-color: color-mix(in srgb, var(--card-color) 45%, transparent);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--card-color) 14%, transparent);
     transform: translateY(-4px);
   }
 }
 
 .feature-icon {
-  font-size: 2rem;
-  margin-bottom: 1rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 1.1rem;
+  border-radius: 14px;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: var(--card-color);
+  background: radial-gradient(
+    circle at 30% 25%,
+    color-mix(in srgb, var(--card-color) 40%, transparent),
+    color-mix(in srgb, var(--card-color) 14%, transparent) 70%
+  );
+  border: 1px solid color-mix(in srgb, var(--card-color) 55%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--card-color) 28%, transparent);
 }
 
 .feature-card h3 {
@@ -545,6 +647,22 @@ main section[id] {
   color: #0f1210;
   font-family: var(--font-display);
   font-size: 1.2rem;
+}
+
+.guide-steps li:nth-child(5n + 2)::before {
+  background: #7cfc3b;
+}
+
+.guide-steps li:nth-child(5n + 3)::before {
+  background: #3b9eff;
+}
+
+.guide-steps li:nth-child(5n + 4)::before {
+  background: #ff4fc8;
+}
+
+.guide-steps li:nth-child(5n + 5)::before {
+  background: #ffd43b;
 }
 
 .guide-steps strong,
