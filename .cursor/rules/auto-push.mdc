@@ -1,0 +1,19 @@
+---
+description: Commit and push every finished change to GitHub so the live site updates
+alwaysApply: true
+---
+
+# Auto-push to GitHub
+
+The site is served by GitHub Pages from `main` on https://github.com/Fastige/Paintballer
+(live at https://fastige.github.io/Paintballer/). The user wants every change live without asking.
+
+After finishing and verifying any code change:
+
+1. If `field-mapper.js` / `field-mapper.css` / `main.js` / `styles.css` changed, bump its `?v=` query in the HTML that loads it.
+2. Stage only the files you changed (never `git add -A`; unrelated local edits may exist).
+3. Commit with a short, descriptive sentence, e.g. `Add playhead to shoot timeline.`
+4. `git push origin main`
+5. Tell the user it was pushed and that Pages takes ~1 minute to update.
+
+If the push fails (auth, conflicts), report the error instead of forcing it. Never `git push --force`.
