@@ -62,6 +62,7 @@
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const undoSizerBtn = document.getElementById("undo-sizer");
   const duplicateStructureBtn = document.getElementById("duplicate-structure");
+  const deleteStructureBtn = document.getElementById("delete-structure");
   const sizerStyleBtns = document.querySelectorAll(".fm-style-btn[data-sizer-style]");
   const teamPanel = document.getElementById("fm-team-panel");
   const teamStatus = document.getElementById("fm-team-status");
@@ -331,6 +332,7 @@
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
     if (undoSizerBtn) undoSizerBtn.disabled = !hasMap || !hasSizerUndo();
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !getSelectedStructure();
+    if (deleteStructureBtn) deleteStructureBtn.disabled = !hasMap || !getSelectedStructure();
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
     if (saveMapPackBtn) saveMapPackBtn.disabled = !hasMap;
     if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
@@ -1590,6 +1592,22 @@
     redrawShootOverlay();
   }
 
+  function deleteSelectedStructure() {
+    const shape = getSelectedStructure();
+    if (!shape) return;
+    const index = structures.findIndex((s) => s.id === shape.id);
+    if (index < 0) return;
+    structures.splice(index, 1);
+    selectedStructureId = structures.length ? structures[structures.length - 1].id : null;
+    clearSizerUndo();
+    persistFieldState();
+    updateSizerPanel();
+    updateControlStates();
+    updateIntelReport();
+    redrawStructures();
+    redrawShootOverlay();
+  }
+
   function getStructureBounds(shape) {
     return {
       left: Math.min(shape.x1, shape.x2),
@@ -1645,6 +1663,7 @@
     if (sizerEmpty) sizerEmpty.hidden = hasSelection;
     if (sizerControls) sizerControls.hidden = !hasSelection;
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
+    if (deleteStructureBtn) deleteStructureBtn.disabled = !hasMap || !hasSelection;
 
     if (!shape) return;
 
@@ -1671,6 +1690,7 @@
     });
     sizerSyncing = false;
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
+    if (deleteStructureBtn) deleteStructureBtn.disabled = !hasMap || !hasSelection;
   }
 
   function onSizerAxisInput(axis, value) {
@@ -1726,6 +1746,7 @@
 
     undoSizerBtn?.addEventListener("click", undoSizerChange);
     duplicateStructureBtn?.addEventListener("click", duplicateSelectedStructure);
+    deleteStructureBtn?.addEventListener("click", deleteSelectedStructure);
   }
 
   function refreshMapPixelCache() {
