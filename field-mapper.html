@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=5" />
-  <link rel="stylesheet" href="field-mapper.css?v=37" />
+  <link rel="stylesheet" href="field-mapper.css?v=39" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -46,6 +46,7 @@
           <input type="file" id="map-upload" accept="image/*" hidden />
         </label>
         <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack">Upload map pack</button>
+        <button type="button" class="btn btn-primary fm-btn-full" id="preset-map-pack">Preset map packs</button>
         <input type="file" id="map-pack-zip" accept=".zip,application/zip" hidden />
         <input type="file" id="map-pack-folder" webkitdirectory directory multiple hidden />
         <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack" disabled>Save map pack</button>
@@ -359,6 +360,7 @@
             </button>
           </div>
           <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack-mobile">Upload map pack</button>
+          <button type="button" class="btn btn-primary fm-btn-full" id="preset-map-pack-mobile">Preset map packs</button>
           <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack-mobile" disabled>Save map pack</button>
           <p class="fm-save-hint fm-save-hint-mobile">.zip folder with map.png and intel.json, or pick the unpacked folder.</p>
         </section>
@@ -388,6 +390,15 @@
       </div>
     </section>
   </main>
+
+  <div class="fm-confirm-modal" id="fm-preset-modal" hidden aria-hidden="true">
+    <div class="fm-intel-modal-backdrop" id="fm-preset-backdrop" tabindex="-1"></div>
+    <div class="fm-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="fm-preset-title">
+      <p class="fm-confirm-text" id="fm-preset-title">Preset map packs</p>
+      <div class="fm-preset-list" id="fm-preset-list"></div>
+      <button type="button" class="fm-confirm-btn fm-confirm-no" id="preset-cancel">Cancel</button>
+    </div>
+  </div>
 
   <div class="fm-confirm-modal" id="fm-mirror-confirm" hidden aria-hidden="true">
     <div class="fm-intel-modal-backdrop" id="fm-mirror-confirm-backdrop" tabindex="-1"></div>
@@ -451,6 +462,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=44"></script>
+  <script src="field-mapper.js?v=46"></script>
 </body>
 </html>

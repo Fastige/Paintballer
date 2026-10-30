@@ -404,6 +404,7 @@
 .fm-player-name-row span {
   font-size: 0.78rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .fm-player-name-row input,
@@ -1052,6 +1053,27 @@
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
+}
+
+.fm-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fm-preset-btn {
+  background: #ff5c00;
+  border: 1px solid #ff5c00;
+  color: #000;
+}
+
+.fm-preset-btn:hover {
+  background: #ff7a2e;
+}
+
+.fm-preset-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .fm-confirm-actions {

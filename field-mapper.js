@@ -45,6 +45,14 @@
   const uploadMapPackMobileBtn = document.getElementById("upload-map-pack-mobile");
   const mapPackZipInput = document.getElementById("map-pack-zip");
   const mapPackFolderInput = document.getElementById("map-pack-folder");
+  const presetMapPackBtn = document.getElementById("preset-map-pack");
+  const presetMapPackMobileBtn = document.getElementById("preset-map-pack-mobile");
+  const presetModal = document.getElementById("fm-preset-modal");
+  const presetBackdrop = document.getElementById("fm-preset-backdrop");
+  const presetList = document.getElementById("fm-preset-list");
+  const presetCancelBtn = document.getElementById("preset-cancel");
+
+  const MAP_PRESETS = [{ name: "MID-ATLANTIC 2026", folder: "presets/mid-atlantic-2026" }];
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
   const undoStructureBtn = document.getElementById("undo-structure");
@@ -833,8 +841,8 @@
       const row = document.createElement("label");
       row.className = "fm-player-name-row";
       const label = document.createElement("span");
-      const team = el.dataset.team === "a" ? "T1" : "T2";
-      label.textContent = `${team} ${el.dataset.num || ""}`.trim();
+      const team = el.dataset.team === "a" ? "Team 1" : "Team 2";
+      label.textContent = `${team} - ${el.dataset.num || ""}`;
       const input = document.createElement("input");
       input.type = "text";
       input.maxLength = 24;
@@ -2704,6 +2712,54 @@
     }
   }
 
+  async function loadPresetMapPack(preset) {
+    const fetchFile = async (name, type) => {
+      const res = await fetch(`${preset.folder}/${name}`, { cache: "no-cache" });
+      if (!res.ok) throw new Error(`Missing ${name}`);
+      return new File([await res.blob()], name, { type });
+    };
+    const [imageFile, jsonFile] = await Promise.all([
+      fetchFile("map.png", "image/png"),
+      fetchFile("intel.json", "application/json"),
+    ]);
+    await handleMapPackFiles([imageFile, jsonFile]);
+  }
+
+  function openPresetModal() {
+    if (!presetModal || !presetList) return;
+    presetList.innerHTML = "";
+    MAP_PRESETS.forEach((preset) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fm-confirm-btn fm-preset-btn";
+      btn.textContent = preset.name;
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        btn.textContent = "Loading…";
+        try {
+          await loadPresetMapPack(preset);
+          closePresetModal();
+        } catch {
+          window.alert(`Could not load the ${preset.name} preset.`);
+          btn.disabled = false;
+          btn.textContent = preset.name;
+        }
+      });
+      presetList.append(btn);
+    });
+    presetModal.hidden = false;
+    presetModal.setAttribute("aria-hidden", "false");
+    body.classList.add("fm-intel-modal-open");
+    presetList.querySelector("button")?.focus();
+  }
+
+  function closePresetModal() {
+    if (!presetModal || presetModal.hidden) return;
+    presetModal.hidden = true;
+    presetModal.setAttribute("aria-hidden", "true");
+    if (!intelModalOpen) body.classList.remove("fm-intel-modal-open");
+  }
+
   async function openMapPackUpload() {
     if (!isMobileLayout() && "showDirectoryPicker" in window) {
       try {
@@ -3574,6 +3630,10 @@
   uploadMapPackMobileBtn?.addEventListener("click", () => {
     openMapPackUpload().catch(() => window.alert("Could not open map pack."));
   });
+  presetMapPackBtn?.addEventListener("click", openPresetModal);
+  presetMapPackMobileBtn?.addEventListener("click", openPresetModal);
+  presetCancelBtn?.addEventListener("click", closePresetModal);
+  presetBackdrop?.addEventListener("click", closePresetModal);
   mapPackZipInput?.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) handleMapPackZip(file).catch(() => window.alert("Could not read map pack .zip."));
@@ -3985,7 +4045,8 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if (mirrorConfirm && !mirrorConfirm.hidden) closeMirrorConfirm();
+    if (presetModal && !presetModal.hidden) closePresetModal();
+    else if (mirrorConfirm && !mirrorConfirm.hidden) closeMirrorConfirm();
     else if (mirrorStep) cancelMirrorFlow();
     else if (intelModalOpen) closeIntelModal();
   });
