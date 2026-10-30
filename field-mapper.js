@@ -61,6 +61,7 @@
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const undoSizerBtn = document.getElementById("undo-sizer");
+  const duplicateStructureBtn = document.getElementById("duplicate-structure");
   const sizerStyleBtns = document.querySelectorAll(".fm-style-btn[data-sizer-style]");
   const teamPanel = document.getElementById("fm-team-panel");
   const teamStatus = document.getElementById("fm-team-status");
@@ -317,6 +318,7 @@
     if (clearDrawingsBtn) clearDrawingsBtn.disabled = !hasMap;
     if (undoStructureBtn) undoStructureBtn.disabled = !hasMap || !hasStructures;
     if (undoSizerBtn) undoSizerBtn.disabled = !hasMap || !hasSizerUndo();
+    if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !getSelectedStructure();
     if (openFullIntelBtn) openFullIntelBtn.disabled = !hasMap;
     if (saveMapPackBtn) saveMapPackBtn.disabled = !hasMap;
     if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
@@ -1440,6 +1442,45 @@
     updateIntelReport();
   }
 
+  function duplicateSelectedStructure() {
+    const shape = getSelectedStructure();
+    if (!shape) return;
+
+    const bounds = getStructureBounds(shape);
+    const offset = 0.03;
+    let left = bounds.left + offset;
+    let top = bounds.top + offset;
+    left = Math.max(0, Math.min(1 - bounds.width, left));
+    top = Math.max(0, Math.min(1 - bounds.height, top));
+    if (left === bounds.left && top === bounds.top) {
+      left = Math.max(0, bounds.left - offset);
+      top = Math.max(0, bounds.top - offset);
+    }
+
+    const copy = {
+      id: crypto.randomUUID(),
+      type: shape.type,
+      fill: normalizeStructureFill(shape.fill),
+      x1: left,
+      y1: top,
+      x2: left + bounds.width,
+      y2: top + bounds.height,
+      detected: false,
+      name: "",
+      bio: "",
+    };
+
+    structures.push(copy);
+    selectedStructureId = copy.id;
+    clearSizerUndo();
+    persistFieldState();
+    updateSizerPanel();
+    updateControlStates();
+    updateIntelReport();
+    redrawStructures();
+    redrawShootOverlay();
+  }
+
   function getStructureBounds(shape) {
     return {
       left: Math.min(shape.x1, shape.x2),
@@ -1494,6 +1535,7 @@
     workspace?.classList.toggle("has-sizer-selection", hasSelection);
     if (sizerEmpty) sizerEmpty.hidden = hasSelection;
     if (sizerControls) sizerControls.hidden = !hasSelection;
+    if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
 
     if (!shape) return;
 
@@ -1519,6 +1561,7 @@
       if (el) el.value = String(heightPct);
     });
     sizerSyncing = false;
+    if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
   }
 
   function onSizerAxisInput(axis, value) {
@@ -1573,6 +1616,7 @@
     });
 
     undoSizerBtn?.addEventListener("click", undoSizerChange);
+    duplicateStructureBtn?.addEventListener("click", duplicateSelectedStructure);
   }
 
   function refreshMapPixelCache() {
