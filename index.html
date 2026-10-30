@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f1210" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="description" content="Paintballer — your home for paintball gear, fields, and team tactics." />
-  <title>Paintballer — Play Hard. Aim True.</title>
+  <meta name="description" content="Paintballer Field Mapper — map your field, place both teams, and plan every shot and run." />
+  <title>Paintballer — Field Mapper Guide</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=6" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body>
@@ -18,36 +18,31 @@
   <div class="splatter splatter-2" aria-hidden="true"></div>
 
   <header class="site-header">
-    <a class="logo" href="#">Paint<span>baller</span></a>
+    <a class="logo" href="#top">Paint<span>baller</span></a>
     <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
     <nav class="site-nav">
-      <a href="#features">Features</a>
+      <a href="#map">Map</a>
+      <a href="#tools">Tools</a>
+      <a href="#shoot">Shoot scenes</a>
       <a href="field-mapper.html">Field Mapper</a>
-      <a href="#about">About</a>
-      <a href="#join">Join</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero" id="top">
+    <section class="hero guide-hero" id="top">
       <div class="hero-content">
-        <p class="eyebrow">Welcome to the field</p>
-        <h1>Play Hard.<br />Aim True.</h1>
+        <p class="eyebrow">Field Mapper guide</p>
+        <h1>Map it.<br />Plan it.</h1>
         <p class="hero-lead">
-          Paintballer is your launch point for gear guides, field finders, and squad tactics —
-          built for weekend warriors and tournament teams alike.
+          Field Mapper turns a picture of your field into a planning board. Load the layout, drop both
+          teams on it, and plan every lane, shot, and run. Here's what each tool does.
         </p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#join">Get on the list</a>
-          <a class="btn btn-ghost" href="#features">See what we offer</a>
+          <a class="btn btn-primary" href="field-mapper.html">Open Field Mapper</a>
+          <a class="btn btn-ghost" href="#start">How to start</a>
         </div>
-        <ul class="hero-stats" aria-label="Highlights">
-          <li><strong>120+</strong><span>Fields mapped</span></li>
-          <li><strong>48</strong><span>Gear guides</span></li>
-          <li><strong>Free</strong><span>Always</span></li>
-        </ul>
       </div>
       <div class="hero-visual" aria-hidden="true">
         <div class="target-ring ring-1"></div>
@@ -59,70 +54,168 @@
       </div>
     </section>
 
-    <section class="features" id="features">
+    <section class="guide-section" id="start">
       <header class="section-header">
-        <p class="eyebrow">Why Paintballer</p>
-        <h2>Everything you need before you step on the field</h2>
+        <p class="eyebrow">Quick start</p>
+        <h2>From blank field to full plan</h2>
+      </header>
+      <ol class="guide-steps">
+        <li><strong>Load a map.</strong> Upload a picture of your field, open a saved map pack, or pick a preset.</li>
+        <li><strong>Check the bunkers.</strong> Green bunkers are detected automatically. Add or fix any with Structure and Sizer.</li>
+        <li><strong>Place the teams.</strong> Use Players to drop Team 1, then Team 2, and lock them in.</li>
+        <li><strong>Plan the plays.</strong> Draw routes with Brush, check sight lines with Vision, and build a shoot scene.</li>
+        <li><strong>Save and share.</strong> Save a map pack to pick up later, or download your scene as a GIF.</li>
+      </ol>
+    </section>
+
+    <section class="features" id="map">
+      <header class="section-header">
+        <p class="eyebrow">Map</p>
+        <h2>Getting your field in</h2>
+      </header>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🖼️</div>
+          <h3>Upload map image</h3>
+          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">📦</div>
+          <h3>Map packs</h3>
+          <p>
+            <strong>Save map pack</strong> downloads a .zip with your map and everything on it: bunkers, intel,
+            player names, and shoot scenes. <strong>Upload map pack</strong> opens that .zip (or the unzipped folder) to pick up where you left off.
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⭐</div>
+          <h3>Preset map packs</h3>
+          <p>Load a ready-made layout in one tap. The first preset is <strong>MID-ATLANTIC 2026</strong>, with every bunker already mapped.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="guide-section" id="tools">
+      <header class="section-header">
+        <p class="eyebrow">Tools</p>
+        <h2>Everything on the tool bar</h2>
+      </header>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">↖</div>
+          <h3>Move</h3>
+          <p>Drag any player to a new spot. Tap a player to give them a name, which shows over their head and follows them on runs. Leave it blank to show nothing.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⚑</div>
+          <h3>Players</h3>
+          <p>
+            Place a whole team at once. Pick 1–10 players with the + and − buttons, then tap where they spawn.
+            A ghost preview shows where they'll go. Nudge it with the arrows, then tap ✓ to lock. Do Team 1 first, then Team 2.
+            Once locked, players can be dragged one at a time and named from the list (Team 1 - 1, Team 1 - 2, …).
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🖌</div>
+          <h3>Brush</h3>
+          <p>Draw routes, lanes, and notes right on the map. Pick a brush size and color, and use <strong>Clear drawings</strong> to start fresh.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">▦</div>
+          <h3>Structure</h3>
+          <p>
+            Drag on the map to add a bunker: rectangle, circle, or triangle. Pick a wall style: <strong>Filled</strong>,
+            <strong>Border only</strong>, or <strong>Transparent wall</strong>. All three still block vision and shoot lines.
+            Press on an existing bunker to drag it, and use <strong>Undo</strong> to remove the last one you placed.
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">👁</div>
+          <h3>Vision</h3>
+          <p>Tap a player to see pink sight lines in every direction. Lines stop where a bunker blocks the view, so you can spot open lanes and blind spots. The lines stay on when you switch tools.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⇲</div>
+          <h3>Sizer</h3>
+          <p>
+            Tap a bunker to edit it. Set its exact width and height, change its wall style, and move it by dragging or with the arrow pad.
+            <strong>Duplicate</strong> makes an exact copy, <strong>Delete</strong> removes it, and <strong>Undo Sizer change</strong> reverses your last edit.
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">⇋</div>
+          <h3>50 Mirror</h3>
+          <p>
+            Map one half of the field and copy it to the other side. Confirm, drag a box around the field, then click two points on the 50 line.
+            The bunkers on the busier side are mirrored across it, and triangles flip to face the right way.
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">📋</div>
+          <h3>Intel</h3>
+          <p>Tap a green bunker to give it a name and notes, like "Snake 1, watch the wire". Fill in a field report for the whole map, and open the full intel view to see every bunker at once.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="features" id="shoot">
+      <header class="section-header">
+        <p class="eyebrow">Shoot &amp; run</p>
+        <h2>Build a scene and play it out</h2>
       </header>
       <div class="feature-grid">
         <article class="feature-card">
           <div class="feature-icon" aria-hidden="true">🎯</div>
-          <h3>Field Finder</h3>
-          <p>Discover indoor and outdoor fields near you with hours, pricing, and player ratings.</p>
+          <h3>Shoot and run</h3>
+          <p>
+            Tap a player, set a <strong>shoot point</strong> (a spot on the map or an opposing player), and a <strong>run point</strong> with a run time.
+            The yellow shoot line turns red and stops where a bunker blocks it.
+          </p>
         </article>
         <article class="feature-card">
-          <div class="feature-icon" aria-hidden="true">🛡️</div>
-          <h3>Gear Guides</h3>
-          <p>Honest breakdowns of markers, masks, and hoppers — from budget rentals to pro setups.</p>
+          <div class="feature-icon" aria-hidden="true">⚙️</div>
+          <h3>Shot options</h3>
+          <p>
+            <strong>Stand still</strong> shoots without running. <strong>No shot</strong> just runs.
+            <strong>Shoot over</strong> sends the line straight over bunkers to the target.
+          </p>
         </article>
         <article class="feature-card">
-          <div class="feature-icon" aria-hidden="true">⚡</div>
-          <h3>Squad Tactics</h3>
-          <p>Learn flanking routes, bunker clears, and communication drills used by winning teams.</p>
+          <div class="feature-icon" aria-hidden="true">🎬</div>
+          <h3>Scenes</h3>
+          <p>
+            Save a setup for each player, then hit <strong>Play scene</strong> to run them all at once. Green paint dots fly down every shoot line.
+            Players return to their start spots 10 seconds after the scene ends, or right away with <strong>Reset scene</strong>.
+          </p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🖥️</div>
+          <h3>Play in window</h3>
+          <p>Watch the scene big and centered in its own window. Great for walking your team through a play.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">🎞️</div>
+          <h3>Download GIF</h3>
+          <p>Record the scene as a looping GIF you can drop in the group chat or team doc.</p>
         </article>
       </div>
     </section>
 
-    <section class="about" id="about">
-      <div class="about-inner">
-        <div class="about-copy">
-          <p class="eyebrow">Our mission</p>
-          <h2>Paintball should be easy to start and impossible to quit</h2>
-          <p>
-            Whether it is your first rental day or your hundredth tournament, Paintballer connects
-            you with the knowledge and community to play smarter and have more fun.
-          </p>
-          <p>
-            We are building tools, guides, and meetups — no paywalls, no fluff. Just the sport we love.
-          </p>
-        </div>
-        <blockquote class="about-quote">
-          <p>&ldquo;The best weekends still smell like compressed air and victory paint.&rdquo;</p>
-          <footer>— The Paintballer crew</footer>
-        </blockquote>
-      </div>
-    </section>
-
-    <section class="join" id="join">
+    <section class="join" id="open">
       <div class="join-card">
-        <p class="eyebrow">Early access</p>
-        <h2>Be first on the field</h2>
-        <p>Drop your email and we will send launch updates, field drops, and exclusive gear picks.</p>
-        <form class="join-form" id="join-form">
-          <label class="sr-only" for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="you@email.com" required autocomplete="email" />
-          <button type="submit" class="btn btn-primary">Join the squad</button>
-        </form>
-        <p class="form-note" id="form-note" role="status" aria-live="polite"></p>
+        <p class="eyebrow">Free to use</p>
+        <h2>Ready to plan your field?</h2>
+        <p>No sign-up needed. Save a map pack to keep your work and pick it up any time.</p>
+        <a class="btn btn-primary" href="field-mapper.html">Open Field Mapper</a>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <a class="logo" href="#">Paint<span>baller</span></a>
+    <a class="logo" href="#top">Paint<span>baller</span></a>
     <p>&copy; <span id="year"></span> Paintballer. Built for players, by players.</p>
   </footer>
 
-  <script src="main.js?v=3"></script>
+  <script src="main.js?v=6"></script>
 </body>
 </html>

@@ -497,6 +497,65 @@ main {
   color: var(--lime);
 }
 
+main section[id] {
+  scroll-margin-top: 72px;
+}
+
+.guide-hero {
+  min-height: auto;
+  padding-bottom: 3rem;
+}
+
+.guide-section {
+  padding: 5rem 1.5rem;
+}
+
+.guide-steps {
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 0.85rem;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.guide-steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 1rem 1.25rem 1rem 3.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.guide-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0f1210;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.guide-steps strong,
+.feature-card p strong {
+  color: var(--text);
+}
+
+.join-card > .btn {
+  margin-top: 0.25rem;
+}
+
 .site-footer {
   border-top: 1px solid var(--border);
   padding: 2rem 1.5rem;
@@ -593,9 +652,15 @@ main {
 
   .features,
   .about,
-  .join {
+  .join,
+  .guide-section {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .guide-section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
   }
 
   .features {
