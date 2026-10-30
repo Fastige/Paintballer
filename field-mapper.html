@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=8" />
-  <link rel="stylesheet" href="field-mapper.css?v=40" />
+  <link rel="stylesheet" href="field-mapper.css?v=41" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -246,66 +246,99 @@
           </div>
         </aside>
 
-        <aside class="fm-shoot-panel fm-map-tool-panel" id="fm-shoot-panel" hidden aria-label="Shoot timing controls" data-mobile-panel="shoot">
-          <div class="fm-map-tool-head">
-            <p class="eyebrow">Shoot</p>
-            <h2 class="fm-map-tool-title">Shoot and run</h2>
+        <aside class="fm-shoot-panel fm-map-tool-panel fm-editor" id="fm-shoot-panel" hidden aria-label="Shoot timing controls" data-mobile-panel="shoot">
+          <div class="fm-editor-titlebar">
+            <div class="fm-map-tool-head">
+              <p class="eyebrow">Shoot</p>
+              <h2 class="fm-map-tool-title">Shoot and run</h2>
+            </div>
+            <span class="fm-editor-rec" aria-hidden="true">Editor</span>
           </div>
           <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a shoot point. Add a run point, or choose stand still.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
-            <p class="fm-sizer-type" id="fm-shoot-player">No player selected</p>
-            <label class="fm-range-label" for="shoot-player-name">Player name</label>
-            <input type="text" id="shoot-player-name" maxlength="24" placeholder="Optional" autocomplete="off" spellcheck="false" />
-            <div class="fm-shoot-primary-actions">
-              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-run" disabled>Run selected player</button>
-              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-play-scene" disabled>Play scene</button>
-            </div>
-            <div class="fm-shoot-primary-actions">
-              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-play-window" disabled>Play in window</button>
-              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-download-gif" disabled>Download GIF</button>
-            </div>
-            <label class="fm-range-label" for="shoot-time">Run time</label>
-            <div class="fm-sizer-axis-row">
-              <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
-              <span class="fm-sizer-unit">sec</span>
-            </div>
-            <label class="fm-shoot-toggle">
-              <input type="checkbox" id="shoot-target-player" />
-              <span>Make shoot point a player</span>
-            </label>
-            <label class="fm-shoot-toggle">
-              <input type="checkbox" id="shoot-stand-still" />
-              <span>Stand still (no run location)</span>
-            </label>
-            <label class="fm-shoot-toggle">
-              <input type="checkbox" id="shoot-no-shot" />
-              <span>No shot (run only)</span>
-            </label>
-            <label class="fm-shoot-toggle">
-              <input type="checkbox" id="shoot-over" />
-              <span>Shoot over (structures don't block the line)</span>
-            </label>
-            <p class="fm-structure-note" id="fm-shoot-target-status">No target player selected.</p>
-            <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
-              <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shoot</button>
-              <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
-            </div>
-            <p class="fm-structure-note">
-              Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above. Stand still lets a player shoot without setting a run location. No shot lets a player just run. Shoot over draws the line straight through structures.
-            </p>
-            <button type="button" class="btn btn-primary fm-btn-full" id="shoot-reset-run" disabled>Reset scene</button>
-            <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear">Clear shoot points</button>
-            <section class="fm-shoot-scene" aria-label="Saved shoot scene">
-              <div class="fm-shoot-scene-head">
-                <p class="fm-range-label">Scene setups</p>
-                <p class="fm-shoot-scene-count" id="shoot-scene-count">0 saved</p>
+            <div class="fm-editor-topbar">
+              <div class="fm-editor-clipinfo">
+                <p class="fm-editor-player" id="fm-shoot-player">No player selected</p>
+                <label class="sr-only" for="shoot-player-name">Player name</label>
+                <input type="text" id="shoot-player-name" maxlength="24" placeholder="Name this clip (optional)" autocomplete="off" spellcheck="false" />
               </div>
-              <button type="button" class="btn btn-primary fm-btn-full" id="shoot-save-setup" disabled>Save player setup</button>
-              <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-new-setup">Add another player</button>
-              <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
+              <div class="fm-editor-transport" role="group" aria-label="Playback">
+                <button type="button" class="fm-transport-btn fm-transport-run" id="shoot-run" disabled>Run selected player</button>
+                <button type="button" class="fm-transport-btn fm-transport-play" id="shoot-play-scene" disabled>Play scene</button>
+                <button type="button" class="fm-transport-btn fm-transport-window" id="shoot-play-window" disabled>Play in window</button>
+                <button type="button" class="fm-transport-btn fm-transport-export" id="shoot-download-gif" disabled>Download GIF</button>
+              </div>
+            </div>
+
+            <div class="fm-editor-workbench">
+              <div class="fm-editor-tools">
+                <p class="fm-editor-section-label">Place on map</p>
+                <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
+                  <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="shoot">Set shoot</button>
+                  <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="run">Set run</button>
+                </div>
+                <p class="fm-editor-status" id="fm-shoot-target-status">No target player selected.</p>
+              </div>
+
+              <div class="fm-editor-inspector">
+                <p class="fm-editor-section-label">Clip settings</p>
+                <div class="fm-editor-duration">
+                  <label for="shoot-time">Run time</label>
+                  <div class="fm-editor-duration-field">
+                    <input type="number" id="shoot-time" min="0.5" max="30" step="0.5" value="3" aria-label="Run time in seconds" />
+                    <span>sec</span>
+                  </div>
+                </div>
+                <div class="fm-editor-effects">
+                  <label class="fm-shoot-toggle">
+                    <input type="checkbox" id="shoot-target-player" />
+                    <span>Make shoot point a player</span>
+                  </label>
+                  <label class="fm-shoot-toggle">
+                    <input type="checkbox" id="shoot-stand-still" />
+                    <span>Stand still (no run location)</span>
+                  </label>
+                  <label class="fm-shoot-toggle">
+                    <input type="checkbox" id="shoot-no-shot" />
+                    <span>No shot (run only)</span>
+                  </label>
+                  <label class="fm-shoot-toggle">
+                    <input type="checkbox" id="shoot-over" />
+                    <span>Shoot over (structures don't block the line)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <details class="fm-editor-help">
+              <summary>How shoot and run works</summary>
+              <p>
+                Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above. Stand still lets a player shoot without setting a run location. No shot lets a player just run. Shoot over draws the line straight through structures.
+              </p>
+            </details>
+
+            <section class="fm-shoot-scene fm-timeline" aria-label="Saved shoot scene">
+              <div class="fm-timeline-toolbar">
+                <div class="fm-shoot-scene-head">
+                  <p class="fm-editor-section-label">Timeline</p>
+                  <p class="fm-shoot-scene-count" id="shoot-scene-count">0 saved</p>
+                </div>
+                <div class="fm-timeline-actions">
+                  <button type="button" class="fm-timeline-btn fm-timeline-save" id="shoot-save-setup" disabled>Save player setup</button>
+                  <button type="button" class="fm-timeline-btn fm-timeline-add" id="shoot-new-setup">Add another player</button>
+                  <span class="fm-timeline-divider" aria-hidden="true"></span>
+                  <button type="button" class="fm-timeline-btn" id="shoot-reset-run" disabled>Reset scene</button>
+                  <button type="button" class="fm-timeline-btn" id="shoot-clear">Clear shoot points</button>
+                </div>
+              </div>
+              <div class="fm-timeline-body" id="shoot-timeline">
+                <div class="fm-timeline-ruler" id="shoot-timeline-ruler" aria-hidden="true"></div>
+                <ul class="fm-shoot-scene-list" id="shoot-scene-list" aria-label="Saved shoot setups"></ul>
+                <div class="fm-timeline-playhead" id="shoot-timeline-playhead" hidden aria-hidden="true"></div>
+              </div>
               <div class="fm-shoot-scene-actions">
-                <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-reset-scene" disabled>Reset scene</button>
-                <button type="button" class="btn btn-ghost fm-btn-full" id="shoot-clear-scene" disabled>Clear scene</button>
+                <button type="button" class="fm-timeline-btn" id="shoot-reset-scene" disabled>Reset scene</button>
+                <button type="button" class="fm-timeline-btn fm-timeline-danger" id="shoot-clear-scene" disabled>Clear scene</button>
               </div>
             </section>
           </div>
@@ -482,6 +515,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=47"></script>
+  <script src="field-mapper.js?v=48"></script>
 </body>
 </html>
