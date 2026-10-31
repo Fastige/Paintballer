@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body>
@@ -238,112 +238,150 @@
     <section class="guide-section" id="tools">
       <header class="section-header">
         <p class="eyebrow">Tools</p>
-        <h2>Everything on the tool bar</h2>
+        <h2>Every tool, step by step</h2>
       </header>
-      <div class="feature-grid">
+      <div class="feature-grid tool-grid">
         <article class="feature-card" style="--tool-color: #7cfc3b">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Move</h3></div>
           </div>
-          <p>
-            Your everyday pointer. Drag any placed player to fine-tune the setup. Tap a bunker to select it: its intel opens
-            under the map, and in Design you can recolor it.
-          </p>
+          <p class="tool-lead">Your everyday pointer for fine-tuning a setup once the teams are locked.</p>
+          <ul class="tool-steps">
+            <li>Drag any locked player to a new spot.</li>
+            <li>Tap a bunker to select it. Its name and notes open in the <strong>Field intel</strong> panel under the map.</li>
+            <li>With Design on, a selected bunker can get its own fill color in the Design panel.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Use Move after placing teams to stagger players behind different bunkers.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff7a1a">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-flag" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Players</h3></div>
           </div>
-          <p>
-            Drop a whole team at once. Pick 1–10 players, tap the spawn, and a ghost stack shows where they'll line up.
-            Nudge it with the arrows, then tap ✓ to lock. Team 1 goes first, then Team 2.
-            <strong>Reset team placement</strong> clears both teams to start over.
-          </p>
+          <p class="tool-lead">Drop a whole team onto the field at once, then lock it in.</p>
+          <ul class="tool-steps">
+            <li>Choose how many players are on the team, from 1 to 10, with the <strong>+</strong> and <strong>−</strong> buttons.</li>
+            <li>Tap the spawn point. A ghost stack of players appears there. Tap somewhere else to move it.</li>
+            <li>Nudge the whole stack with the arrow pad beside it, then tap <strong>✓</strong> to lock the team.</li>
+            <li>Team 2 unlocks once Team 1 is locked. Place it the same way on the other side.</li>
+            <li><strong>Reset team placement</strong> clears both teams so you can start over.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Changing the player count while the ghosts are showing re-stacks the team on the spot.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ffd43b">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-brush" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Brush</h3></div>
           </div>
-          <p>
-            Sketch routes, lanes, and callouts right on the map. Slide the brush size, tap one of six quick colors or pick
-            your own, and hit <strong>Clear drawings</strong> to wipe the board.
-          </p>
+          <p class="tool-lead">Sketch routes, lanes, and callouts freehand on top of the map.</p>
+          <ul class="tool-steps">
+            <li>Drag on the map to draw.</li>
+            <li>Set the brush size anywhere from 2 to 40 with the slider.</li>
+            <li>Tap a quick color (lime, orange, blue, yellow, pink, or white) or pick any custom color.</li>
+            <li><strong>Clear drawings</strong> wipes every stroke. Bunkers, players, and scenes stay put.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Drawings are for planning on screen and aren't saved in map packs.</p>
         </article>
         <article class="feature-card" style="--tool-color: #00ff9d">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Structure</h3></div>
           </div>
-          <p>
-            Add bunkers the map missed. Choose a rectangle, circle, or triangle and drag it out on the field. Wall styles are
-            <strong>Filled</strong>, <strong>Border only</strong>, or <strong>Transparent wall</strong>, and all three block vision and shots.
-            Drag an existing bunker to move it, or tap <strong>Undo</strong> to remove the last one.
-          </p>
+          <p class="tool-lead">Add any bunkers the map missed, or build a layout from scratch.</p>
+          <ul class="tool-steps">
+            <li>Pick a shape: <strong>Rectangle</strong>, <strong>Circle</strong>, or <strong>Triangle</strong>.</li>
+            <li>Pick a wall style: <strong>Filled</strong>, <strong>Border only</strong>, or <strong>Transparent wall</strong>. All three block vision and shots.</li>
+            <li>Drag on an open spot to draw the bunker to size.</li>
+            <li>Drag an existing bunker to move it, or tap <strong>Undo</strong> to remove the last one you placed.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Bright green bunkers on an uploaded image are detected for you, so you only add what's missing.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff4fc8">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Vision</h3></div>
           </div>
-          <p>
-            Tap a player to cast pink sight lines in every direction. Lines stop at bunkers, so open lanes and blind spots
-            jump out. The lines stay up while you switch tools.
-          </p>
+          <p class="tool-lead">See exactly what a player can see from where they stand.</p>
+          <ul class="tool-steps">
+            <li>Tap a player to cast pink sight lines all the way around them.</li>
+            <li>Each line stops at the first bunker it hits, so open lanes and blind spots stand out.</li>
+            <li>Tap the same player again to turn the lines off, or tap another player to switch.</li>
+            <li>Lines stay on when you change tools and follow the player during a run.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Turn on Vision, then play a scene to watch a runner's view open up as they move.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff3b3b">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Shoot</h3></div>
           </div>
-          <p>
-            Plan each player's move. Tap a player, draw the route they run, pick what they shoot at, then save it to a scene you can play
-            back. <a href="#shoot">See how scenes work</a>.
-          </p>
+          <p class="tool-lead">Plan each player's move: where they run and what they shoot at.</p>
+          <ul class="tool-steps">
+            <li>Tap a player, then use <strong>Draw run</strong> and drag from them to draw the exact route they run.</li>
+            <li>Set the run time, from 0.5 to 30 seconds.</li>
+            <li>Use <strong>Set shoot</strong> to tap a spot, or turn on <strong>Make shoot point a player</strong> and tap an opponent.</li>
+            <li><strong>Run selected player</strong> previews the move. The player returns to their start spot when it ends.</li>
+            <li><strong>Save player setup</strong> adds them to the timeline. Then use <strong>+ Add another player</strong> for the next one.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Saved players play together as a scene. <a href="#shoot">See how scenes work</a>.</p>
         </article>
         <article class="feature-card" style="--tool-color: #3bd5ff">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Sizer</h3></div>
           </div>
-          <p>
-            Tap a bunker to fine-tune it. Set its exact width and height, swap its wall style, and drag it or nudge it with the
-            arrow pad. The <strong>Move step</strong> slider sets how far each nudge goes. <strong>Duplicate</strong> copies it,
-            <strong>Delete</strong> removes it, and <strong>Undo Sizer change</strong> reverses your last edit.
-          </p>
+          <p class="tool-lead">Fine-tune any bunker's size, position, and style.</p>
+          <ul class="tool-steps">
+            <li>Tap a bunker to select it. Its shape shows at the top of the panel.</li>
+            <li>Set the exact <strong>Width</strong> and <strong>Height</strong> with the sliders.</li>
+            <li>Drag the bunker, or nudge it with the arrow pad. The <strong>Move step</strong> slider sets how far each tap moves it.</li>
+            <li>Switch its wall style between Filled, Border only, and Transparent wall.</li>
+            <li><strong>Duplicate</strong> copies it, <strong>Delete</strong> removes it, and <strong>Undo Sizer change</strong> reverses your last edit.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Drop the Move step low for pixel-perfect lineups, or raise it to slide bunkers across the field fast.</p>
         </article>
         <article class="feature-card" style="--tool-color: #b18cff">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>50 Mirror</h3></div>
           </div>
-          <p>
-            Map one half of the field and copy it to the other side. Confirm, drag a box around the field, then click two points on the 50 line.
-            The bunkers on the busier side are mirrored across it, and triangles flip to face the right way.
-          </p>
+          <p class="tool-lead">Map one half of the field, then copy it to the other side.</p>
+          <ul class="tool-steps">
+            <li>Tap <strong>50 Mirror</strong> and confirm.</li>
+            <li>Drag a box around the part of the field you want to mirror.</li>
+            <li>Click two points along the 50 line.</li>
+            <li>Bunkers on the side with more bunkers are copied across the line, and triangles flip to face the right way.</li>
+            <li>Spots that already have a bunker are skipped, so nothing gets doubled up.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Press Esc at any step to cancel.</p>
         </article>
         <article class="feature-card" style="--tool-color: #2ee6c8">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Design</h3></div>
           </div>
-          <p>
-            Swap the photo for a clean field drawn from your bunkers, and flip between the two with the <strong>Design map</strong> switch.
-            Choose from 15 field themes and 15 bunker color combos, set every color yourself, or give one bunker its own fill.
-            Map packs open in Design automatically.
-          </p>
+          <p class="tool-lead">Swap the photo for a clean, custom-colored field drawn from your bunkers.</p>
+          <ul class="tool-steps">
+            <li>Tap <strong>Design</strong> to open its panel, and flip between photo and design with the <strong>Design map</strong> switch.</li>
+            <li><strong>Structures</strong> tab: choose from 15 color combos, or set the fill, outline, and glow for every bunker.</li>
+            <li>Select a bunker with Move or Sizer to give it its own fill. <strong>Clear custom fills</strong> resets them.</li>
+            <li><strong>Canvas</strong> tab: choose from 15 field themes, or set the turf, stripes, grid lines, boundary, and vignette.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Map packs and presets open in Design automatically, and your colors are saved with the pack.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff5c00">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-intel" /></svg></span>
             <div><span class="feature-kicker">Panel</span><h3>Field intel</h3></div>
           </div>
-          <p>
-            Shows under the map in Move, Brush, and Vision (it's the Intel button on mobile). Tap a green bunker to give it a name
-            and notes, like "Snake 1, watch the wire". Open the <strong>Full report</strong> to see every bunker at once.
-          </p>
+          <p class="tool-lead">Name every bunker and keep your team's notes in one place.</p>
+          <ul class="tool-steps">
+            <li>Shows under the map with Move, Brush, and Vision. On mobile, it's the <strong>Intel</strong> button.</li>
+            <li>Tap a green bunker, then give it a name and notes, like "Snake 1, watch the wire".</li>
+            <li>Open the <strong>Full report</strong> to see every bunker's intel at once and write a report for the whole field.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Intel is saved in your map pack, so the whole team gets the same callouts.</p>
         </article>
       </div>
     </section>
