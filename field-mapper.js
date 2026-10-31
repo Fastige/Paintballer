@@ -5853,7 +5853,10 @@
   function getTeamStackPositions(spawn, count) {
     const x = Math.max(2, Math.min(98, spawn.x));
     if (count <= 0) return [];
-    const preferredSpacing = count <= 5 ? 2.6 : 2.2;
+    const playerPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--player-size")) || 20;
+    const stageH = stage.clientHeight || 0;
+    const minSpacing = stageH ? ((playerPx + 4) / stageH) * 100 : 0;
+    const preferredSpacing = Math.max(count <= 5 ? 2.6 : 2.2, minSpacing);
     const halfCount = (count - 1) / 2;
     const availableHalf = Math.max(0, Math.min(spawn.y - 2, 98 - spawn.y));
     const spacing = halfCount > 0 ? Math.min(preferredSpacing, availableHalf / halfCount) : 0;
