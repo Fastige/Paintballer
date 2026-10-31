@@ -3784,7 +3784,9 @@
   const AUTO_MAX_DIM = 900;
   const AUTO_FIT_MIN_IOU = 0.8;
   /** Below this, an unsplittable outline isn't a bunker. */
-  const AUTO_FIT_REJECT_IOU = 0.2;  const AUTO_MAX_PIECES = 12;
+  const AUTO_FIT_REJECT_IOU = 0.2;
+  /** An open outline whose box is this solidly filled by any non-background color is one bunker. */
+  const AUTO_FIT_BODY_IOU = 0.85;  const AUTO_MAX_PIECES = 12;
   const AUTO_HISTORY_LIMIT = 60;
   const AUTO_DARK_MAX = 80;
   const AUTO_MAX_COLORS = 8;
@@ -4589,7 +4591,7 @@
     };
   }
 
-  function autoStructuresForComponent(labels, w, h, fullComp, split, strict, region, colorMask, margin, openRadius) {
+  function autoStructuresForComponent(data, labels, w, h, fullComp, split, strict, region, colorMask, margin, openRadius) {
     const clipped = colorMask ? clipAutoComponentToColor(labels, w, h, fullComp, colorMask, margin) : fullComp;
     const comp = colorMask ? trimAutoStubs(labels, w, clipped, margin) : clipped;
     const bw = comp.maxX - comp.minX + 1;
@@ -4606,6 +4608,24 @@
     if (strict && autoCoreCount(local, bw, bh) < Math.max(3, area * 0.12)) return null;
 
     const fit = fitAutoShape(local, bw, bh, area);
+    if (fit.iou < AUTO_FIT_MIN_IOU && colorMask) {
+      const body = new Uint8Array(bw * bh);
+      let bodyArea = 0;
+      for (let y = 0; y < bh; y++) {
+        for (let x = 0; x < bw; x++) {
+          if (isAutoBackground(data, (comp.minY + y) * w + comp.minX + x)) continue;
+          body[y * bw + x] = 1;
+          bodyArea++;
+        }
+      }
+      const bodyFit = fitAutoShape(body, bw, bh, bodyArea);
+      if (bodyFit.iou >= AUTO_FIT_BODY_IOU) {
+        return {
+          split: false,
+          pieces: [makeAutoStructure(comp.minX, comp.minY, bw, bh, w, h, bodyFit.type, bodyFit.flip)],
+        };
+      }
+    }
     if (fit.iou < AUTO_FIT_MIN_IOU && colorMask) {
       const colorComp = clipAutoComponentToColor(labels, w, h, fullComp, colorMask, 0);
       const cw = colorComp.maxX - colorComp.minX + 1;
@@ -4936,7 +4956,7 @@
         const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
         const tapped = start >= 0 && labels[start] === comp.id;
         if (!tapped && comp.count < minPixels) continue;
-        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin, openRadius);
+        const result = autoStructuresForComponent(data, labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin, openRadius);
         if (!result) continue;
         groups.push(result.pieces);
         found.push(...result.pieces);
