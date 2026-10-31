@@ -620,67 +620,7 @@
     vignette.addColorStop(1, "rgba(0, 0, 0, 0.35)");
     context.fillStyle = vignette;
     context.fillRect(0, 0, w, h);
-
-    const bunkers = getPhotoBunkerLayer();
-    if (bunkers) {
-      context.shadowColor = "rgba(255, 59, 59, 0.6)";
-      context.shadowBlur = 12;
-      context.drawImage(bunkers, 0, 0, w, h);
-    }
     context.restore();
-  }
-
-  let photoBunkerCache = { key: "", layer: null };
-
-  function getPhotoBunkerLayer() {
-    if (!image.naturalWidth || !image.naturalHeight) return null;
-    const key = `${image.src.length}:${image.src.slice(-64)}:${structures.length}`;
-    if (photoBunkerCache.key === key) return photoBunkerCache.layer;
-
-    const w = image.naturalWidth;
-    const h = image.naturalHeight;
-    const layer = document.createElement("canvas");
-    layer.width = w;
-    layer.height = h;
-    const lctx = layer.getContext("2d", { willReadFrequently: true });
-    lctx.drawImage(image, 0, 0, w, h);
-    const pixels = lctx.getImageData(0, 0, w, h);
-    const { data } = pixels;
-
-    let minX = 0;
-    let minY = 0;
-    let maxX = w;
-    let maxY = h;
-    if (structures.length) {
-      const pad = 0.02;
-      minX = Math.max(0, Math.floor((Math.min(...structures.map((s) => Math.min(s.x1, s.x2))) - pad) * w));
-      maxX = Math.min(w, Math.ceil((Math.max(...structures.map((s) => Math.max(s.x1, s.x2))) + pad) * w));
-      minY = Math.max(0, Math.floor((Math.min(...structures.map((s) => Math.min(s.y1, s.y2))) - pad) * h));
-      maxY = Math.min(h, Math.ceil((Math.max(...structures.map((s) => Math.max(s.y1, s.y2))) + pad) * h));
-    }
-
-    let found = 0;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const inField = x >= minX && x < maxX && y >= minY && y < maxY;
-        if (inField && data[i + 3] > 80 && r > 150 && r - Math.max(g, b) > 90) {
-          data[i] = 255;
-          data[i + 1] = 77;
-          data[i + 2] = 77;
-          data[i + 3] = 255;
-          found++;
-        } else {
-          data[i + 3] = 0;
-        }
-      }
-    }
-    lctx.putImageData(pixels, 0, 0);
-    photoBunkerCache = { key, layer: found ? layer : null };
-    return photoBunkerCache.layer;
   }
 
   function renderDesignMap() {
