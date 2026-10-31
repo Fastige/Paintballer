@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=17" />
-  <link rel="stylesheet" href="field-mapper.css?v=59" />
+  <link rel="stylesheet" href="field-mapper.css?v=60" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -345,16 +345,37 @@
               </div>
               <button type="button" class="fm-auto-step-btn" id="auto-clear-box" disabled>Clear box</button>
             </li>
-            <li class="fm-auto-step" id="auto-step-colors">
+            <li class="fm-auto-step" id="auto-step-whiteout">
               <span class="fm-auto-step-num" aria-hidden="true">2</span>
               <div class="fm-auto-step-body">
-                <p class="fm-auto-step-title">Tap bunker colors</p>
-                <p class="fm-auto-step-text">Each tap finds every bunker of that color in the box. Keep tapping to add more colors.</p>
+                <p class="fm-auto-step-title">White out</p>
+                <p class="fm-auto-step-text">Brush white over anything that isn't a bunker, like text, logos, and lines. Press Done when finished.</p>
+              </div>
+              <button type="button" class="fm-auto-step-btn" id="auto-edit-whiteout" disabled>Edit</button>
+            </li>
+            <li class="fm-auto-step" id="auto-step-colors">
+              <span class="fm-auto-step-num" aria-hidden="true">3</span>
+              <div class="fm-auto-step-body">
+                <p class="fm-auto-step-title">Colors detected</p>
+                <p class="fm-auto-step-text">Every bunker color in the box is mapped. Tap a bunker to add a color it missed, or × to drop one.</p>
               </div>
             </li>
           </ol>
+          <section class="fm-kit-card fm-auto-whiteout" id="auto-whiteout-tools" hidden>
+            <div class="fm-throttle">
+              <div class="fm-throttle-head">
+                <label for="auto-whiteout-size">Whiteout brush</label>
+                <output class="fm-throttle-value" id="auto-whiteout-size-value" for="auto-whiteout-size">18</output>
+              </div>
+              <input type="range" class="fm-throttle-range" id="auto-whiteout-size" min="4" max="60" value="18" />
+            </div>
+            <div class="fm-auto-undo-row">
+              <button type="button" class="fm-kit-btn is-quiet" id="auto-clear-whiteout" disabled>Clear whiteout</button>
+              <button type="button" class="fm-kit-btn is-primary" id="auto-whiteout-done">Done</button>
+            </div>
+          </section>
           <section class="fm-kit-card">
-            <p class="fm-kit-label">Picked colors</p>
+            <p class="fm-kit-label">Colors</p>
             <div class="fm-auto-picks" id="auto-pick-list"></div>
           </section>
           <div class="fm-auto-undo-row">
@@ -799,6 +820,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=77"></script>
+  <script src="field-mapper.js?v=78"></script>
 </body>
 </html>

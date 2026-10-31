@@ -84,8 +84,15 @@
   const autoDarkInput = document.getElementById("auto-dark");
   const autoReplaceInput = document.getElementById("auto-replace");
   const autoStepBox = document.getElementById("auto-step-box");
+  const autoStepWhiteout = document.getElementById("auto-step-whiteout");
   const autoStepColors = document.getElementById("auto-step-colors");
   const autoClearBoxBtn = document.getElementById("auto-clear-box");
+  const autoEditWhiteoutBtn = document.getElementById("auto-edit-whiteout");
+  const autoWhiteoutTools = document.getElementById("auto-whiteout-tools");
+  const autoWhiteoutSizeInput = document.getElementById("auto-whiteout-size");
+  const autoWhiteoutSizeValue = document.getElementById("auto-whiteout-size-value");
+  const autoClearWhiteoutBtn = document.getElementById("auto-clear-whiteout");
+  const autoWhiteoutDoneBtn = document.getElementById("auto-whiteout-done");
   const autoPickList = document.getElementById("auto-pick-list");
   const autoUndoBtn = document.getElementById("auto-undo");
   const autoUndoAllBtn = document.getElementById("auto-undo-all");
@@ -354,11 +361,21 @@
   let autoBox = null;
   /** @type {{ id: string, rgb: number[], x: number, y: number, ids: string[], bunkers: number }[]} */
   let autoPicks = [];
-  /** @type {{ structures: object[], box: object|null, picks: object[] }[]} */
+  /** Whiteout strokes; size is a fraction of the map width. Replaced (never mutated) on change. */
+  /** @type {{ size: number, points: { x: number, y: number }[] }[]} */
+  let autoWhiteout = [];
+  let autoScanned = false;
+  /** @type {object[]|null} */
+  let autoScanBase = null;
+  /** @type {object[]} */
   let autoHistory = [];
   let autoPointer = null;
+  /** @type {{ x: number, y: number }|null} */
+  let autoHover = null;
   /** @type {{ src: string, w: number, h: number, data: Uint8ClampedArray }|null} */
   let autoImageCache = null;
+  /** @type {{ base: object, strokes: object[], w: number, h: number, data: Uint8ClampedArray }|null} */
+  let autoScanCache = null;
   let fieldIntelReport = { name: "", bio: "" };
   let intelModalOpen = false;
   /** @type {ReturnType<typeof serializeFieldState>|null} */
@@ -535,7 +552,7 @@
       players: "Teams — choose Team 1 count, tap spawn, nudge with ghost arrows, then lock.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
-      auto: "Auto — drag a box, then tap bunkers to pick their colors.",
+      auto: "Auto — drag a box, brush white over text and lines, then press Done.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
       shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
       sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
@@ -565,6 +582,9 @@
     if (autoUndoBtn) autoUndoBtn.disabled = !hasMap || !autoHistory.length;
     if (autoUndoAllBtn) autoUndoAllBtn.disabled = !hasMap || !autoHistory.length;
     if (autoClearBoxBtn) autoClearBoxBtn.disabled = !hasMap || !autoBox;
+    if (autoEditWhiteoutBtn) autoEditWhiteoutBtn.disabled = !hasMap || !autoScanned;
+    if (autoClearWhiteoutBtn) autoClearWhiteoutBtn.disabled = !hasMap || !autoWhiteout.length;
+    if (autoWhiteoutDoneBtn) autoWhiteoutDoneBtn.disabled = !hasMap || !autoBox || autoScanned;
     updateTeamPlacementPanel();
     updateShootPanel();
   }
@@ -656,7 +676,7 @@
         structure:
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
         auto:
-          "<strong>Auto</strong> — drag a box around the area to scan · then click bunkers to pick their colors",
+          "<strong>Auto</strong> — drag a box around the area to scan · brush white over text and lines · press Done to detect every color",
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
@@ -3764,6 +3784,8 @@
   const AUTO_MAX_PIECES = 12;
   const AUTO_HISTORY_LIMIT = 60;
   const AUTO_DARK_MAX = 80;
+  const AUTO_MAX_COLORS = 8;
+  const AUTO_SEED_MIN_CHROMA = 40;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3817,6 +3839,47 @@
     octx.drawImage(image, 0, 0, w, h);
     autoImageCache = { src: image.currentSrc, w, h, data: octx.getImageData(0, 0, w, h).data };
     return autoImageCache;
+  }
+
+  function traceAutoStroke(ctx, stroke, w, h) {
+    const pts = stroke.points;
+    const width = Math.max(1, stroke.size * w);
+    if (pts.length === 1) {
+      ctx.beginPath();
+      ctx.arc(pts[0].x * w, pts[0].y * h, width / 2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x * w, pts[0].y * h);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * w, pts[i].y * h);
+    ctx.stroke();
+  }
+
+  function paintAutoWhiteout(ctx, strokes, w, h, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    strokes.forEach((stroke) => traceAutoStroke(ctx, stroke, w, h));
+    ctx.restore();
+  }
+
+  function getAutoScanData() {
+    const base = getAutoImageData();
+    if (!autoWhiteout.length) return base;
+    if (autoScanCache && autoScanCache.base === base && autoScanCache.strokes === autoWhiteout) return autoScanCache;
+    const { w, h } = base;
+    const off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext("2d", { willReadFrequently: true });
+    octx.putImageData(new ImageData(new Uint8ClampedArray(base.data), w, h), 0, 0);
+    paintAutoWhiteout(octx, autoWhiteout, w, h, "#ffffff");
+    autoScanCache = { base, strokes: autoWhiteout, w, h, data: octx.getImageData(0, 0, w, h).data };
+    return autoScanCache;
   }
 
   function isAutoDark(data, p) {
@@ -4299,7 +4362,15 @@
       structures: structures.map((s) => ({ ...s })),
       box: autoBox ? { ...autoBox } : null,
       picks: autoPicks.map((p) => ({ ...p, rgb: [...p.rgb], ids: [...p.ids] })),
+      whiteout: autoWhiteout,
+      scanned: autoScanned,
+      scanBase: autoScanBase,
     };
+  }
+
+  function getAutoStage() {
+    if (!autoBox) return "box";
+    return autoScanned ? "colors" : "whiteout";
   }
 
   function pushAutoHistory() {
@@ -4324,31 +4395,46 @@
     structures = snap.structures;
     autoBox = snap.box;
     autoPicks = snap.picks;
+    autoWhiteout = snap.whiteout;
+    autoScanned = snap.scanned;
+    autoScanBase = snap.scanBase;
     refreshAfterAutoChange();
   }
 
   function resetAutoSession() {
     autoBox = null;
     autoPicks = [];
+    autoWhiteout = [];
+    autoScanned = false;
+    autoScanBase = null;
     autoHistory = [];
     autoPointer = null;
     autoImageCache = null;
+    autoScanCache = null;
     renderAutoPanel();
     redrawAutoOverlay();
     setAutoStatus("Drag a box on the map around the area you want to scan.");
   }
 
   function renderAutoPanel() {
-    autoStepBox?.classList.toggle("is-current", !autoBox);
-    autoStepBox?.classList.toggle("is-done", Boolean(autoBox));
-    autoStepColors?.classList.toggle("is-current", Boolean(autoBox));
-    autoStepColors?.classList.toggle("is-done", autoPicks.length > 0);
+    const stage = getAutoStage();
+    autoStepBox?.classList.toggle("is-current", stage === "box");
+    autoStepBox?.classList.toggle("is-done", stage !== "box");
+    autoStepWhiteout?.classList.toggle("is-current", stage === "whiteout");
+    autoStepWhiteout?.classList.toggle("is-done", stage === "colors");
+    autoStepColors?.classList.toggle("is-current", stage === "colors");
+    autoStepColors?.classList.toggle("is-done", stage === "colors" && autoPicks.length > 0);
+    if (autoWhiteoutTools) autoWhiteoutTools.hidden = stage !== "whiteout";
     if (autoPickList) {
       autoPickList.innerHTML = "";
       if (!autoPicks.length) {
         const empty = document.createElement("p");
         empty.className = "fm-auto-empty";
-        empty.textContent = autoBox ? "Tap a bunker inside the box to pick its color." : "Draw a box first.";
+        empty.textContent = {
+          box: "Draw a box first.",
+          whiteout: "Press Done to detect every bunker color in the box.",
+          colors: "No colors yet. Tap a bunker inside the box to pick its color.",
+        }[stage];
         autoPickList.append(empty);
       }
       autoPicks.forEach((pick) => {
@@ -4422,7 +4508,7 @@
       return;
     }
     if (!image.naturalWidth) return;
-    const { w, h, data } = getAutoImageData();
+    const { w, h, data } = getAutoScanData();
     const cx = Math.max(0, Math.min(w - 1, Math.floor(point.x * w)));
     const cy = Math.max(0, Math.min(h - 1, Math.floor(point.y * h)));
     const region = getAutoBoxRegion(w, h);
@@ -4439,11 +4525,44 @@
     }
 
     const rgb = sampleAutoColor(data, w, h, sx, sy);
+    const { found, bunkers } = scanAutoColor(data, w, h, region, rgb, start);
+    if (!found.length) {
+      setAutoStatus(`No bunkers matched ${autoSwatchHtml(rgb)} in the box. Try raising <strong>Color match</strong>.`);
+      return;
+    }
+
+    const fresh = found.filter((f) => !overlapsAutoPieces(f, structures));
+    if (!fresh.length) {
+      setAutoStatus(`Every ${autoSwatchHtml(rgb)} bunker in the box is already mapped.`);
+      return;
+    }
+
+    pushAutoHistory();
+    autoPicks.push({ id: crypto.randomUUID(), rgb, x: point.x, y: point.y, ids: fresh.map((f) => f.id), bunkers });
+    structures = structures.concat(fresh);
+    mergeIntelFromSavedState();
+    refreshAfterAutoChange();
+
+    const skipped = found.length - fresh.length;
+    setAutoStatus(
+      `${autoSwatchHtml(rgb)} Found <strong>${plural(bunkers, "bunker")}</strong> and placed <strong>${plural(fresh.length, "piece")}</strong>${
+        skipped ? ` (skipped ${skipped} already mapped)` : ""
+      }. Tap another color, or <strong>Undo</strong>.`
+    );
+  }
+
+  function overlapsAutoPieces(piece, others) {
+    const pb = getStructureBounds(piece);
+    return others.some((s) => boundsIoU(getStructureBounds(s), pb) > 0.3);
+  }
+
+  function scanAutoColor(data, w, h, region, rgb, start) {
     const withDark = autoDarkInput?.checked !== false && !isAutoDarkColor(rgb);
     const minPixels = Math.max(12, Math.round(w * h * 0.00004));
     const bridgeSteps = Math.max(3, Math.round(Math.max(w, h) * 0.006));
     const outlineMargin = Math.max(2, Math.round(bridgeSteps / 2));
-    let mask = buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance(), withDark);
+    const matched = buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance(), withDark);
+    let mask = matched.slice();
     let colorMask = null;
     if (withDark) {
       mask = pruneAutoMask(mask, w, h, region, Math.max(8, minPixels >> 1));
@@ -4462,7 +4581,7 @@
         const p = y * w + x;
         if (!mask[p] || labels[p]) continue;
         const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
-        const tapped = labels[start] === comp.id;
+        const tapped = start >= 0 && labels[start] === comp.id;
         if (!tapped && comp.count < minPixels) continue;
         const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin);
         if (!result) continue;
@@ -4470,41 +4589,162 @@
         found.push(...result.pieces);
       }
     }
+    return { found, bunkers, matched, minPixels };
+  }
 
-    if (!found.length) {
-      setAutoStatus(`No bunkers matched ${autoSwatchHtml(rgb)} in the box. Try raising <strong>Color match</strong>.`);
-      return;
-    }
+  function isAutoSeedPixel(data, p) {
+    if (isAutoBackground(data, p) || isAutoDark(data, p)) return false;
+    const i = p * 4;
+    return Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]) >= AUTO_SEED_MIN_CHROMA;
+  }
 
-    let base = structures;
-    let replaced = 0;
-    if (autoReplaceInput?.checked && !autoPicks.length) {
-      replaced = base.filter(isInAutoBox).length;
-      base = base.filter((s) => !isInAutoBox(s));
+  function findAutoSeedColor(data, w, region, used, hist) {
+    hist.fill(0);
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (used[p] || !isAutoSeedPixel(data, p)) continue;
+        const i = p * 4;
+        hist[((data[i] >> 4) << 8) | ((data[i + 1] >> 4) << 4) | (data[i + 2] >> 4)]++;
+      }
     }
-    const fresh = found.filter((f) => {
-      const fb = getStructureBounds(f);
-      return !base.some((s) => boundsIoU(getStructureBounds(s), fb) > 0.3);
-    });
-    if (!fresh.length && !replaced) {
-      setAutoStatus(`Every ${autoSwatchHtml(rgb)} bunker in the box is already mapped.`);
-      return;
+    let bestBin = -1;
+    let bestScore = 0;
+    for (let bin = 0; bin < 4096; bin++) {
+      if (!hist[bin]) continue;
+      const r = bin >> 8;
+      const g = (bin >> 4) & 15;
+      const b = bin & 15;
+      let score = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dg = -1; dg <= 1; dg++) {
+          for (let db = -1; db <= 1; db++) {
+            const rr = r + dr;
+            const gg = g + dg;
+            const bb = b + db;
+            if (rr < 0 || gg < 0 || bb < 0 || rr > 15 || gg > 15 || bb > 15) continue;
+            score += hist[(rr << 8) | (gg << 4) | bb];
+          }
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestBin = bin;
+      }
+    }
+    if (bestBin < 0) return null;
+    const br = bestBin >> 8;
+    const bg = (bestBin >> 4) & 15;
+    const bb = bestBin & 15;
+    const rs = [];
+    const gs = [];
+    const bs = [];
+    const seeds = [];
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (used[p] || !isAutoSeedPixel(data, p)) continue;
+        const i = p * 4;
+        if (Math.abs((data[i] >> 4) - br) > 1 || Math.abs((data[i + 1] >> 4) - bg) > 1 || Math.abs((data[i + 2] >> 4) - bb) > 1) continue;
+        rs.push(data[i]);
+        gs.push(data[i + 1]);
+        bs.push(data[i + 2]);
+        seeds.push(p);
+      }
+    }
+    const median = (arr) => arr.sort((a, b) => a - b)[arr.length >> 1];
+    return { rgb: [median(rs), median(gs), median(bs)], seeds, score: bestScore };
+  }
+
+  function detectAllAutoColors() {
+    if (!autoBox || autoScanned || !image.naturalWidth) return;
+    const { w, h, data } = getAutoScanData();
+    const region = getAutoBoxRegion(w, h);
+    const minPixels = Math.max(12, Math.round(w * h * 0.00004));
+    const used = new Uint8Array(w * h);
+    const hist = new Int32Array(4096);
+    const scanBase = structures;
+    const base = autoReplaceInput?.checked ? structures.filter((s) => !isInAutoBox(s)) : structures;
+    const replaced = structures.length - base.length;
+    const placed = [];
+    const picks = [];
+    let bunkers = 0;
+    for (let round = 0; round < AUTO_MAX_COLORS; round++) {
+      const seed = findAutoSeedColor(data, w, region, used, hist);
+      if (!seed || seed.score < minPixels) break;
+      const result = scanAutoColor(data, w, h, region, seed.rgb, -1);
+      const consumed = morphAutoMask(morphAutoMask(result.matched, w, h, true), w, h, true);
+      for (let p = 0; p < consumed.length; p++) if (consumed[p]) used[p] = 1;
+      seed.seeds.forEach((p) => {
+        used[p] = 1;
+      });
+      const fresh = result.found.filter((f) => !overlapsAutoPieces(f, base) && !overlapsAutoPieces(f, placed));
+      if (!fresh.length) continue;
+      placed.push(...fresh);
+      bunkers += result.bunkers;
+      const fb = getStructureBounds(fresh[0]);
+      picks.push({
+        id: crypto.randomUUID(),
+        rgb: seed.rgb,
+        x: fb.left + fb.width / 2,
+        y: fb.top + fb.height / 2,
+        ids: fresh.map((f) => f.id),
+        bunkers: result.bunkers,
+      });
     }
 
     pushAutoHistory();
-    autoPicks.push({ id: crypto.randomUUID(), rgb, x: point.x, y: point.y, ids: fresh.map((f) => f.id), bunkers });
-    structures = base.concat(fresh);
+    autoScanBase = scanBase;
+    autoScanned = true;
+    autoPicks = picks;
+    structures = base.concat(placed);
     mergeIntelFromSavedState();
     refreshAfterAutoChange();
 
-    const notes = [];
-    if (replaced) notes.push(`replaced ${plural(replaced, "old piece")}`);
-    if (found.length > fresh.length) notes.push(`skipped ${found.length - fresh.length} already mapped`);
+    if (!picks.length) {
+      setAutoStatus(
+        "No bunker colors found in the box. Tap a bunker to pick its color, raise <strong>Color match</strong>, or <strong>Edit</strong> the whiteout."
+      );
+      return;
+    }
+    const swatches = picks.map((p) => autoSwatchHtml(p.rgb)).join("");
     setAutoStatus(
-      `${autoSwatchHtml(rgb)} Found <strong>${plural(bunkers, "bunker")}</strong> and placed <strong>${plural(fresh.length, "piece")}</strong>${
-        notes.length ? ` (${notes.join(", ")})` : ""
-      }. Tap another color, or <strong>Undo</strong>.`
+      `${swatches} Found <strong>${plural(picks.length, "color")}</strong>, <strong>${plural(bunkers, "bunker")}</strong>, and placed <strong>${plural(placed.length, "piece")}</strong>${
+        replaced ? ` (replaced ${plural(replaced, "old piece")})` : ""
+      }. Tap a bunker to add a missed color, or <strong>Undo</strong>.`
     );
+  }
+
+  function editAutoWhiteout() {
+    if (!autoScanned) return;
+    pushAutoHistory();
+    structures = autoScanBase || structures;
+    autoPicks = [];
+    autoScanned = false;
+    autoScanBase = null;
+    refreshAfterAutoChange();
+    setAutoStatus("Back to whiteout. Brush over anything else that isn't a bunker, then press <strong>Done</strong>.");
+  }
+
+  function clearAutoWhiteout() {
+    if (!autoWhiteout.length) return;
+    pushAutoHistory();
+    autoWhiteout = [];
+    refreshAfterAutoChange();
+    setAutoStatus("Whiteout cleared.");
+  }
+
+  function getAutoWhiteoutSizePx() {
+    return Number(autoWhiteoutSizeInput?.value) || 18;
+  }
+
+  function syncAutoWhiteoutSizeUi() {
+    if (!autoWhiteoutSizeInput) return;
+    const min = Number(autoWhiteoutSizeInput.min) || 0;
+    const max = Number(autoWhiteoutSizeInput.max) || 100;
+    const value = getAutoWhiteoutSizePx();
+    autoWhiteoutSizeInput.closest(".fm-throttle")?.style.setProperty("--fill", `${((value - min) / (max - min)) * 100}%`);
+    if (autoWhiteoutSizeValue) autoWhiteoutSizeValue.textContent = String(value);
   }
 
   function removeAutoPick(id) {
@@ -4522,10 +4762,12 @@
     pushAutoHistory();
     autoBox = box;
     autoPicks = [];
+    autoScanned = false;
+    autoScanBase = null;
     refreshAfterAutoChange();
     setAutoStatus(
       box
-        ? "Box set. Now tap a bunker inside it to pick that color."
+        ? "Box set. Brush white over anything that isn't a bunker (text, logos, lines), then press <strong>Done</strong>."
         : "Box cleared. Drag a new box on the map around the area you want to scan."
     );
   }
@@ -4565,15 +4807,37 @@
 
   function startAutoPointer(e) {
     const point = getAutoPoint(e);
-    autoPointer = { pid: e.pointerId, cx: e.clientX, cy: e.clientY, start: point, current: point, moved: false };
+    autoPointer = { pid: e.pointerId, cx: e.clientX, cy: e.clientY, start: point, current: point, moved: false, stroke: null };
+    if (getAutoStage() === "whiteout") {
+      const { w } = getCanvasSize();
+      autoPointer.stroke = { size: getAutoWhiteoutSizePx() / (w || 1), points: [point] };
+      autoHover = point;
+      redrawAutoOverlay();
+    }
     setInteractionLock(true);
     structureCanvas.setPointerCapture(e.pointerId);
   }
 
   function moveAutoPointer(e) {
-    if (!autoPointer || autoPointer.pid !== e.pointerId) return false;
+    if (!autoPointer || autoPointer.pid !== e.pointerId) {
+      if (autoPointer || activeTool !== "auto" || getAutoStage() !== "whiteout" || e.pointerType === "touch") return false;
+      autoHover = getAutoPoint(e);
+      redrawAutoOverlay();
+      return true;
+    }
     e.preventDefault();
     autoPointer.current = getAutoPoint(e);
+    const { stroke } = autoPointer;
+    if (stroke) {
+      const { w, h } = getCanvasSize();
+      const last = stroke.points[stroke.points.length - 1];
+      const dx = (autoPointer.current.x - last.x) * w;
+      const dy = (autoPointer.current.y - last.y) * h;
+      if (dx * dx + dy * dy >= 2.25) stroke.points.push(autoPointer.current);
+      autoHover = autoPointer.current;
+      redrawAutoOverlay();
+      return true;
+    }
     const dx = e.clientX - autoPointer.cx;
     const dy = e.clientY - autoPointer.cy;
     if (!autoPointer.moved && dx * dx + dy * dy > 64) autoPointer.moved = true;
@@ -4583,16 +4847,25 @@
 
   function endAutoPointer(e, cancelled) {
     if (!autoPointer || autoPointer.pid !== e.pointerId) return;
-    const { start, current, moved } = autoPointer;
+    const { start, current, moved, stroke } = autoPointer;
     autoPointer = null;
     setInteractionLock(false);
     if (structureCanvas.hasPointerCapture(e.pointerId)) structureCanvas.releasePointerCapture(e.pointerId);
+    if (e.pointerType === "touch") autoHover = null;
     if (cancelled) {
       redrawAutoOverlay();
       return;
     }
+    if (stroke) {
+      pushAutoHistory();
+      autoWhiteout = autoWhiteout.concat([stroke]);
+      refreshAfterAutoChange();
+      setAutoStatus("Whited out. Keep brushing, or press <strong>Done</strong> to detect every bunker color.");
+      return;
+    }
     if (!moved) {
-      pickAutoColorAt(start);
+      if (getAutoStage() === "colors") pickAutoColorAt(start);
+      else setAutoStatus("Drag a box around the area first.");
       return;
     }
     const box = autoBoxFromPoints(start, current);
@@ -4618,13 +4891,20 @@
     const { w, h } = getCanvasSize();
     if (!w || !h) return;
 
-    const dragging = autoPointer?.moved;
+    const dragging = autoPointer?.moved && !autoPointer.stroke;
     const box = dragging ? autoBoxFromPoints(autoPointer.start, autoPointer.current) : autoBox;
     if (!box) return;
     const left = box.left * w;
     const top = box.top * h;
     const width = box.width * w;
     const height = box.height * h;
+    const stage = getAutoStage();
+
+    const strokes = autoPointer?.stroke ? autoWhiteout.concat([autoPointer.stroke]) : autoWhiteout;
+    if (strokes.length) {
+      paintAutoWhiteout(actx, strokes, w, h, "#ffffff");
+      if (stage === "whiteout") paintAutoWhiteout(actx, strokes, w, h, "rgba(108, 140, 255, 0.16)");
+    }
 
     actx.save();
     actx.fillStyle = "rgba(8, 10, 9, 0.45)";
@@ -4663,6 +4943,19 @@
         actx.stroke();
       });
     }
+    if (stage === "whiteout" && autoHover) {
+      const r = getAutoWhiteoutSizePx() / 2;
+      const x = autoHover.x * w;
+      const y = autoHover.y * h;
+      actx.beginPath();
+      actx.arc(x, y, r, 0, Math.PI * 2);
+      actx.lineWidth = 3;
+      actx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+      actx.stroke();
+      actx.lineWidth = 1.5;
+      actx.strokeStyle = "#ffffff";
+      actx.stroke();
+    }
     actx.restore();
   }
 
@@ -4673,6 +4966,23 @@
   });
   autoUndoBtn?.addEventListener("click", undoAuto);
   autoUndoAllBtn?.addEventListener("click", undoAllAuto);
+  autoEditWhiteoutBtn?.addEventListener("click", editAutoWhiteout);
+  autoClearWhiteoutBtn?.addEventListener("click", clearAutoWhiteout);
+  autoWhiteoutDoneBtn?.addEventListener("click", () => {
+    autoWhiteoutDoneBtn.disabled = true;
+    setAutoStatus("Detecting bunker colors…");
+    requestAnimationFrame(() => setTimeout(detectAllAutoColors, 0));
+  });
+  autoWhiteoutSizeInput?.addEventListener("input", () => {
+    syncAutoWhiteoutSizeUi();
+    redrawAutoOverlay();
+  });
+  syncAutoWhiteoutSizeUi();
+  structureCanvas.addEventListener("pointerleave", () => {
+    if (!autoHover || autoPointer) return;
+    autoHover = null;
+    redrawAutoOverlay();
+  });
 
   function clearTeamControls() {
     playersLayer.querySelectorAll(".fm-team-nudges").forEach((el) => el.remove());

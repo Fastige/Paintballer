@@ -529,6 +529,14 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.45rem;
 }
+
+.fm-auto-whiteout {
+  border-color: color-mix(in srgb, var(--tool-color) 55%, var(--border));
+}
+
+.fm-auto-whiteout[hidden] {
+  display: none;
+}
 .fm-auto-panel .fm-shoot-toggle input:checked {
   background: var(--tool-color);
 }
