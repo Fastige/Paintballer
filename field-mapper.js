@@ -275,6 +275,47 @@
     brushSizeInput.value = "12";
   }
 
+  const brushSizeValue = document.getElementById("brush-size-value");
+  const brushSwatches = document.querySelectorAll(".fm-brush-swatch");
+
+  function syncBrushSizeUi() {
+    if (!brushSizeInput) return;
+    const min = Number(brushSizeInput.min) || 0;
+    const max = Number(brushSizeInput.max) || 1;
+    const value = Number(brushSizeInput.value) || min;
+    brushSizeInput.closest(".fm-throttle")?.style.setProperty("--fill", `${((value - min) / (max - min)) * 100}%`);
+    if (brushSizeValue) brushSizeValue.textContent = `${value}px`;
+  }
+
+  function syncBrushColorUi() {
+    const current = (brushColorInput?.value || "").toLowerCase();
+    let matched = false;
+    brushSwatches.forEach((swatch) => {
+      const preset = swatch.dataset.brushColor;
+      const on = Boolean(preset) && preset.toLowerCase() === current;
+      if (on) matched = true;
+      swatch.classList.toggle("is-active", on);
+    });
+    const custom = document.querySelector(".fm-brush-custom");
+    if (custom) {
+      custom.classList.toggle("is-active", !matched);
+      custom.style.setProperty("--c", current || "#7cfc3b");
+    }
+  }
+
+  brushSizeInput?.addEventListener("input", syncBrushSizeUi);
+  brushColorInput?.addEventListener("input", syncBrushColorUi);
+  brushSwatches.forEach((swatch) => {
+    if (!swatch.dataset.brushColor) return;
+    swatch.addEventListener("click", () => {
+      if (!brushColorInput) return;
+      brushColorInput.value = swatch.dataset.brushColor;
+      syncBrushColorUi();
+    });
+  });
+  syncBrushSizeUi();
+  syncBrushColorUi();
+
   const TEAM_LABELS = {
     a: { short: "Team 1", name: "Team 1 / Alpha", css: "team-a" },
     b: { short: "Team 2", name: "Team 2 / Bravo", css: "team-b" },
@@ -3125,7 +3166,7 @@
     MAP_PRESETS.forEach((preset) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "fm-confirm-btn fm-preset-btn";
+      btn.className = "fm-preset-btn";
       btn.textContent = preset.name;
       btn.addEventListener("click", async () => {
         btn.disabled = true;
