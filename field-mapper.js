@@ -1460,13 +1460,13 @@
     context.beginPath();
   }
 
-  function drawShootDot(context, point, color, radius) {
+  function drawShootDot(context, point, color, radius, lineWidth = 2) {
     context.save();
     context.beginPath();
     context.setLineDash([]);
     context.fillStyle = color;
     context.strokeStyle = "#0f1210";
-    context.lineWidth = 2;
+    context.lineWidth = lineWidth;
     context.arc(point.x, point.y, radius, 0, Math.PI * 2);
     context.closePath();
     context.fill();
@@ -1570,7 +1570,8 @@
           y: dot.start.y + (dot.end.y - dot.start.y) * eased,
         },
         dot.color,
-        5.5
+        4.125,
+        1.5
       );
     });
   }
@@ -3911,9 +3912,9 @@
   }
 
   const GIF_MAX_WIDTH = 640;
-  const GIF_FRAME_MS = 80;
+  const GIF_FRAME_MS = 40;
   const GIF_END_HOLD_MS = 1200;
-  const GIF_MAX_FRAMES = 600;
+  const GIF_MAX_FRAMES = 1200;
   const GIF_FIXED_COLORS = [
     SHOOT_LINE_COLOR,
     SHOOT_BLOCKED_COLOR,
