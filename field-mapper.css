@@ -561,12 +561,6 @@
   stroke-width: 2.4;
 }
 
-#mirror-layout {
-  grid-column: span 2;
-  flex-direction: row;
-  gap: 0.6rem;
-}
-
 .fm-tool-btn:disabled {
   opacity: 0.38;
   filter: grayscale(0.6);
@@ -1914,6 +1908,14 @@
   top: 0;
   left: 0;
   pointer-events: none;
+}
+
+.fm-canvas-design {
+  z-index: 1;
+}
+
+.fm-stage.is-design-map .fm-image {
+  visibility: hidden;
 }
 
 .fm-canvas-structure {

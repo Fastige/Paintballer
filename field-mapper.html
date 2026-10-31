@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=9" />
-  <link rel="stylesheet" href="field-mapper.css?v=45" />
+  <link rel="stylesheet" href="field-mapper.css?v=46" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -33,6 +33,7 @@
     <symbol id="i-teams" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 13.6c2.8.2 5 2.6 5 5.4" /></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" /><path d="M3 4v5h5" /></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
+    <symbol id="i-design" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2" /><path d="M12 4.5v3M12 10.5v3M12 16.5v3" /><rect x="5.5" y="8" width="3.5" height="3" rx="0.6" /><rect x="15" y="13" width="3.5" height="3" rx="0.6" /></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v12H4z" /><circle cx="12" cy="13.5" r="3.5" /></symbol>
   </svg>
   <div class="splatter splatter-1" aria-hidden="true"></div>
@@ -129,6 +130,10 @@
             <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
             <span class="fm-tool-name">50 Mirror</span>
           </button>
+          <button type="button" class="fm-tool-btn fm-design-toggle" id="design-map" title="Swap the map photo for a designed field built from your structures" aria-pressed="false" disabled style="--tool-color: #2ee6c8">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
+            <span class="fm-tool-name">Design</span>
+          </button>
         </div>
         <div class="fm-brush-panel" id="fm-brush-panel">
           <label class="fm-range-label" for="brush-size">Brush size</label>
@@ -169,6 +174,7 @@
           </label>
           <div class="fm-stage" id="fm-stage" hidden>
             <img id="fm-image" class="fm-image" alt="Field map" hidden />
+            <canvas id="fm-design-canvas" class="fm-canvas fm-canvas-design" hidden></canvas>
             <canvas id="fm-structure-canvas" class="fm-canvas fm-canvas-structure" hidden></canvas>
             <canvas id="fm-canvas" class="fm-canvas fm-canvas-draw" hidden></canvas>
             <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
@@ -420,6 +426,10 @@
               <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
               <span>50 Mirror</span>
             </button>
+            <button type="button" class="fm-mobile-btn fm-design-toggle" id="design-map-mobile" aria-pressed="false" disabled style="--tool-color: #2ee6c8">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
+              <span>Design</span>
+            </button>
             <label class="fm-mobile-btn fm-mobile-upload">
               <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-camera" /></svg></span>
               <span>Upload</span>
@@ -560,6 +570,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=53"></script>
+  <script src="field-mapper.js?v=54"></script>
 </body>
 </html>

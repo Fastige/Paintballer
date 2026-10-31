@@ -20,6 +20,9 @@
   const stage = document.getElementById("fm-stage");
   const stageWrap = document.getElementById("fm-stage-wrap");
   const image = document.getElementById("fm-image");
+  const designCanvas = document.getElementById("fm-design-canvas");
+  const designMapBtn = document.getElementById("design-map");
+  const designMapMobileBtn = document.getElementById("design-map-mobile");
   const structureCanvas = document.getElementById("fm-structure-canvas");
   const canvas = document.getElementById("fm-canvas");
   const visionCanvas = document.getElementById("fm-vision-canvas");
@@ -160,7 +163,9 @@
   const structCtx = structureCanvas.getContext("2d");
   const visionCtx = visionCanvas.getContext("2d");
   const shootCtx = shootCanvas.getContext("2d");
+  const designCtx = designCanvas?.getContext("2d");
 
+  let designMapOn = false;
   let activeTool = "select";
   let uiTool = "select";
   let activeShape = "rectangle";
@@ -374,6 +379,8 @@
     if (saveMapPackMobileBtn) saveMapPackMobileBtn.disabled = !hasMap;
     if (mirrorLayoutBtn) mirrorLayoutBtn.disabled = !hasMap || !hasStructures;
     if (mirrorLayoutMobileBtn) mirrorLayoutMobileBtn.disabled = !hasMap || !hasStructures;
+    if (designMapBtn) designMapBtn.disabled = !hasMap;
+    if (designMapMobileBtn) designMapMobileBtn.disabled = !hasMap;
     updateTeamPlacementPanel();
     updateShootPanel();
   }
@@ -564,6 +571,108 @@
       w: structureCanvas.clientWidth,
       h: structureCanvas.clientHeight,
     };
+  }
+
+  function drawDesignField(context, w, h) {
+    const horizontal = w >= h;
+    const short = Math.min(w, h);
+    context.save();
+
+    const turf = context.createLinearGradient(0, 0, horizontal ? w : 0, horizontal ? 0 : h);
+    turf.addColorStop(0, "#132018");
+    turf.addColorStop(0.5, "#1b2d1f");
+    turf.addColorStop(1, "#132018");
+    context.fillStyle = turf;
+    context.fillRect(0, 0, w, h);
+
+    const stripes = 14;
+    context.fillStyle = "rgba(255, 255, 255, 0.022)";
+    for (let i = 0; i < stripes; i += 2) {
+      if (horizontal) context.fillRect((i * w) / stripes, 0, w / stripes, h);
+      else context.fillRect(0, (i * h) / stripes, w, h / stripes);
+    }
+
+    const cell = Math.max(10, short / 14);
+    context.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    context.lineWidth = 1;
+    context.beginPath();
+    for (let x = cell; x < w; x += cell) {
+      context.moveTo(Math.round(x) + 0.5, 0);
+      context.lineTo(Math.round(x) + 0.5, h);
+    }
+    for (let y = cell; y < h; y += cell) {
+      context.moveTo(0, Math.round(y) + 0.5);
+      context.lineTo(w, Math.round(y) + 0.5);
+    }
+    context.stroke();
+
+    const inset = Math.max(6, short * 0.03);
+    const lineW = Math.max(1.5, short * 0.004);
+    context.strokeStyle = "rgba(232, 239, 228, 0.28)";
+    context.lineWidth = lineW;
+    context.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
+
+    const long = horizontal ? w : h;
+    const startBox = inset + long * 0.07;
+    context.setLineDash([lineW * 2, lineW * 3]);
+    context.strokeStyle = "rgba(232, 239, 228, 0.16)";
+    context.beginPath();
+    if (horizontal) {
+      context.moveTo(startBox, inset);
+      context.lineTo(startBox, h - inset);
+      context.moveTo(w - startBox, inset);
+      context.lineTo(w - startBox, h - inset);
+    } else {
+      context.moveTo(inset, startBox);
+      context.lineTo(w - inset, startBox);
+      context.moveTo(inset, h - startBox);
+      context.lineTo(w - inset, h - startBox);
+    }
+    context.stroke();
+
+    context.setLineDash([Math.max(6, short * 0.025), Math.max(5, short * 0.02)]);
+    context.strokeStyle = "rgba(232, 239, 228, 0.38)";
+    context.beginPath();
+    if (horizontal) {
+      context.moveTo(w / 2, inset);
+      context.lineTo(w / 2, h - inset);
+    } else {
+      context.moveTo(inset, h / 2);
+      context.lineTo(w - inset, h / 2);
+    }
+    context.stroke();
+    context.setLineDash([]);
+
+    const vignette = context.createRadialGradient(w / 2, h / 2, short * 0.15, w / 2, h / 2, Math.max(w, h) * 0.75);
+    vignette.addColorStop(0, "rgba(124, 252, 59, 0.05)");
+    vignette.addColorStop(1, "rgba(0, 0, 0, 0.35)");
+    context.fillStyle = vignette;
+    context.fillRect(0, 0, w, h);
+    context.restore();
+  }
+
+  function renderDesignMap() {
+    const on = designMapOn && hasMap;
+    stage.classList.toggle("is-design-map", on);
+    [designMapBtn, designMapMobileBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+    if (!designCanvas || !designCtx) return;
+    designCanvas.hidden = !on;
+    if (!on) return;
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return;
+    designCtx.clearRect(0, 0, w, h);
+    drawDesignField(designCtx, w, h);
+  }
+
+  function setDesignMap(on) {
+    designMapOn = Boolean(on);
+    renderDesignMap();
+    redrawStructures();
+    persistFieldState();
   }
 
   function clearVisionLines() {
@@ -2478,6 +2587,10 @@
         : "#00cc7a";
       context.lineWidth = isBorderOnly || isTransparentWall ? 2.5 : preview ? 2 : 1.5;
       if ((isBorderOnly || isTransparentWall) && !preview) context.setLineDash([8, 5]);
+      if (designMapOn && !preview && !isTransparentWall) {
+        context.shadowColor = "rgba(0, 255, 157, 0.55)";
+        context.shadowBlur = 12;
+      }
     }
     const shouldFill = bake ? style === "filled" : !isBorderOnly || preview;
     const shouldStroke = !bake || isBorderOnly;
@@ -2506,6 +2619,7 @@
   function serializeFieldState() {
     return {
       version: 1,
+      designMap: designMapOn,
       report: { name: fieldIntelReport.name || "", bio: fieldIntelReport.bio || "" },
       structures: structures.map((s) => ({
         type: s.type,
@@ -2689,6 +2803,7 @@
   }
 
   function applyPackState(state) {
+    designMapOn = Boolean(state.designMap);
     if (state.report) {
       fieldIntelReport = {
         name: state.report.name || "",
@@ -2902,11 +3017,11 @@
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
-    [canvas, structureCanvas, visionCanvas, shootCanvas, mirrorCanvas].forEach((c) => {
+    [canvas, structureCanvas, visionCanvas, shootCanvas, mirrorCanvas, designCanvas].filter(Boolean).forEach((c) => {
       const isVisionLayer = c === visionCanvas;
       let snapshot = null;
       const cctx = c.getContext("2d");
-      const shouldSnapshot = !isVisionLayer && c !== shootCanvas && c !== mirrorCanvas;
+      const shouldSnapshot = !isVisionLayer && c !== shootCanvas && c !== mirrorCanvas && c !== designCanvas;
       if (shouldSnapshot && c.width > 0 && c.height > 0) {
         snapshot = document.createElement("canvas");
         snapshot.width = c.width;
@@ -2928,6 +3043,7 @@
     });
 
     refreshMapPixelCache();
+    renderDesignMap();
     redrawStructures();
     redrawVisionLines();
     redrawShootOverlay();
@@ -3614,6 +3730,7 @@
       structures = [];
       shootSceneSetups = [];
       activeShootSetupId = null;
+      designMapOn = false;
     }
 
     stage.classList.add("has-map");
@@ -3649,6 +3766,7 @@
           mergeIntelFromSavedState();
         }
       }
+      renderDesignMap();
       redrawStructures();
       setTool("players");
       updateControlStates();
@@ -3678,6 +3796,8 @@
     activeShootSetupId = null;
     teamPlacement = createDefaultTeamPlacement();
     activePlacementTeam = "a";
+    designMapOn = false;
+    renderDesignMap();
     updateSizerPanel();
     updateIntelReport();
     stage.classList.remove("has-map");
@@ -3802,7 +3922,8 @@
     context.clearRect(0, 0, W, H);
     context.fillStyle = "#0f1210";
     context.fillRect(0, 0, W, H);
-    if (image.naturalWidth) context.drawImage(image, 0, 0, W, H);
+    if (designMapOn) drawDesignField(context, W, H);
+    else if (image.naturalWidth) context.drawImage(image, 0, 0, W, H);
     [structureCanvas, canvas, visionCanvas, shootCanvas].forEach((layer) => {
       if (!layer.hidden && layer.width && layer.height) context.drawImage(layer, 0, 0, W, H);
     });
@@ -4364,6 +4485,8 @@
   mirrorCanvas?.addEventListener("pointerup", endMirrorBoxDrag);
   mirrorCanvas?.addEventListener("pointercancel", () => endMirrorBoxDrag(null));
 
+  designMapBtn?.addEventListener("click", () => setDesignMap(!designMapOn));
+  designMapMobileBtn?.addEventListener("click", () => setDesignMap(!designMapOn));
   mirrorLayoutBtn?.addEventListener("click", openMirrorConfirm);
   mirrorLayoutMobileBtn?.addEventListener("click", () => {
     closeToolsPanel();
