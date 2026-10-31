@@ -160,8 +160,10 @@ body.nav-open {
     0 0 16px var(--accent-glow),
     0 3px 6px rgba(0, 0, 0, 0.45),
     inset 0 -3px 5px rgba(60, 15, 0, 0.55),
-    inset 0 2px 3px rgba(255, 220, 180, 0.35);
-  transition: transform 0.35s ease;
+    inset 0 2px 3px rgba(255, 220, 180, 0.35),
+    0 0 0 0 rgba(255, 92, 0, 0);
+  transform-origin: 50% 100%;
+  animation: logo-hop 3.2s ease-in-out infinite;
 }
 
 .logo-mark::before {
@@ -185,11 +187,74 @@ body.nav-open {
   height: 3px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.7);
+  animation: logo-twinkle 3.2s ease-in-out infinite;
 }
 
 @media (hover: hover) {
   .logo:hover .logo-mark {
-    transform: translateY(-2px) scale(1.08);
+    animation: logo-hop-quick 0.8s ease-in-out infinite;
+  }
+}
+
+@keyframes logo-hop {
+  0%, 58%, 100% {
+    transform: translateY(0) scale(1, 1);
+    box-shadow:
+      0 0 16px var(--accent-glow),
+      0 3px 6px rgba(0, 0, 0, 0.45),
+      inset 0 -3px 5px rgba(60, 15, 0, 0.55),
+      inset 0 2px 3px rgba(255, 220, 180, 0.35),
+      0 0 0 0 rgba(255, 92, 0, 0);
+  }
+  70% {
+    transform: translateY(-7px) scale(0.95, 1.05);
+    box-shadow:
+      0 0 14px var(--accent-glow),
+      0 10px 8px rgba(0, 0, 0, 0.25),
+      inset 0 -3px 5px rgba(60, 15, 0, 0.55),
+      inset 0 2px 3px rgba(255, 220, 180, 0.35),
+      0 0 0 0 rgba(255, 92, 0, 0);
+  }
+  79% {
+    transform: translateY(0) scale(1.14, 0.84);
+    box-shadow:
+      0 0 22px var(--accent-glow),
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      inset 0 -3px 5px rgba(60, 15, 0, 0.55),
+      inset 0 2px 3px rgba(255, 220, 180, 0.35),
+      0 0 0 0 rgba(255, 92, 0, 0.7);
+  }
+  86% {
+    transform: translateY(-2px) scale(0.97, 1.03);
+  }
+  93% {
+    transform: translateY(0) scale(1.02, 0.98);
+    box-shadow:
+      0 0 16px var(--accent-glow),
+      0 3px 6px rgba(0, 0, 0, 0.45),
+      inset 0 -3px 5px rgba(60, 15, 0, 0.55),
+      inset 0 2px 3px rgba(255, 220, 180, 0.35),
+      0 0 0 10px rgba(255, 92, 0, 0);
+  }
+}
+
+@keyframes logo-hop-quick {
+  0%, 100% { transform: translateY(0) scale(1.1, 0.88); }
+  45% { transform: translateY(-7px) scale(0.95, 1.05); }
+  80% { transform: translateY(0) scale(1.04, 0.96); }
+}
+
+@keyframes logo-twinkle {
+  0%, 60%, 100% { opacity: 0.7; transform: scale(1); }
+  76% { opacity: 1; transform: scale(1.8); box-shadow: 0 0 4px #fff; }
+  88% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-mark,
+  .logo-mark::after,
+  .logo:hover .logo-mark {
+    animation: none;
   }
 }
 
