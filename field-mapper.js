@@ -3999,6 +3999,13 @@
           selectShootTargetPlayer(el);
         } else if (el === shootPlayerEl && shootMode === "run" && !shootStandStill) {
           startRunDraw(e, true);
+        } else if (
+          isMobileLayout() &&
+          shootPlayerEl &&
+          el !== shootPlayerEl &&
+          el.dataset.team === shootPlayerEl.dataset.team
+        ) {
+          setShootPointFromEvent(e);
         } else {
           selectShootPlayer(el);
         }
@@ -4089,6 +4096,8 @@
   shootCanvas.addEventListener("pointermove", extendRunDraw);
   shootCanvas.addEventListener("pointerup", endRunDraw);
   shootCanvas.addEventListener("pointercancel", endRunDraw);
+  window.addEventListener("pointerup", endRunDraw);
+  window.addEventListener("pointercancel", endRunDraw);
   shootRunBtn?.addEventListener("click", runShootPlayer);
   shootResetRunBtn?.addEventListener("click", resetShootRun);
   shootClearBtn?.addEventListener("click", clearShootPlan);
