@@ -192,7 +192,7 @@
   let shootNoShot = false;
   let shootOver = false;
   let sceneAutoResetTimer = null;
-  const SCENE_AUTO_RESET_MS = 10000;
+  const SCENE_AUTO_RESET_MS = 1500;
   let shootMode = "shoot";
   let shootPoint = null;
   let runPoint = null;
@@ -4054,7 +4054,7 @@
   function playSceneWindow() {
     if (gifRecording) return;
     setTheaterStatus("");
-    playSceneInTheater(() => setTheaterStatus("Scene finished — players reset in 10 seconds."));
+    playSceneInTheater(() => setTheaterStatus("Scene finished — players reset to their start spots."));
   }
 
   async function loadGifEncoder() {
