@@ -81,6 +81,7 @@
   const autoSensitivityInput = document.getElementById("auto-sensitivity");
   const autoSensitivityValue = document.getElementById("auto-sensitivity-value");
   const autoSplitInput = document.getElementById("auto-split");
+  const autoDarkInput = document.getElementById("auto-dark");
   const autoReplaceInput = document.getElementById("auto-replace");
   const autoStepBox = document.getElementById("auto-step-box");
   const autoStepColors = document.getElementById("auto-step-colors");
@@ -3762,6 +3763,7 @@
   const AUTO_FIT_MIN_IOU = 0.8;
   const AUTO_MAX_PIECES = 12;
   const AUTO_HISTORY_LIMIT = 60;
+  const AUTO_DARK_MAX = 80;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3817,42 +3819,122 @@
     return autoImageCache;
   }
 
-  function buildAutoColorMask(data, w, h, region, rgb, tolerance) {
+  function isAutoDark(data, p) {
+    const i = p * 4;
+    return data[i + 3] >= 80 && Math.max(data[i], data[i + 1], data[i + 2]) < AUTO_DARK_MAX;
+  }
+
+  function isAutoDarkColor(rgb) {
+    return Math.max(rgb[0], rgb[1], rgb[2]) < AUTO_DARK_MAX;
+  }
+
+  function pruneAutoMask(mask, w, h, region, minCount) {
+    const labels = new Int32Array(mask.length);
+    const stack = new Int32Array(mask.length);
+    let id = 1;
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (!mask[p] || labels[p]) continue;
+        const comp = floodAutoComponent(mask, w, h, p, labels, id++, stack);
+        if (comp.count >= minCount) continue;
+        for (let yy = comp.minY; yy <= comp.maxY; yy++) {
+          for (let xx = comp.minX; xx <= comp.maxX; xx++) {
+            const q = yy * w + xx;
+            if (labels[q] === comp.id) mask[q] = 0;
+          }
+        }
+      }
+    }
+    return mask;
+  }
+
+  function buildAutoColorMask(data, w, h, region, rgb, tolerance, shades) {
     const mask = new Uint8Array(w * h);
     const [r, g, b] = rgb;
+    const cc = r * r + g * g + b * b || 1;
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
         const p = y * w + x;
         const i = p * 4;
         if (data[i + 3] < 80) continue;
-        if (autoColorDistance(data[i], data[i + 1], data[i + 2], r, g, b) <= tolerance) mask[p] = 1;
+        const pr = data[i];
+        const pg = data[i + 1];
+        const pb = data[i + 2];
+        if (autoColorDistance(pr, pg, pb, r, g, b) <= tolerance) {
+          mask[p] = 1;
+          continue;
+        }
+        if (!shades) continue;
+        const k = (pr * r + pg * g + pb * b) / cc;
+        if (k < 0.18 || k >= 1) continue;
+        if (autoColorDistance(pr, pg, pb, k * r, k * g, k * b) <= tolerance * 0.8 * Math.max(k, 0.3)) mask[p] = 1;
+      }
+    }
+    return mask;
+  }
+
+  function bridgeAutoDark(mask, data, w, region, steps) {
+    const seen = new Uint8Array(mask.length);
+    const dist = new Uint8Array(mask.length);
+    const queue = new Int32Array(mask.length);
+    let head = 0;
+    let tail = 0;
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (!mask[p]) continue;
+        seen[p] = 1;
+        queue[tail++] = p;
+      }
+    }
+    while (head < tail) {
+      const p = queue[head++];
+      if (dist[p] >= steps) continue;
+      const x = p % w;
+      const y = (p - x) / w;
+      const next = [
+        x > region.x0 ? p - 1 : -1,
+        x < region.x1 - 1 ? p + 1 : -1,
+        y > region.y0 ? p - w : -1,
+        y < region.y1 - 1 ? p + w : -1,
+      ];
+      for (const q of next) {
+        if (q < 0 || seen[q] || !isAutoDark(data, q)) continue;
+        seen[q] = 1;
+        dist[q] = dist[p] + 1;
+        mask[q] = 1;
+        queue[tail++] = q;
       }
     }
     return mask;
   }
 
   function sampleAutoColor(data, w, h, cx, cy) {
-    const ci = (cy * w + cx) * 4;
-    const base = [data[ci], data[ci + 1], data[ci + 2]];
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let n = 0;
-    for (let dy = -2; dy <= 2; dy++) {
+    const reach = 5;
+    const rs = [];
+    const gs = [];
+    const bs = [];
+    for (let dy = -reach; dy <= reach; dy++) {
       const y = cy + dy;
       if (y < 0 || y >= h) continue;
-      for (let dx = -2; dx <= 2; dx++) {
+      for (let dx = -reach; dx <= reach; dx++) {
         const x = cx + dx;
-        if (x < 0 || x >= w) continue;
-        const i = (y * w + x) * 4;
-        if (autoColorDistance(data[i], data[i + 1], data[i + 2], base[0], base[1], base[2]) > 60) continue;
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
-        n++;
+        if (x < 0 || x >= w || dx * dx + dy * dy > reach * reach) continue;
+        const p = y * w + x;
+        if (isAutoBackground(data, p) || isAutoDark(data, p)) continue;
+        const i = p * 4;
+        rs.push(data[i]);
+        gs.push(data[i + 1]);
+        bs.push(data[i + 2]);
       }
     }
-    return n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : base;
+    if (rs.length < 3) {
+      const ci = (cy * w + cx) * 4;
+      return [data[ci], data[ci + 1], data[ci + 2]];
+    }
+    const median = (arr) => arr.sort((a, b) => a - b)[arr.length >> 1];
+    return [median(rs), median(gs), median(bs)];
   }
 
   function morphAutoMask(mask, w, h, dilate) {
@@ -3918,14 +4000,14 @@
     return { id, minX, minY, maxX, maxY, count };
   }
 
-  function autoComponentMask(labels, w, comp) {
+  function autoComponentMask(labels, w, comp, only) {
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
     const local = new Uint8Array(bw * bh);
     for (let y = 0; y < bh; y++) {
       const row = (comp.minY + y) * w + comp.minX;
       for (let x = 0; x < bw; x++) {
-        if (labels[row + x] === comp.id) local[y * bw + x] = 1;
+        if (labels[row + x] === comp.id && (!only || only[row + x])) local[y * bw + x] = 1;
       }
     }
     const outside = new Uint8Array(bw * bh);
@@ -4136,7 +4218,33 @@
     return shape;
   }
 
-  function autoStructuresForComponent(labels, w, h, comp, split, strict, region) {
+  function clipAutoComponentToColor(labels, w, h, comp, colorMask, margin) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = comp.minY; y <= comp.maxY; y++) {
+      for (let x = comp.minX; x <= comp.maxX; x++) {
+        const p = y * w + x;
+        if (labels[p] !== comp.id || !colorMask[p]) continue;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    if (maxX < 0) return comp;
+    return {
+      ...comp,
+      minX: Math.max(comp.minX, minX - margin),
+      minY: Math.max(comp.minY, minY - margin),
+      maxX: Math.min(comp.maxX, maxX + margin),
+      maxY: Math.min(comp.maxY, maxY + margin),
+    };
+  }
+
+  function autoStructuresForComponent(labels, w, h, fullComp, split, strict, region, colorMask, margin) {
+    const comp = colorMask ? clipAutoComponentToColor(labels, w, h, fullComp, colorMask, margin) : fullComp;
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
     if (strict) {
@@ -4150,6 +4258,19 @@
     if (strict && autoCoreCount(local, bw, bh) < Math.max(3, area * 0.12)) return null;
 
     const fit = fitAutoShape(local, bw, bh, area);
+    if (fit.iou < AUTO_FIT_MIN_IOU && colorMask) {
+      const colorComp = clipAutoComponentToColor(labels, w, h, fullComp, colorMask, 0);
+      const cw = colorComp.maxX - colorComp.minX + 1;
+      const ch = colorComp.maxY - colorComp.minY + 1;
+      const color = autoComponentMask(labels, w, colorComp, colorMask);
+      const colorFit = fitAutoShape(color.local, cw, ch, color.area);
+      if (colorFit.iou >= AUTO_FIT_MIN_IOU) {
+        return {
+          split: false,
+          pieces: [makeAutoStructure(colorComp.minX, colorComp.minY, cw, ch, w, h, colorFit.type, colorFit.flip)],
+        };
+      }
+    }
     if (fit.iou < AUTO_FIT_MIN_IOU && split) {
       const rects = splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area);
       if (rects.length > 1) {
@@ -4318,10 +4439,20 @@
     }
 
     const rgb = sampleAutoColor(data, w, h, sx, sy);
-    const mask = closeAutoMask(buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance()), w, h);
+    const withDark = autoDarkInput?.checked !== false && !isAutoDarkColor(rgb);
+    const minPixels = Math.max(12, Math.round(w * h * 0.00004));
+    const bridgeSteps = Math.max(3, Math.round(Math.max(w, h) * 0.006));
+    const outlineMargin = Math.max(2, Math.round(bridgeSteps / 2));
+    let mask = buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance(), withDark);
+    let colorMask = null;
+    if (withDark) {
+      mask = pruneAutoMask(mask, w, h, region, Math.max(8, minPixels >> 1));
+      colorMask = closeAutoMask(mask, w, h);
+      mask = bridgeAutoDark(mask, data, w, region, bridgeSteps);
+    }
+    mask = closeAutoMask(mask, w, h);
     const labels = new Int32Array(w * h);
     const stack = new Int32Array(w * h);
-    const minPixels = Math.max(12, Math.round(w * h * 0.00004));
     const split = autoSplitInput?.checked !== false;
     const found = [];
     let bunkers = 0;
@@ -4333,7 +4464,7 @@
         const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
         const tapped = labels[start] === comp.id;
         if (!tapped && comp.count < minPixels) continue;
-        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region);
+        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin);
         if (!result) continue;
         bunkers++;
         found.push(...result.pieces);
