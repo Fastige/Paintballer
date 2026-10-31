@@ -1494,6 +1494,54 @@
   cursor: not-allowed;
 }
 
+.fm-player-step-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.fm-player-step-btn {
+  min-height: 40px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--ed-deep);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.08s;
+}
+
+.fm-player-step-btn:active {
+  transform: scale(0.97);
+}
+
+.fm-player-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .fm-player-step-btn:not(:disabled):hover {
+    border-color: var(--accent);
+    background: rgba(255, 92, 0, 0.1);
+  }
+}
+
+.fm-player-step-count {
+  min-width: 3.2rem;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .fm-editor-duration {
   display: flex;
   align-items: center;

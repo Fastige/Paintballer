@@ -120,6 +120,9 @@
   const shootResetRunBtn = document.getElementById("shoot-reset-run");
   const shootClearBtn = document.getElementById("shoot-clear");
   const shootSaveSetupBtn = document.getElementById("shoot-save-setup");
+  const shootPrevPlayerBtn = document.getElementById("shoot-prev-player");
+  const shootNextPlayerBtn = document.getElementById("shoot-next-player");
+  const shootPlayerStep = document.getElementById("shoot-player-step");
   const shootNewSetupBtn = document.getElementById("shoot-new-setup");
   const shootPlaySceneBtn = document.getElementById("shoot-play-scene");
   const shootPlayWindowBtn = document.getElementById("shoot-play-window");
@@ -1311,6 +1314,29 @@
     redrawShootOverlay();
   }
 
+  function getTeamPlayers(team) {
+    return [...playersLayer.querySelectorAll(`.fm-player[data-team="${team}"]`)]
+      .filter((el) => !isGhostPlayer(el))
+      .sort((a, b) => Number(a.dataset.num) - Number(b.dataset.num));
+  }
+
+  function stepShootPlayer(step) {
+    if (!shootPlayerEl) return;
+    const teamPlayers = getTeamPlayers(shootPlayerEl.dataset.team);
+    if (teamPlayers.length < 2) return;
+    const index = teamPlayers.indexOf(shootPlayerEl);
+    const next = teamPlayers[(index + step + teamPlayers.length) % teamPlayers.length];
+
+    if (getCurrentShootSetup(false)) saveShootSetup();
+    const saved = shootSceneSetups.find((s) => s.playerKey === getPlayerKey(next));
+    if (saved) {
+      loadShootSetup(saved.id);
+    } else {
+      newShootSetup();
+      selectShootPlayer(next);
+    }
+  }
+
   function selectShootTargetPlayer(el) {
     if (!shootPlayerEl || !el || el === shootPlayerEl) return;
     if (el.dataset.team === shootPlayerEl.dataset.team) return;
@@ -1362,6 +1388,13 @@
     if (shootEmpty) shootEmpty.hidden = hasPlayer;
     if (shootControls) shootControls.hidden = !hasPlayer;
     if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
+    const teamPlayers = hasPlayer ? getTeamPlayers(shootPlayerEl.dataset.team) : [];
+    const canStep = teamPlayers.length > 1;
+    if (shootPrevPlayerBtn) shootPrevPlayerBtn.disabled = !canStep;
+    if (shootNextPlayerBtn) shootNextPlayerBtn.disabled = !canStep;
+    if (shootPlayerStep) {
+      shootPlayerStep.textContent = hasPlayer ? `${teamPlayers.indexOf(shootPlayerEl) + 1} / ${teamPlayers.length}` : "";
+    }
     if (shootStandStillInput) shootStandStillInput.checked = shootStandStill;
     if (shootNoShotInput) shootNoShotInput.checked = shootNoShot;
     if (shootOverInput) {
@@ -4026,6 +4059,8 @@
   shootResetRunBtn?.addEventListener("click", resetShootRun);
   shootClearBtn?.addEventListener("click", clearShootPlan);
   shootSaveSetupBtn?.addEventListener("click", saveShootSetup);
+  shootPrevPlayerBtn?.addEventListener("click", () => stepShootPlayer(-1));
+  shootNextPlayerBtn?.addEventListener("click", () => stepShootPlayer(1));
   shootNewSetupBtn?.addEventListener("click", newShootSetup);
   shootPlaySceneBtn?.addEventListener("click", () => runShootScene());
   shootResetSceneBtn?.addEventListener("click", resetShootRun);
