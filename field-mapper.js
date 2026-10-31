@@ -23,6 +23,16 @@
   const designCanvas = document.getElementById("fm-design-canvas");
   const designMapBtn = document.getElementById("design-map");
   const designMapMobileBtn = document.getElementById("design-map-mobile");
+  const designPanel = document.getElementById("fm-design-panel");
+  const designSelectedLabel = document.getElementById("fm-design-selected");
+  const designSelectHint = document.getElementById("fm-design-select-hint");
+  const designSelectedRow = document.getElementById("fm-design-selected-row");
+  const designSelectedFill = document.getElementById("design-selected-fill");
+  const designSelectedReset = document.getElementById("design-selected-reset");
+  const designClearFillsBtn = document.getElementById("design-clear-fills");
+  const designResetThemeBtn = document.getElementById("design-reset-theme");
+  const designPresetsEl = document.getElementById("fm-design-presets");
+  const designColorInputs = document.querySelectorAll("input[data-design-key]");
   const structureCanvas = document.getElementById("fm-structure-canvas");
   const canvas = document.getElementById("fm-canvas");
   const visionCanvas = document.getElementById("fm-vision-canvas");
@@ -169,6 +179,38 @@
   const designCtx = designCanvas?.getContext("2d");
 
   let designMapOn = false;
+  const DESIGN_THEME_DEFAULT = {
+    turf: "#132018",
+    turfCenter: "#1b2d1f",
+    stripes: "#ffffff",
+    grid: "#ffffff",
+    lines: "#e8efe4",
+    vignette: "#000000",
+    fill: "#00ff9d",
+    outline: "#00cc7a",
+    glow: "#00ff9d",
+  };
+  const DESIGN_PRESETS = [
+    { name: "Neon", theme: DESIGN_THEME_DEFAULT },
+    {
+      name: "Night",
+      theme: { turf: "#0a0f1c", turfCenter: "#141d33", stripes: "#9fb4ff", grid: "#9fb4ff", lines: "#cfe0ff", vignette: "#000000", fill: "#4f8cff", outline: "#9fc2ff", glow: "#4f8cff" },
+    },
+    {
+      name: "Desert",
+      theme: { turf: "#3a2a17", turfCenter: "#5a4325", stripes: "#ffe7b8", grid: "#ffe7b8", lines: "#fff1d6", vignette: "#1a0f05", fill: "#ff9a3b", outline: "#ffd08a", glow: "#ff7a1a" },
+    },
+    {
+      name: "Ice",
+      theme: { turf: "#16303a", turfCenter: "#24505e", stripes: "#e6fbff", grid: "#e6fbff", lines: "#ffffff", vignette: "#06141a", fill: "#3bd5ff", outline: "#c9f4ff", glow: "#3bd5ff" },
+    },
+    {
+      name: "Inferno",
+      theme: { turf: "#1c0d0d", turfCenter: "#341414", stripes: "#ffb3b3", grid: "#ffb3b3", lines: "#ffd6d6", vignette: "#000000", fill: "#ff3b3b", outline: "#ffb000", glow: "#ff3b3b" },
+    },
+  ];
+  let designTheme = { ...DESIGN_THEME_DEFAULT };
+  let designTab = "structures";
   let activeTool = "select";
   let uiTool = "select";
   let activeShape = "rectangle";
@@ -581,43 +623,48 @@
     const short = Math.min(w, h);
     context.save();
 
+    const theme = designTheme;
     const turf = context.createLinearGradient(0, 0, horizontal ? w : 0, horizontal ? 0 : h);
-    turf.addColorStop(0, "#132018");
-    turf.addColorStop(0.5, "#1b2d1f");
-    turf.addColorStop(1, "#132018");
+    turf.addColorStop(0, theme.turf);
+    turf.addColorStop(0.5, theme.turfCenter);
+    turf.addColorStop(1, theme.turf);
     context.fillStyle = turf;
     context.fillRect(0, 0, w, h);
 
     const stripes = 14;
-    context.fillStyle = "rgba(255, 255, 255, 0.022)";
+    context.fillStyle = designRgba(theme.stripes, 0.035);
     for (let i = 0; i < stripes; i += 2) {
       if (horizontal) context.fillRect((i * w) / stripes, 0, w / stripes, h);
       else context.fillRect(0, (i * h) / stripes, w, h / stripes);
     }
 
     const cell = Math.max(10, short / 14);
-    context.strokeStyle = "rgba(255, 255, 255, 0.05)";
-    context.lineWidth = 1;
+    const gridW = Math.max(1.5, short * 0.003);
+    context.strokeStyle = designRgba(theme.grid, 0.14);
+    context.lineWidth = gridW;
     context.beginPath();
     for (let x = cell; x < w; x += cell) {
-      context.moveTo(Math.round(x) + 0.5, 0);
-      context.lineTo(Math.round(x) + 0.5, h);
+      context.moveTo(Math.round(x), 0);
+      context.lineTo(Math.round(x), h);
     }
     for (let y = cell; y < h; y += cell) {
-      context.moveTo(0, Math.round(y) + 0.5);
-      context.lineTo(w, Math.round(y) + 0.5);
+      context.moveTo(0, Math.round(y));
+      context.lineTo(w, Math.round(y));
     }
     context.stroke();
 
     const inset = Math.max(6, short * 0.03);
-    const lineW = Math.max(1.5, short * 0.004);
-    context.strokeStyle = "rgba(232, 239, 228, 0.28)";
+    const lineW = Math.max(3, short * 0.009);
+    context.strokeStyle = designRgba(theme.lines, 0.75);
     context.lineWidth = lineW;
+    context.shadowColor = designRgba(theme.lines, 0.45);
+    context.shadowBlur = lineW * 2;
     context.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
+    context.shadowBlur = 0;
 
     const vignette = context.createRadialGradient(w / 2, h / 2, short * 0.15, w / 2, h / 2, Math.max(w, h) * 0.75);
-    vignette.addColorStop(0, "rgba(124, 252, 59, 0.05)");
-    vignette.addColorStop(1, "rgba(0, 0, 0, 0.35)");
+    vignette.addColorStop(0, designRgba(theme.vignette, 0));
+    vignette.addColorStop(1, designRgba(theme.vignette, 0.38));
     context.fillStyle = vignette;
     context.fillRect(0, 0, w, h);
     context.restore();
@@ -631,6 +678,8 @@
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-pressed", String(on));
     });
+    if (designPanel) designPanel.hidden = !on;
+    if (on) updateDesignPanel();
     if (!designCanvas || !designCtx) return;
     designCanvas.hidden = !on;
     if (!on) return;
@@ -645,6 +694,131 @@
     renderDesignMap();
     redrawStructures();
     persistFieldState();
+  }
+
+  function designRgba(hex, alpha) {
+    const rgb = hexToRgb(hex) || [255, 255, 255];
+    return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+  }
+
+  function isDesignHex(value) {
+    return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+  }
+
+  function normalizeDesignTheme(theme) {
+    const out = { ...DESIGN_THEME_DEFAULT };
+    if (theme && typeof theme === "object") {
+      Object.keys(out).forEach((key) => {
+        if (isDesignHex(theme[key])) out[key] = theme[key].toLowerCase();
+      });
+    }
+    return out;
+  }
+
+  function getStructureLabel(shape) {
+    const type = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+    const name = shape.name?.trim();
+    return name ? `${name} · ${type}` : type;
+  }
+
+  function updateDesignPanel() {
+    if (!designPanel || designPanel.hidden) return;
+    designColorInputs.forEach((input) => {
+      const value = designTheme[input.dataset.designKey];
+      if (value && input.value !== value) input.value = value;
+    });
+    const shape = getSelectedStructure();
+    if (designSelectedLabel) designSelectedLabel.textContent = shape ? getStructureLabel(shape) : "None";
+    if (designSelectHint) designSelectHint.hidden = Boolean(shape);
+    if (designSelectedRow) designSelectedRow.hidden = !shape;
+    if (shape && designSelectedFill) {
+      const value = shape.color || designTheme.fill;
+      if (designSelectedFill.value !== value) designSelectedFill.value = value;
+    }
+    if (designSelectedReset) designSelectedReset.disabled = !shape?.color;
+    if (designClearFillsBtn) designClearFillsBtn.disabled = !structures.some((s) => s.color);
+    designPresetsEl?.querySelectorAll(".fm-design-preset").forEach((btn, i) => {
+      const theme = DESIGN_PRESETS[i]?.theme;
+      const match = theme && Object.keys(DESIGN_THEME_DEFAULT).every((k) => theme[k] === designTheme[k]);
+      btn.classList.toggle("is-active", Boolean(match));
+    });
+  }
+
+  function setDesignTab(tab) {
+    designTab = tab === "canvas" ? "canvas" : "structures";
+    designPanel?.querySelectorAll(".fm-design-tab").forEach((btn) => {
+      const on = btn.dataset.designTab === designTab;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", String(on));
+    });
+    designPanel?.querySelectorAll(".fm-design-pane").forEach((pane) => {
+      pane.hidden = pane.dataset.designPane !== designTab;
+    });
+  }
+
+  function applyDesignTheme(theme) {
+    designTheme = normalizeDesignTheme(theme);
+    renderDesignMap();
+    redrawStructures();
+    persistFieldState();
+  }
+
+  function bindDesignPanel() {
+    if (!designPanel) return;
+    designPanel.querySelectorAll(".fm-design-tab").forEach((btn) => {
+      btn.addEventListener("click", () => setDesignTab(btn.dataset.designTab));
+    });
+    designColorInputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        designTheme = { ...designTheme, [input.dataset.designKey]: input.value.toLowerCase() };
+        renderDesignMap();
+        redrawStructures();
+      });
+      input.addEventListener("change", persistFieldState);
+    });
+    designSelectedFill?.addEventListener("input", () => {
+      const shape = getSelectedStructure();
+      if (!shape) return;
+      shape.color = designSelectedFill.value.toLowerCase();
+      redrawStructures();
+      updateDesignPanel();
+    });
+    designSelectedFill?.addEventListener("change", persistFieldState);
+    designSelectedReset?.addEventListener("click", () => {
+      const shape = getSelectedStructure();
+      if (!shape) return;
+      delete shape.color;
+      redrawStructures();
+      updateDesignPanel();
+      persistFieldState();
+    });
+    designClearFillsBtn?.addEventListener("click", () => {
+      structures.forEach((s) => delete s.color);
+      redrawStructures();
+      updateDesignPanel();
+      persistFieldState();
+    });
+    designResetThemeBtn?.addEventListener("click", () => applyDesignTheme(DESIGN_THEME_DEFAULT));
+    if (designPresetsEl) {
+      designPresetsEl.innerHTML = "";
+      DESIGN_PRESETS.forEach((preset) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "fm-design-preset";
+        btn.style.setProperty("--p-turf", preset.theme.turfCenter);
+        btn.style.setProperty("--p-fill", preset.theme.fill);
+        btn.style.setProperty("--p-lines", preset.theme.lines);
+        const chip = document.createElement("span");
+        chip.className = "fm-design-preset-chip";
+        chip.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.textContent = preset.name;
+        btn.append(chip, label);
+        btn.addEventListener("click", () => applyDesignTheme(preset.theme));
+        designPresetsEl.append(btn);
+      });
+    }
+    setDesignTab(designTab);
   }
 
   function clearVisionLines() {
@@ -1875,6 +2049,7 @@
       type: shape.type,
       fill: normalizeStructureFill(shape.fill),
       flip: Boolean(shape.flip),
+      ...(shape.color ? { color: shape.color } : {}),
       x1: left,
       y1: top,
       x2: left + bounds.width,
@@ -1988,6 +2163,7 @@
   }
 
   function updateSizerPanel() {
+    updateDesignPanel();
     const shape = getSelectedStructure();
     const hasSelection = Boolean(shape);
 
@@ -2591,7 +2767,10 @@
       context.lineWidth = isBorderOnly || isTransparentWall ? 2.5 : preview ? 2 : 1.5;
       if ((isBorderOnly || isTransparentWall) && !preview) context.setLineDash([8, 5]);
       if (designMapOn && !preview && !isTransparentWall) {
-        context.shadowColor = "rgba(0, 255, 157, 0.55)";
+        const fillHex = shape.color || designTheme.fill;
+        context.fillStyle = isBorderOnly ? designRgba(fillHex, 0.08) : fillHex;
+        context.strokeStyle = isBorderOnly ? shape.color || designTheme.outline : designTheme.outline;
+        context.shadowColor = designRgba(shape.color || designTheme.glow, 0.55);
         context.shadowBlur = 12;
       }
     }
@@ -2623,6 +2802,7 @@
     return {
       version: 1,
       designMap: designMapOn,
+      designTheme: { ...designTheme },
       report: { name: fieldIntelReport.name || "", bio: fieldIntelReport.bio || "" },
       structures: structures.map((s) => ({
         type: s.type,
@@ -2634,6 +2814,7 @@
         flip: Boolean(s.flip),
         name: s.name || "",
         bio: s.bio || "",
+        ...(s.color ? { color: s.color } : {}),
       })),
       shootScene: shootSceneSetups.map((setup) => ({
         playerKey: setup.playerKey,
@@ -2807,6 +2988,7 @@
 
   function applyPackState(state) {
     designMapOn = Boolean(state.designMap);
+    designTheme = normalizeDesignTheme(state.designTheme);
     if (state.report) {
       fieldIntelReport = {
         name: state.report.name || "",
@@ -2854,6 +3036,7 @@
         fill: normalizeStructureFill(s.fill),
         flip: Boolean(s.flip),
         detected: true,
+        ...(isDesignHex(s.color) ? { color: s.color.toLowerCase() } : {}),
       }));
   }
 
@@ -3734,6 +3917,7 @@
       shootSceneSetups = [];
       activeShootSetupId = null;
       designMapOn = false;
+      designTheme = { ...DESIGN_THEME_DEFAULT };
     }
 
     stage.classList.add("has-map");
@@ -4510,6 +4694,7 @@
   });
 
   bindSizerInputs();
+  bindDesignPanel();
   bindIntelForm();
 
   resetPlayersBtn?.addEventListener("click", resetPlayerPositions);

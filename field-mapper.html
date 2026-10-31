@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=9" />
-  <link rel="stylesheet" href="field-mapper.css?v=47" />
+  <link rel="stylesheet" href="field-mapper.css?v=48" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -190,6 +190,67 @@
           </div>
         </div>
         <p class="fm-hint" id="fm-hint" hidden>Select <strong>Move</strong> to drag players · <strong>Brush</strong> to draw on the map</p>
+
+        <aside class="fm-design-panel fm-map-tool-panel" id="fm-design-panel" hidden aria-label="Design map colors">
+          <div class="fm-design-head">
+            <div class="fm-design-head-title">
+              <span class="fm-design-head-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
+              <div>
+                <p class="eyebrow">Design</p>
+                <h2 class="fm-design-title">Map colors</h2>
+              </div>
+            </div>
+            <div class="fm-design-tabs" role="tablist" aria-label="Design sections">
+              <button type="button" class="fm-design-tab is-active" role="tab" aria-selected="true" data-design-tab="structures">Structures</button>
+              <button type="button" class="fm-design-tab" role="tab" aria-selected="false" data-design-tab="canvas">Canvas</button>
+            </div>
+          </div>
+
+          <div class="fm-design-pane" data-design-pane="structures">
+            <section class="fm-design-card">
+              <div class="fm-design-card-head">
+                <p class="fm-design-card-label">Selected structure</p>
+                <span class="fm-design-selected" id="fm-design-selected">None</span>
+              </div>
+              <p class="fm-design-note" id="fm-design-select-hint">Tap a structure on the map with <strong>Move</strong> or <strong>Sizer</strong> to recolor it.</p>
+              <div class="fm-design-row" id="fm-design-selected-row" hidden>
+                <label class="fm-design-swatch">
+                  <input type="color" id="design-selected-fill" value="#00ff9d" />
+                  <span>Fill</span>
+                </label>
+                <button type="button" class="fm-design-mini" id="design-selected-reset">Use default</button>
+              </div>
+            </section>
+            <section class="fm-design-card">
+              <p class="fm-design-card-label">All structures</p>
+              <div class="fm-design-grid">
+                <label class="fm-design-swatch"><input type="color" data-design-key="fill" /><span>Fill</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="outline" /><span>Outline</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="glow" /><span>Glow</span></label>
+              </div>
+              <button type="button" class="fm-design-mini" id="design-clear-fills">Clear custom fills</button>
+            </section>
+          </div>
+
+          <div class="fm-design-pane" data-design-pane="canvas" hidden>
+            <section class="fm-design-card">
+              <p class="fm-design-card-label">Themes</p>
+              <div class="fm-design-presets" id="fm-design-presets"></div>
+            </section>
+            <section class="fm-design-card">
+              <p class="fm-design-card-label">Field</p>
+              <div class="fm-design-grid">
+                <label class="fm-design-swatch"><input type="color" data-design-key="turf" /><span>Turf</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="turfCenter" /><span>Turf center</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="stripes" /><span>Stripes</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="grid" /><span>Grid lines</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="lines" /><span>Boundary</span></label>
+                <label class="fm-design-swatch"><input type="color" data-design-key="vignette" /><span>Vignette</span></label>
+              </div>
+            </section>
+            <button type="button" class="fm-design-mini fm-design-reset" id="design-reset-theme">Reset all colors</button>
+          </div>
+        </aside>
 
         <div
           class="fm-structure-panel fm-map-tool-panel"
@@ -590,6 +651,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=57"></script>
+  <script src="field-mapper.js?v=58"></script>
 </body>
 </html>
