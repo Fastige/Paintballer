@@ -939,23 +939,6 @@
     context.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
     context.shadowBlur = 0;
 
-    context.strokeStyle = designRgba(theme.lines, 0.4);
-    context.lineWidth = lineW * 0.6;
-    context.setLineDash([lineW * 3, lineW * 2.5]);
-    context.beginPath();
-    if (horizontal) {
-      context.moveTo(w / 2, inset);
-      context.lineTo(w / 2, h - inset);
-    } else {
-      context.moveTo(inset, h / 2);
-      context.lineTo(w - inset, h / 2);
-    }
-    context.stroke();
-    context.setLineDash([]);
-    context.beginPath();
-    context.arc(w / 2, h / 2, short * 0.06, 0, Math.PI * 2);
-    context.stroke();
-
     const vignette = context.createRadialGradient(w / 2, h / 2, short * 0.15, w / 2, h / 2, Math.max(w, h) * 0.75);
     vignette.addColorStop(0, designRgba(theme.vignette, 0));
     vignette.addColorStop(1, designRgba(theme.vignette, 0.38));
