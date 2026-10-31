@@ -673,6 +673,40 @@
   window.matchMedia("(max-width: 900px)").addEventListener("change", placeMobileControls);
   placeMobileControls();
 
+  const scrollDownBtn = document.getElementById("fm-scroll-down");
+  const mapArea = document.querySelector(".fm-map-area");
+
+  function scrollRemaining(el) {
+    return el ? el.scrollHeight - el.clientHeight - el.scrollTop : 0;
+  }
+
+  function getScrollDownTarget() {
+    const panels = document.querySelectorAll(".fm-map-tool-panel:not([hidden]), .fm-intel-section:not([hidden])");
+    return [document.scrollingElement, mapArea, ...panels].find((el) => scrollRemaining(el) > 4) || null;
+  }
+
+  let scrollDownFrame = 0;
+  function updateScrollDownBtn() {
+    if (scrollDownFrame) return;
+    scrollDownFrame = requestAnimationFrame(() => {
+      scrollDownFrame = 0;
+      scrollDownBtn?.classList.toggle("is-at-end", !getScrollDownTarget());
+    });
+  }
+
+  scrollDownBtn?.addEventListener("click", () => {
+    const target = getScrollDownTarget();
+    if (!target) return;
+    const top = Math.round(window.innerHeight * 0.6);
+    if (target === document.scrollingElement) window.scrollBy({ top, behavior: "smooth" });
+    else target.scrollBy({ top, behavior: "smooth" });
+  });
+
+  document.addEventListener("scroll", updateScrollDownBtn, { capture: true, passive: true });
+  window.addEventListener("resize", updateScrollDownBtn);
+  document.addEventListener("click", () => setTimeout(updateScrollDownBtn, 120), true);
+  updateScrollDownBtn();
+
   toolBtns.forEach((btn) => {
     btn.addEventListener("click", () => setTool(btn.dataset.tool || "select"));
   });
