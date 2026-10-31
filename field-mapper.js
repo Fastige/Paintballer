@@ -2849,7 +2849,7 @@
     workspace?.classList.toggle("is-sizer-clicker", sizerClickerOn);
     if (sizerClickerState) {
       sizerClickerState.textContent = sizerClickerOn
-        ? "On · click a structure to pick it, drag to move it"
+        ? "On · drag the selected structure · click empty map to let go, then pick another"
         : "Off · turn on to pick or drag structures on the map";
     }
   }
@@ -3114,18 +3114,21 @@
     return assignStructureFromMapClick(px, py);
   }
 
+  function pointNearStructure(s, px, py, padPx, w, h) {
+    const b = getStructureBounds(s);
+    const p = toStructureFrame(s, px, py, w, h);
+    const left = b.left * w - padPx;
+    const top = b.top * h - padPx;
+    const right = (b.left + b.width) * w + padPx;
+    const bottom = (b.top + b.height) * h + padPx;
+    return p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
+  }
+
   function hitTestStructureBounds(px, py, padPx) {
     const { w, h } = getCanvasSize();
     if (!w || !h) return null;
     for (let i = structures.length - 1; i >= 0; i--) {
-      const s = structures[i];
-      const b = getStructureBounds(s);
-      const p = toStructureFrame(s, px, py, w, h);
-      const left = b.left * w - padPx;
-      const top = b.top * h - padPx;
-      const right = (b.left + b.width) * w + padPx;
-      const bottom = (b.top + b.height) * h + padPx;
-      if (p.x >= left && p.x <= right && p.y >= top && p.y <= bottom) return s;
+      if (pointNearStructure(structures[i], px, py, padPx, w, h)) return structures[i];
     }
     return null;
   }
@@ -6010,9 +6013,23 @@
 
     const { x, y } = getLayerPoint(e, structureCanvas);
     const canDrag = activeTool === "sizer";
+    const locked = canDrag ? getSelectedStructure() : null;
+    let onLocked = false;
+    if (locked) {
+      const { w, h } = getCanvasSize();
+      onLocked = pointNearStructure(locked, x, y, IS_COARSE ? 14 : 8, w, h);
+      if (!onLocked && hitTestStructureBounds(x, y, 0)) {
+        e.preventDefault();
+        return;
+      }
+    }
     const hit =
       activeTool === "structure"
         ? null
+        : locked
+        ? onLocked
+          ? locked
+          : null
         : hitTestStructure(x, y) || (canDrag ? hitTestStructureBounds(x, y, IS_COARSE ? 14 : 8) : null);
 
     structurePointer = {
@@ -6052,7 +6069,14 @@
     if (activeTool === "sizer") {
       e.preventDefault();
       structurePointer.handled = true;
-      selectStructureAt(x, y);
+      if (locked) {
+        selectedStructureId = null;
+        updateSizerPanel();
+        updateIntelReport();
+        redrawStructures();
+      } else {
+        selectStructureAt(x, y);
+      }
       return;
     }
 
