@@ -903,6 +903,117 @@
   display: flex;
 }
 
+.fm-vision-panel {
+  display: none;
+}
+
+.fm-workspace.tool-vision-active .fm-vision-panel:not([hidden]) {
+  display: flex;
+  container-type: inline-size;
+}
+
+.fm-vision-panel .fm-kit-head .fm-kit-btn {
+  min-height: 36px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.fm-vision-status {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--vision-color, var(--tool-color)) 30%, transparent);
+  background: color-mix(in srgb, var(--vision-color, var(--tool-color)) 7%, var(--kit-deep, #0b0d0c));
+  color: var(--text);
+}
+
+.fm-vision-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+@container (min-width: 620px) {
+  .fm-vision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fm-vision-panel .fm-brush-swatches {
+  max-width: 22rem;
+}
+
+.fm-vision-styles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--kit-deep, #0b0d0c);
+}
+
+.fm-vision-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.5rem 0.3rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.fm-vision-style.is-active {
+  background: color-mix(in srgb, var(--vision-color, var(--tool-color)) 14%, var(--kit-panel, #151917));
+  border-color: color-mix(in srgb, var(--vision-color, var(--tool-color)) 70%, transparent);
+  color: var(--text);
+}
+
+@media (hover: hover) {
+  .fm-vision-style:not(.is-active):hover {
+    background: var(--kit-panel, #151917);
+    color: var(--text);
+  }
+}
+
+.fm-vision-style-art {
+  --vc: var(--vision-color, var(--tool-color));
+  position: relative;
+  width: 34px;
+  height: 22px;
+  border-radius: 5px;
+  background: #0f1513;
+  overflow: hidden;
+}
+
+.fm-vision-style-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.fm-vision-style-art.is-area::before {
+  background: radial-gradient(circle at 30% 60%, color-mix(in srgb, var(--vc) 70%, transparent), color-mix(in srgb, var(--vc) 12%, transparent) 70%);
+  clip-path: polygon(30% 60%, 100% 0, 100% 35%, 72% 45%, 72% 75%, 100% 85%, 100% 100%, 0 100%, 0 0);
+}
+
+.fm-vision-style-art.is-outline::before {
+  background: var(--vc);
+  clip-path: polygon(30% 60%, 100% 0, 100% 6%, 36% 60%, 100% 94%, 100% 100%);
+}
+
+.fm-vision-style-art.is-rays::before {
+  background: repeating-conic-gradient(from 0deg at 30% 60%, var(--vc) 0 3deg, transparent 3deg 24deg);
+  opacity: 0.8;
+}
+
 .fm-sizer-panel {
   --tool-color: #3bd5ff;
   --sz-deep: #0a0c0b;
@@ -3734,7 +3845,7 @@
 }
 
 .fm-player.has-vision-lines {
-  --player-ring: 0 0 0 1.5px rgba(15, 18, 16, 0.9), 0 0 0 3px #ff4fc8;
+  --player-ring: 0 0 0 1.5px rgba(15, 18, 16, 0.9), 0 0 0 3px var(--vision-color, #ff4fc8);
 }
 
 .fm-player.is-shoot-selected {
@@ -5155,9 +5266,9 @@
 
 .fm-design-combo span:last-child {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .fm-design-combo-chip {
@@ -5183,9 +5294,13 @@
 }
 
 .fm-design-preset span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: grid;
+  place-items: center;
+  min-height: 2.3em;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .fm-kit .fm-intel-open-btn.is-primary {

@@ -1,7 +1,9 @@
 (function () {
   /** Official structure color — must match baked-in map art for detection */
-  const VISION_LINE_COLOR = "#ff4fc8";
+  const VISION_COLOR_DEFAULT = "#ff4fc8";
   const VISION_LINE_STEP = 5;
+  const VISION_RAY_COUNT = 720;
+  const VISION_STYLES = ["area", "outline", "rays"];
 
   const STRUCTURE_GREEN = "#00ff9d";
   const STRUCTURE_RGB = { r: 0, g: 255, b: 157 };
@@ -110,6 +112,12 @@
   const sidebar = document.getElementById("fm-sidebar");
   const workspace = document.getElementById("fm-workspace");
   const sizerPanel = document.getElementById("fm-sizer-panel");
+  const visionPanel = document.getElementById("fm-vision-panel");
+  const visionSwatches = document.querySelectorAll(".fm-brush-swatch[data-vision-color]");
+  const visionColorInput = document.getElementById("vision-color");
+  const visionStyleBtns = document.querySelectorAll("[data-vision-style]");
+  const visionStatus = document.getElementById("fm-vision-status");
+  const visionHideBtn = document.getElementById("vision-hide");
   const sizerEmpty = document.getElementById("fm-sizer-empty");
   const sizerControls = document.getElementById("fm-sizer-controls");
   const sizerTypeLabel = document.getElementById("fm-sizer-type");
@@ -195,6 +203,8 @@
   const SIZER_MAX_PCT = 80;
   const SIZER_MOVE_STEP = 0.75;
   const SIZER_STEP_KEY = "paintballer-sizer-step";
+  const VISION_COLOR_KEY = "paintballer-vision-color";
+  const VISION_STYLE_KEY = "paintballer-vision-style";
   const FIELD_STATE_KEY = "paintballer-field-state";
   const SHOOT_LINE_COLOR = "#ffd43b";
   const SHOOT_BLOCKED_COLOR = "#ff4f4f";
@@ -213,91 +223,91 @@
 
   let designMapOn = false;
   const DESIGN_THEME_DEFAULT = {
-    turf: "#132018",
-    turfCenter: "#1b2d1f",
-    stripes: "#ffffff",
+    turf: "#0c2416",
+    turfCenter: "#17472a",
+    stripes: "#d9ffe6",
     grid: "#ffffff",
-    lines: "#e8efe4",
-    vignette: "#000000",
-    fill: "#00ff9d",
-    outline: "#00cc7a",
-    glow: "#00ff9d",
+    lines: "#ffffff",
+    vignette: "#020a05",
+    fill: "#ff3045",
+    outline: "#ffd0d5",
+    glow: "#ff3045",
   };
   const DESIGN_PRESETS = [
-    { name: "Neon", theme: DESIGN_THEME_DEFAULT },
+    { name: "Pro Turf", theme: DESIGN_THEME_DEFAULT },
     {
-      name: "Night",
-      theme: { turf: "#0a0f1c", turfCenter: "#141d33", stripes: "#9fb4ff", grid: "#9fb4ff", lines: "#cfe0ff", vignette: "#000000", fill: "#4f8cff", outline: "#9fc2ff", glow: "#4f8cff" },
+      name: "Classic Grass",
+      theme: { turf: "#2c5a1c", turfCenter: "#467d2a", stripes: "#ffffff", grid: "#ffffff", lines: "#ffffff", vignette: "#0d1f07", fill: "#1b1f24", outline: "#ffffff", glow: "#000000" },
     },
     {
-      name: "Desert",
-      theme: { turf: "#3a2a17", turfCenter: "#5a4325", stripes: "#ffe7b8", grid: "#ffe7b8", lines: "#fff1d6", vignette: "#1a0f05", fill: "#ff9a3b", outline: "#ffd08a", glow: "#ff7a1a" },
+      name: "World Cup",
+      theme: { turf: "#163a10", turfCenter: "#2c6a1c", stripes: "#f6ffd0", grid: "#ffffff", lines: "#ffffff", vignette: "#061004", fill: "#ffd23f", outline: "#fff6c2", glow: "#ffb800" },
     },
     {
-      name: "Ice",
-      theme: { turf: "#16303a", turfCenter: "#24505e", stripes: "#e6fbff", grid: "#e6fbff", lines: "#ffffff", vignette: "#06141a", fill: "#3bd5ff", outline: "#c9f4ff", glow: "#3bd5ff" },
+      name: "Millennium",
+      theme: { turf: "#0a1f3d", turfCenter: "#12376e", stripes: "#e8f1ff", grid: "#9cc4ff", lines: "#ffffff", vignette: "#020814", fill: "#ffffff", outline: "#6fb0ff", glow: "#4d9bff" },
     },
     {
-      name: "Inferno",
-      theme: { turf: "#1c0d0d", turfCenter: "#341414", stripes: "#ffb3b3", grid: "#ffb3b3", lines: "#ffd6d6", vignette: "#000000", fill: "#ff3b3b", outline: "#ffb000", glow: "#ff3b3b" },
+      name: "Vegas Strip",
+      theme: { turf: "#140a1c", turfCenter: "#2d1240", stripes: "#ffcc66", grid: "#ffcc66", lines: "#ffcc66", vignette: "#05020a", fill: "#ff2e63", outline: "#ffe0a3", glow: "#ff2e63" },
     },
     {
-      name: "Toxic",
-      theme: { turf: "#120a1c", turfCenter: "#24113a", stripes: "#d8b4ff", grid: "#d8b4ff", lines: "#d8b4ff", vignette: "#000000", fill: "#b6ff00", outline: "#e6ff8a", glow: "#b6ff00" },
+      name: "Desert Storm",
+      theme: { turf: "#3b2a18", turfCenter: "#6b4d2c", stripes: "#ffe2b0", grid: "#ffe2b0", lines: "#fff3dc", vignette: "#1a0f06", fill: "#2bd4c4", outline: "#c9fff8", glow: "#2bd4c4" },
     },
     {
-      name: "Synthwave",
-      theme: { turf: "#1a0b2e", turfCenter: "#3a0f4f", stripes: "#ffffff", grid: "#ff4fc8", lines: "#3bd5ff", vignette: "#0a0014", fill: "#ff4fc8", outline: "#3bd5ff", glow: "#ff4fc8" },
+      name: "Woodsball",
+      theme: { turf: "#0e1a0c", turfCenter: "#22361a", stripes: "#c8e6a0", grid: "#a8c98a", lines: "#e9f5d0", vignette: "#030602", fill: "#c27a3a", outline: "#f2c99a", glow: "#ff9a3b" },
+    },
+    {
+      name: "Arctic",
+      theme: { turf: "#c4d4e0", turfCenter: "#eaf2f8", stripes: "#6c8ba3", grid: "#4f6f88", lines: "#1d3a52", vignette: "#6f8aa0", fill: "#1aa6ff", outline: "#0b3d66", glow: "#1aa6ff" },
+    },
+    {
+      name: "Blacklight",
+      theme: { turf: "#04030a", turfCenter: "#0d0b24", stripes: "#3a5bff", grid: "#3a5bff", lines: "#8aa0ff", vignette: "#000000", fill: "#39ff14", outline: "#e2ffd8", glow: "#39ff14" },
     },
     {
       name: "Blueprint",
-      theme: { turf: "#0b2a4a", turfCenter: "#12406e", stripes: "#ffffff", grid: "#bfe2ff", lines: "#ffffff", vignette: "#031426", fill: "#e8f4ff", outline: "#ffffff", glow: "#7cc4ff" },
+      theme: { turf: "#0b2a52", turfCenter: "#10407a", stripes: "#ffffff", grid: "#8fc2ff", lines: "#ffffff", vignette: "#031226", fill: "#dbeaff", outline: "#ffffff", glow: "#7cc4ff" },
     },
     {
-      name: "Woodland",
-      theme: { turf: "#1f2a14", turfCenter: "#34421f", stripes: "#e8dcc0", grid: "#e8dcc0", lines: "#e8dcc0", vignette: "#0a0d05", fill: "#c2a46b", outline: "#6b4f2a", glow: "#e0c48a" },
+      name: "Lava Field",
+      theme: { turf: "#120604", turfCenter: "#2e0e08", stripes: "#ff8a3b", grid: "#ff5a1f", lines: "#ffb347", vignette: "#000000", fill: "#ff4a1c", outline: "#ffd36b", glow: "#ff2a00" },
     },
     {
-      name: "Gold Rush",
-      theme: { turf: "#14110a", turfCenter: "#2a2312", stripes: "#ffe08a", grid: "#ffe08a", lines: "#ffe08a", vignette: "#000000", fill: "#ffc83b", outline: "#fff0b3", glow: "#ffb000" },
+      name: "Miami Nights",
+      theme: { turf: "#0d1f2b", turfCenter: "#12465a", stripes: "#ffffff", grid: "#5ff2e6", lines: "#ff7ac8", vignette: "#040b10", fill: "#ff5fb5", outline: "#5ff2e6", glow: "#ff5fb5" },
     },
     {
-      name: "Stealth",
-      theme: { turf: "#0e0f10", turfCenter: "#1b1d1f", stripes: "#ffffff", grid: "#c9ced3", lines: "#c9ced3", vignette: "#000000", fill: "#9aa3ab", outline: "#e6e9ec", glow: "#ffffff" },
+      name: "Carbon",
+      theme: { turf: "#101214", turfCenter: "#1e2226", stripes: "#ffffff", grid: "#8a949e", lines: "#e9edf1", vignette: "#000000", fill: "#ff6a00", outline: "#ffc49a", glow: "#ff6a00" },
     },
     {
-      name: "Sunset",
-      theme: { turf: "#2a0f1a", turfCenter: "#5a1f2a", stripes: "#ffd27a", grid: "#ffb37a", lines: "#ffc09a", vignette: "#12040a", fill: "#ff8a3b", outline: "#ffd27a", glow: "#ff5c7a" },
+      name: "Aqua Dome",
+      theme: { turf: "#06201f", turfCenter: "#0d3a37", stripes: "#b8fff4", grid: "#5ae0cf", lines: "#ffffff", vignette: "#010808", fill: "#f2f5f7", outline: "#5ae0cf", glow: "#5ae0cf" },
     },
     {
-      name: "Ocean",
-      theme: { turf: "#04222b", turfCenter: "#0a3d4a", stripes: "#9ff5ff", grid: "#9ff5ff", lines: "#9ff5ff", vignette: "#01090c", fill: "#2ee6c8", outline: "#b3fff3", glow: "#2ee6c8" },
-    },
-    {
-      name: "Bubblegum",
-      theme: { turf: "#2a1430", turfCenter: "#43204d", stripes: "#ffffff", grid: "#ffd1ec", lines: "#ffd1ec", vignette: "#12051a", fill: "#ff9ad5", outline: "#ffffff", glow: "#ff6fc0" },
-    },
-    {
-      name: "Arcade",
-      theme: { turf: "#050505", turfCenter: "#101018", stripes: "#00e5ff", grid: "#ff2bd6", lines: "#00e5ff", vignette: "#000000", fill: "#ffe600", outline: "#ff2bd6", glow: "#00e5ff" },
+      name: "Sunset Cup",
+      theme: { turf: "#2a0d1e", turfCenter: "#5a1c2e", stripes: "#ffd59a", grid: "#ff9d6b", lines: "#ffc89a", vignette: "#120408", fill: "#ffb02e", outline: "#fff0c9", glow: "#ff6b3d" },
     },
   ];
   const STRUCTURE_COMBOS = [
-    { name: "Neon Lime", fill: "#00ff9d", outline: "#00cc7a", glow: "#00ff9d" },
-    { name: "Electric", fill: "#3b9eff", outline: "#b8dcff", glow: "#3b9eff" },
-    { name: "Blaze", fill: "#ff7a1a", outline: "#ffd0a3", glow: "#ff5c00" },
-    { name: "Hot Pink", fill: "#ff4fc8", outline: "#ffc2ec", glow: "#ff4fc8" },
-    { name: "Cyber", fill: "#ffe600", outline: "#fff6a3", glow: "#ffc400" },
-    { name: "Ice", fill: "#3bd5ff", outline: "#e0f8ff", glow: "#3bd5ff" },
-    { name: "Royal", fill: "#9b5cff", outline: "#d9c2ff", glow: "#7c3aed" },
-    { name: "Crimson", fill: "#ff3b4f", outline: "#ffb3bb", glow: "#ff1f3d" },
-    { name: "Mint", fill: "#9dffd6", outline: "#ffffff", glow: "#4dffb8" },
-    { name: "Lagoon", fill: "#2ee6c8", outline: "#b3fff3", glow: "#00bfa5" },
+    { name: "Pro Red", fill: "#ff3045", outline: "#ffd0d5", glow: "#ff3045" },
+    { name: "Pro Blue", fill: "#2f7bff", outline: "#cfe1ff", glow: "#2f7bff" },
+    { name: "Black Ops", fill: "#1b1f24", outline: "#ffffff", glow: "#000000" },
+    { name: "Snow", fill: "#f2f5f7", outline: "#9fb3c2", glow: "#ffffff" },
+    { name: "Caution", fill: "#ffe600", outline: "#1b1f24", glow: "#ffd000" },
+    { name: "Toxic", fill: "#39ff14", outline: "#e2ffd8", glow: "#39ff14" },
+    { name: "Blaze", fill: "#ff6a00", outline: "#ffc49a", glow: "#ff4d00" },
+    { name: "Teal", fill: "#2bd4c4", outline: "#c9fff8", glow: "#2bd4c4" },
+    { name: "Magenta", fill: "#ff2e63", outline: "#ffd0dc", glow: "#ff2e63" },
+    { name: "Ultraviolet", fill: "#8a5cff", outline: "#dccfff", glow: "#7a3cff" },
+    { name: "Camo", fill: "#6b7a3a", outline: "#c9d39a", glow: "#a3b85a" },
+    { name: "Sand", fill: "#d9b77a", outline: "#fff1d6", glow: "#e0a84f" },
+    { name: "Ice", fill: "#7fe3ff", outline: "#ffffff", glow: "#3bd5ff" },
     { name: "Gold", fill: "#ffc83b", outline: "#fff0b3", glow: "#ffb000" },
-    { name: "Chrome", fill: "#d6dde3", outline: "#ffffff", glow: "#9fb4c8" },
-    { name: "Sunset", fill: "#ff8a3b", outline: "#ff4fc8", glow: "#ff5c7a" },
-    { name: "Vapor", fill: "#ff4fc8", outline: "#3bd5ff", glow: "#9b5cff" },
-    { name: "Lava", fill: "#ff5c00", outline: "#ffe600", glow: "#ff3b3b" },
+    { name: "Chrome", fill: "#c9d2da", outline: "#ffffff", glow: "#8fa3b5" },
   ];
   let designTheme = { ...DESIGN_THEME_DEFAULT };
   let designTab = "structures";
@@ -318,6 +328,8 @@
   let structures = [];
   let selectedStructureId = null;
   let visionPlayerEl = null;
+  let visionColor = VISION_COLOR_DEFAULT;
+  let visionStyle = "area";
   let shootPlayerEl = null;
   let shootTargetPlayerEl = null;
   let shootUseTargetPlayer = false;
@@ -397,7 +409,7 @@
   }
 
   const brushSizeValue = document.getElementById("brush-size-value");
-  const brushSwatches = document.querySelectorAll(".fm-brush-swatch");
+  const brushSwatches = document.querySelectorAll(".fm-brush-swatch[data-brush-color]");
 
   function syncBrushSizeUi() {
     if (!brushSizeInput) return;
@@ -417,7 +429,7 @@
       if (on) matched = true;
       swatch.classList.toggle("is-active", on);
     });
-    const custom = document.querySelector(".fm-brush-custom");
+    const custom = brushColorInput?.closest(".fm-brush-custom");
     if (custom) {
       custom.classList.toggle("is-active", !matched);
       custom.style.setProperty("--c", current || "#7cfc3b");
@@ -563,7 +575,7 @@
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place a new bunker. Use the Sizer Clicker to move existing ones.",
       auto: "Auto — drag a box, brush white over text and lines, then press Done.",
-      vision: "Vision — tap a player for lines (stay on when you switch tools).",
+      vision: "Vision — tap a player to see their sight lines. Pick the color below.",
       shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
       sizer: "Sizer — turn on the Clicker to pick and drag bunkers, or resize / use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
@@ -604,7 +616,7 @@
   }
 
   function isIntelPanelShown() {
-    return hasMap && !isDesignPanelShown() && ["select", "brush", "vision"].includes(activeTool);
+    return hasMap && !isDesignPanelShown() && ["select", "brush"].includes(activeTool);
   }
 
   function syncToolPanels() {
@@ -612,6 +624,7 @@
     if (structurePanel) structurePanel.hidden = design || activeTool !== "structure";
     if (autoPanel) autoPanel.hidden = design || activeTool !== "auto";
     if (sizerPanel) sizerPanel.hidden = design || activeTool !== "sizer";
+    if (visionPanel) visionPanel.hidden = design || !hasMap || activeTool !== "vision";
     if (teamPanel) teamPanel.hidden = design || activeTool !== "players";
     if (shootPanel) shootPanel.hidden = design || activeTool !== "shoot";
     if (designPanel) designPanel.hidden = !design;
@@ -651,6 +664,7 @@
     workspace?.classList.toggle("tool-auto-active", activeTool === "auto");
     workspace?.classList.toggle("tool-players-active", activeTool === "players");
     workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
+    workspace?.classList.toggle("tool-vision-active", activeTool === "vision");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
     syncBrushPanel();
@@ -674,6 +688,7 @@
     if (activeTool === "auto") scrollMobilePanel(autoPanel);
     if (activeTool === "players") scrollMobilePanel(teamPanel);
     if (activeTool === "shoot") scrollMobilePanel(shootPanel);
+    if (activeTool === "vision") scrollMobilePanel(visionPanel);
 
     if (hint && !isMobileLayout()) {
       hint.hidden = !hasMap;
@@ -688,7 +703,7 @@
         auto:
           "<strong>Auto</strong> — drag a box around the area to scan · brush white over text and lines · press Done to detect every color",
         vision:
-          "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
+          "<strong>Vision</strong> — click a player to see what they can see · change the color below · stays on when you switch tools",
         shoot:
           "<strong>Shoot</strong> — click a runner, <strong>drag</strong> to draw the run route, then set a shoot point or target",
         sizer:
@@ -894,7 +909,7 @@
     context.fillRect(0, 0, w, h);
 
     const stripes = 14;
-    context.fillStyle = designRgba(theme.stripes, 0.035);
+    context.fillStyle = designRgba(theme.stripes, 0.05);
     for (let i = 0; i < stripes; i += 2) {
       if (horizontal) context.fillRect((i * w) / stripes, 0, w / stripes, h);
       else context.fillRect(0, (i * h) / stripes, w, h / stripes);
@@ -923,6 +938,23 @@
     context.shadowBlur = lineW * 2;
     context.strokeRect(inset, inset, w - inset * 2, h - inset * 2);
     context.shadowBlur = 0;
+
+    context.strokeStyle = designRgba(theme.lines, 0.4);
+    context.lineWidth = lineW * 0.6;
+    context.setLineDash([lineW * 3, lineW * 2.5]);
+    context.beginPath();
+    if (horizontal) {
+      context.moveTo(w / 2, inset);
+      context.lineTo(w / 2, h - inset);
+    } else {
+      context.moveTo(inset, h / 2);
+      context.lineTo(w - inset, h / 2);
+    }
+    context.stroke();
+    context.setLineDash([]);
+    context.beginPath();
+    context.arc(w / 2, h / 2, short * 0.06, 0, Math.PI * 2);
+    context.stroke();
 
     const vignette = context.createRadialGradient(w / 2, h / 2, short * 0.15, w / 2, h / 2, Math.max(w, h) * 0.75);
     vignette.addColorStop(0, designRgba(theme.vignette, 0));
@@ -1122,6 +1154,7 @@
       p.classList.remove("has-vision-lines");
     });
     clearCanvas(visionCtx);
+    syncVisionUi();
   }
 
   function getPlayerCenterPx(el) {
@@ -1280,14 +1313,53 @@
     const dx = Math.cos(angleRad);
     const dy = Math.sin(angleRad);
     let tLimit = rayMaxDistanceToStage(cx, cy, dx, dy, w, h);
+    let blocked = false;
 
     structures.forEach((shape) => {
       const t = rayStructureHitT(cx, cy, dx, dy, shape, w, h);
-      if (t !== null && t < tLimit) tLimit = t;
+      if (t !== null && t < tLimit) {
+        tLimit = t;
+        blocked = true;
+      }
     });
 
-    if (tLimit <= 0) return { x: cx, y: cy };
-    return { x: cx + dx * tLimit, y: cy + dy * tLimit };
+    if (tLimit <= 0) return { x: cx, y: cy, dist: 0, blocked };
+    return { x: cx + dx * tLimit, y: cy + dy * tLimit, dist: tLimit, blocked };
+  }
+
+  function castVisionRing(cx, cy, w, h) {
+    const pts = [];
+    for (let i = 0; i < VISION_RAY_COUNT; i += 1) {
+      pts.push(rayCastVisionEnd(cx, cy, (i / VISION_RAY_COUNT) * Math.PI * 2, w, h));
+    }
+    return pts;
+  }
+
+  function traceVisionPolygon(context, pts) {
+    context.beginPath();
+    pts.forEach((p, i) => (i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y)));
+    context.closePath();
+  }
+
+  /** Strokes only the stretches where sight lands on cover, skipping the jumps at shadow edges. */
+  function traceVisionCoverEdges(context, pts) {
+    const n = pts.length;
+    context.beginPath();
+    let open = false;
+    for (let i = 1; i <= n; i += 1) {
+      const prev = pts[i - 1];
+      const p = pts[i % n];
+      const joined = prev.blocked && p.blocked && Math.abs(p.dist - prev.dist) < Math.max(8, Math.min(p.dist, prev.dist) * 0.08);
+      if (!joined) {
+        open = false;
+        continue;
+      }
+      if (!open) {
+        context.moveTo(prev.x, prev.y);
+        open = true;
+      }
+      context.lineTo(p.x, p.y);
+    }
   }
 
   function redrawVisionLines() {
@@ -1296,21 +1368,140 @@
     if (!visionPlayerEl || !w || !h) return;
 
     const { x: cx, y: cy } = getPlayerCenterPx(visionPlayerEl);
+    const short = Math.min(w, h);
+    const color = visionColor;
     visionCtx.save();
-    visionCtx.strokeStyle = VISION_LINE_COLOR;
-    visionCtx.lineWidth = 1;
-    visionCtx.globalAlpha = 0.85;
+    visionCtx.lineJoin = "round";
+    visionCtx.lineCap = "round";
 
-    for (let deg = 0; deg < 360; deg += VISION_LINE_STEP) {
-      const rad = (deg * Math.PI) / 180;
-      const end = rayCastVisionEnd(cx, cy, rad, w, h);
+    if (visionStyle === "rays") {
+      visionCtx.strokeStyle = designRgba(color, 0.55);
+      visionCtx.lineWidth = 1;
+      const hits = [];
       visionCtx.beginPath();
-      visionCtx.moveTo(cx, cy);
-      visionCtx.lineTo(end.x, end.y);
+      for (let deg = 0; deg < 360; deg += VISION_LINE_STEP) {
+        const end = rayCastVisionEnd(cx, cy, (deg * Math.PI) / 180, w, h);
+        visionCtx.moveTo(cx, cy);
+        visionCtx.lineTo(end.x, end.y);
+        if (end.blocked) hits.push(end);
+      }
+      visionCtx.stroke();
+      visionCtx.fillStyle = color;
+      const r = Math.max(1.5, short * 0.003);
+      hits.forEach((p) => {
+        visionCtx.beginPath();
+        visionCtx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        visionCtx.fill();
+      });
+      visionCtx.restore();
+      return;
+    }
+
+    const pts = castVisionRing(cx, cy, w, h);
+
+    if (visionStyle === "area") {
+      const reach = Math.max(1, ...pts.map((p) => p.dist));
+      const glow = visionCtx.createRadialGradient(cx, cy, 0, cx, cy, reach);
+      glow.addColorStop(0, designRgba(color, 0.38));
+      glow.addColorStop(0.35, designRgba(color, 0.2));
+      glow.addColorStop(1, designRgba(color, 0.06));
+      traceVisionPolygon(visionCtx, pts);
+      visionCtx.fillStyle = glow;
+      visionCtx.fill();
+
+      traceVisionCoverEdges(visionCtx, pts);
+      visionCtx.strokeStyle = color;
+      visionCtx.lineWidth = Math.max(2, short * 0.0045);
+      visionCtx.shadowColor = designRgba(color, 0.8);
+      visionCtx.shadowBlur = 8;
+      visionCtx.stroke();
+    } else {
+      traceVisionPolygon(visionCtx, pts);
+      visionCtx.fillStyle = designRgba(color, 0.07);
+      visionCtx.fill();
+      visionCtx.strokeStyle = designRgba(color, 0.95);
+      visionCtx.lineWidth = Math.max(1.5, short * 0.003);
+      visionCtx.shadowColor = designRgba(color, 0.6);
+      visionCtx.shadowBlur = 6;
       visionCtx.stroke();
     }
 
+    visionCtx.shadowBlur = 0;
+    visionCtx.beginPath();
+    visionCtx.arc(cx, cy, Math.max(10, short * 0.025), 0, Math.PI * 2);
+    visionCtx.strokeStyle = designRgba(color, 0.5);
+    visionCtx.lineWidth = 1.5;
+    visionCtx.stroke();
     visionCtx.restore();
+  }
+
+  function syncVisionUi() {
+    stage.style.setProperty("--vision-color", visionColor);
+    visionPanel?.style.setProperty("--vision-color", visionColor);
+    let matched = false;
+    visionSwatches.forEach((swatch) => {
+      const on = swatch.dataset.visionColor.toLowerCase() === visionColor;
+      if (on) matched = true;
+      swatch.classList.toggle("is-active", on);
+    });
+    const custom = visionColorInput?.closest(".fm-brush-custom");
+    if (custom) {
+      custom.classList.toggle("is-active", !matched);
+      custom.style.setProperty("--c", visionColor);
+    }
+    if (visionColorInput && visionColorInput.value.toLowerCase() !== visionColor) visionColorInput.value = visionColor;
+    visionStyleBtns.forEach((btn) => {
+      const on = btn.dataset.visionStyle === visionStyle;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+    if (visionStatus) {
+      visionStatus.textContent = visionPlayerEl
+        ? `Showing ${getPlayerLabel(visionPlayerEl)} · tap them again to hide`
+        : "Tap a player on the map to see what they can see.";
+    }
+    if (visionHideBtn) visionHideBtn.disabled = !visionPlayerEl;
+  }
+
+  function setVisionColor(hex, persist = true) {
+    if (!isDesignHex(hex)) return;
+    visionColor = hex.toLowerCase();
+    if (persist) {
+      try {
+        localStorage.setItem(VISION_COLOR_KEY, visionColor);
+      } catch (_) {}
+    }
+    syncVisionUi();
+    redrawVisionLines();
+  }
+
+  function setVisionStyle(style) {
+    if (!VISION_STYLES.includes(style)) return;
+    visionStyle = style;
+    try {
+      localStorage.setItem(VISION_STYLE_KEY, visionStyle);
+    } catch (_) {}
+    syncVisionUi();
+    redrawVisionLines();
+  }
+
+  function bindVisionPanel() {
+    try {
+      const savedColor = localStorage.getItem(VISION_COLOR_KEY);
+      if (isDesignHex(savedColor)) visionColor = savedColor.toLowerCase();
+      const savedStyle = localStorage.getItem(VISION_STYLE_KEY);
+      if (VISION_STYLES.includes(savedStyle)) visionStyle = savedStyle;
+    } catch (_) {}
+    visionSwatches.forEach((swatch) => {
+      swatch.addEventListener("click", () => setVisionColor(swatch.dataset.visionColor));
+    });
+    visionColorInput?.addEventListener("input", () => setVisionColor(visionColorInput.value, false));
+    visionColorInput?.addEventListener("change", () => setVisionColor(visionColorInput.value));
+    visionStyleBtns.forEach((btn) => {
+      btn.addEventListener("click", () => setVisionStyle(btn.dataset.visionStyle));
+    });
+    visionHideBtn?.addEventListener("click", clearVisionLines);
+    syncVisionUi();
   }
 
   function toggleVisionOnPlayer(el) {
@@ -1324,6 +1515,7 @@
       el.classList.add("has-vision-lines");
     }
     redrawVisionLines();
+    syncVisionUi();
   }
 
   function getPlayerLabel(el) {
@@ -6456,7 +6648,6 @@
     SHOOT_LINE_COLOR,
     SHOOT_BLOCKED_COLOR,
     SHOOT_DOT_COLOR,
-    VISION_LINE_COLOR,
     "#ff5c00",
     "#3b9eff",
     "#ffffff",
@@ -6602,8 +6793,9 @@
     const { data } = rec.ctx.getImageData(0, 0, rec.w, rec.h);
     const { quantize, applyPalette } = rec.lib;
     if (!rec.palette) {
-      const palette = quantize(data, 256 - GIF_FIXED_COLORS.length);
-      GIF_FIXED_COLORS.forEach((hex) => {
+      const fixedColors = [...GIF_FIXED_COLORS, visionColor];
+      const palette = quantize(data, 256 - fixedColors.length);
+      fixedColors.forEach((hex) => {
         const rgb = hexToRgb(hex);
         if (rgb) palette.push(rgb);
       });
@@ -7069,6 +7261,7 @@
   });
 
   bindSizerInputs();
+  bindVisionPanel();
   bindDesignPanel();
   bindIntelForm();
 

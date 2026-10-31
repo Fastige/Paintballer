@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=64" />
+  <link rel="stylesheet" href="field-mapper.css?v=65" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -130,7 +130,7 @@
             <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
             <span class="fm-tool-name">Auto</span>
           </button>
-          <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player" style="--tool-color: #ff4fc8">
+          <button type="button" class="fm-tool-btn" data-tool="vision" title="See what a player can see" style="--tool-color: #ff4fc8">
             <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
             <span class="fm-tool-name">Vision</span>
           </button>
@@ -509,6 +509,44 @@
           </div>
         </aside>
 
+        <div class="fm-vision-panel fm-map-tool-panel fm-kit" id="fm-vision-panel" hidden aria-label="Vision options" data-mobile-panel="vision" style="--tool-color: #ff4fc8">
+          <div class="fm-kit-head">
+            <div class="fm-kit-head-title">
+              <span class="fm-kit-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
+              <div>
+                <p class="eyebrow">Vision</p>
+                <h2 class="fm-kit-title">Sight lines</h2>
+              </div>
+            </div>
+            <button type="button" class="fm-kit-btn is-quiet" id="vision-hide" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-vision" /></svg>Hide</button>
+          </div>
+          <p class="fm-kit-note fm-vision-status" id="fm-vision-status">Tap a player on the map to see what they can see.</p>
+          <div class="fm-vision-grid">
+            <section class="fm-kit-card">
+              <p class="fm-kit-label">Color</p>
+              <div class="fm-brush-swatches" role="group" aria-label="Vision color">
+                <button type="button" class="fm-brush-swatch" data-vision-color="#ff4fc8" style="--c: #ff4fc8" aria-label="Pink"></button>
+                <button type="button" class="fm-brush-swatch" data-vision-color="#3bd5ff" style="--c: #3bd5ff" aria-label="Cyan"></button>
+                <button type="button" class="fm-brush-swatch" data-vision-color="#7cfc3b" style="--c: #7cfc3b" aria-label="Lime"></button>
+                <button type="button" class="fm-brush-swatch" data-vision-color="#ffd43b" style="--c: #ffd43b" aria-label="Yellow"></button>
+                <button type="button" class="fm-brush-swatch" data-vision-color="#ff7a1a" style="--c: #ff7a1a" aria-label="Orange"></button>
+                <button type="button" class="fm-brush-swatch" data-vision-color="#ffffff" style="--c: #ffffff" aria-label="White"></button>
+                <label class="fm-brush-swatch fm-brush-custom" title="Custom color">
+                  <input type="color" id="vision-color" value="#ff4fc8" aria-label="Custom vision color" />
+                </label>
+              </div>
+            </section>
+            <section class="fm-kit-card">
+              <p class="fm-kit-label">Display</p>
+              <div class="fm-vision-styles" role="group" aria-label="Vision display">
+                <button type="button" class="fm-vision-style is-active" data-vision-style="area" aria-pressed="true"><span class="fm-vision-style-art is-area" aria-hidden="true"></span>Area</button>
+                <button type="button" class="fm-vision-style" data-vision-style="outline" aria-pressed="false"><span class="fm-vision-style-art is-outline" aria-hidden="true"></span>Outline</button>
+                <button type="button" class="fm-vision-style" data-vision-style="rays" aria-pressed="false"><span class="fm-vision-style-art is-rays" aria-hidden="true"></span>Rays</button>
+              </div>
+            </section>
+          </div>
+        </div>
+
         <aside class="fm-team-panel fm-map-tool-panel fm-kit" id="fm-team-panel" hidden aria-label="Team placement controls" data-mobile-panel="players" style="--tool-color: #ff7a1a">
           <div class="fm-kit-head">
             <div class="fm-kit-head-title">
@@ -866,6 +904,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=90"></script>
+  <script src="field-mapper.js?v=91"></script>
 </body>
 </html>
