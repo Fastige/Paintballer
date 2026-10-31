@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body>
@@ -128,7 +128,7 @@
             <span class="step-num">02</span>
           </div>
           <strong>Check the bunkers</strong>
-          <p>Green bunkers are detected automatically. Use Auto for red and blue layouts, then fix any with Structure and Sizer.</p>
+          <p>Green bunkers are detected automatically. Placing bunkers by hand with Structure and Sizer gives the best result, or try the experimental Auto tool for red and blue layouts and fix what it misses.</p>
         </li>
         <li style="--tool-color: #ff7a1a">
           <div class="step-top">
@@ -168,7 +168,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-upload" /></svg></span>
             <div><span class="feature-kicker">Map</span><h3>Upload map image</h3></div>
           </div>
-          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically. For other layouts, like red and blue bunkers on white, use <strong>Auto</strong>.</p>
+          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically. For other layouts, like red and blue bunkers on white, place bunkers with <strong>Structure</strong> for the best result, or try the experimental <strong>Auto</strong> tool.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ffd43b">
           <div class="feature-head">
@@ -257,8 +257,10 @@
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Auto</h3></div>
+            <span class="feature-badge">Experimental</span>
           </div>
           <p class="tool-lead">Turn a printed field layout into structures in one pass.</p>
+          <p class="tool-tip tool-tip-warn"><strong>Best results</strong>Auto is still experimental and can miss or misshape bunkers. For the most accurate field, place bunkers by hand with <strong>Structure</strong> and fine-tune them with <strong>Sizer</strong>, or use Auto as a starting point and fix what it gets wrong.</p>
           <ul class="tool-steps">
             <li>Drag a box on the map around the part you want to scan.</li>
             <li>Brush white over anything that isn't a bunker, like text, logos, and lines, then press <strong>Done</strong>.</li>

@@ -896,6 +896,35 @@ main {
   text-transform: uppercase;
 }
 
+.feature-card .tool-tip-warn {
+  --tool-color: #ffb020;
+  margin: 0 0 1rem;
+}
+
+.feature-card .tool-tip-warn strong ~ strong {
+  margin-right: 0;
+  color: var(--text);
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.feature-badge {
+  margin-left: auto;
+  align-self: flex-start;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid color-mix(in srgb, #ffb020 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #ffb020 14%, transparent);
+  color: #ffb020;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .feature-card p a {
   color: var(--tool-color);
   font-weight: 600;
