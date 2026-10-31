@@ -249,6 +249,23 @@
       theme: { turf: "#050505", turfCenter: "#101018", stripes: "#00e5ff", grid: "#ff2bd6", lines: "#00e5ff", vignette: "#000000", fill: "#ffe600", outline: "#ff2bd6", glow: "#00e5ff" },
     },
   ];
+  const STRUCTURE_COMBOS = [
+    { name: "Neon Lime", fill: "#00ff9d", outline: "#00cc7a", glow: "#00ff9d" },
+    { name: "Electric", fill: "#3b9eff", outline: "#b8dcff", glow: "#3b9eff" },
+    { name: "Blaze", fill: "#ff7a1a", outline: "#ffd0a3", glow: "#ff5c00" },
+    { name: "Hot Pink", fill: "#ff4fc8", outline: "#ffc2ec", glow: "#ff4fc8" },
+    { name: "Cyber", fill: "#ffe600", outline: "#fff6a3", glow: "#ffc400" },
+    { name: "Ice", fill: "#3bd5ff", outline: "#e0f8ff", glow: "#3bd5ff" },
+    { name: "Royal", fill: "#9b5cff", outline: "#d9c2ff", glow: "#7c3aed" },
+    { name: "Crimson", fill: "#ff3b4f", outline: "#ffb3bb", glow: "#ff1f3d" },
+    { name: "Mint", fill: "#9dffd6", outline: "#ffffff", glow: "#4dffb8" },
+    { name: "Lagoon", fill: "#2ee6c8", outline: "#b3fff3", glow: "#00bfa5" },
+    { name: "Gold", fill: "#ffc83b", outline: "#fff0b3", glow: "#ffb000" },
+    { name: "Chrome", fill: "#d6dde3", outline: "#ffffff", glow: "#9fb4c8" },
+    { name: "Sunset", fill: "#ff8a3b", outline: "#ff4fc8", glow: "#ff5c7a" },
+    { name: "Vapor", fill: "#ff4fc8", outline: "#3bd5ff", glow: "#9b5cff" },
+    { name: "Lava", fill: "#ff5c00", outline: "#ffe600", glow: "#ff3b3b" },
+  ];
   let designTheme = { ...DESIGN_THEME_DEFAULT };
   let designTab = "structures";
   let designPanelOpen = false;
@@ -849,6 +866,11 @@
     }
     if (designSelectedReset) designSelectedReset.disabled = !shape?.color;
     if (designClearFillsBtn) designClearFillsBtn.disabled = !structures.some((s) => s.color);
+    document.querySelectorAll(".fm-design-combo").forEach((btn, i) => {
+      const combo = STRUCTURE_COMBOS[i];
+      const match = combo && ["fill", "outline", "glow"].every((k) => combo[k] === designTheme[k]);
+      btn.classList.toggle("is-active", Boolean(match));
+    });
     designPresetsEl?.querySelectorAll(".fm-design-preset").forEach((btn, i) => {
       const theme = DESIGN_PRESETS[i]?.theme;
       const match = theme && Object.keys(DESIGN_THEME_DEFAULT).every((k) => theme[k] === designTheme[k]);
@@ -928,6 +950,28 @@
         btn.append(chip, label);
         btn.addEventListener("click", () => applyDesignTheme(preset.theme));
         designPresetsEl.append(btn);
+      });
+    }
+    const combosEl = document.getElementById("fm-design-combos");
+    if (combosEl) {
+      combosEl.innerHTML = "";
+      STRUCTURE_COMBOS.forEach((combo) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "fm-design-combo";
+        btn.style.setProperty("--c-fill", combo.fill);
+        btn.style.setProperty("--c-outline", combo.outline);
+        btn.style.setProperty("--c-glow", combo.glow);
+        const chip = document.createElement("span");
+        chip.className = "fm-design-combo-chip";
+        chip.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.textContent = combo.name;
+        btn.append(chip, label);
+        btn.addEventListener("click", () =>
+          applyDesignTheme({ ...designTheme, fill: combo.fill, outline: combo.outline, glow: combo.glow })
+        );
+        combosEl.append(btn);
       });
     }
     setDesignTab(designTab);
