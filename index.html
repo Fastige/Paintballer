@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=21" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body>
@@ -202,6 +202,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Move</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="move" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Your everyday pointer for fine-tuning a setup once the teams are locked.</p>
           <ul class="tool-steps">
             <li>Drag any locked player to a new spot.</li>
@@ -215,6 +216,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-flag" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Players</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="players" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Drop a whole team onto the field at once, then lock it in.</p>
           <ul class="tool-steps">
             <li>Choose how many players are on the team, from 1 to 10, with the <strong>+</strong> and <strong>−</strong> buttons.</li>
@@ -230,6 +232,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-brush" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Brush</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="brush" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Sketch routes, lanes, and callouts freehand on top of the map.</p>
           <ul class="tool-steps">
             <li>Drag on the map to draw.</li>
@@ -245,6 +248,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Structure</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="structure" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Add any bunkers the map missed, or build a layout from scratch.</p>
           <ul class="tool-steps">
             <li>Pick a shape: <strong>Rectangle</strong>, <strong>Circle</strong>, or <strong>Triangle</strong>.</li>
@@ -260,6 +264,7 @@
             <div><span class="feature-kicker">Tool</span><h3>Auto</h3></div>
             <span class="feature-badge">Experimental</span>
           </div>
+          <div class="tool-demo" data-tool-demo="auto" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Turn a printed field layout into structures in one pass.</p>
           <p class="tool-tip tool-tip-warn"><strong>Best results</strong>Auto is still experimental and can miss or misshape bunkers. For the most accurate field, place bunkers by hand with <strong>Structure</strong> and fine-tune them with <strong>Sizer</strong>, or use Auto as a starting point and fix what it gets wrong.</p>
           <ul class="tool-steps">
@@ -278,6 +283,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Shoot</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="shoot" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Plan each player's move: where they run and what they shoot at.</p>
           <ul class="tool-steps">
             <li>Tap a player, then use <strong>Draw run</strong> and drag from them (or anywhere on the map) to draw the exact route they run.</li>
@@ -294,6 +300,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Vision</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="vision" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">See exactly what a player can see from where they stand.</p>
           <ul class="tool-steps">
             <li>Tap a player to cast pink sight lines all the way around them.</li>
@@ -308,6 +315,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Sizer</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="sizer" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Fine-tune any bunker's size, position, and style.</p>
           <ul class="tool-steps">
             <li>Tap a bunker to select it. Its shape shows at the top of the panel.</li>
@@ -323,6 +331,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>50 Mirror</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="mirror" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Map one half of the field, then copy it to the other side.</p>
           <ul class="tool-steps">
             <li>Tap <strong>50 Mirror</strong> and confirm.</li>
@@ -338,6 +347,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Design</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="design" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Swap the photo for a clean, custom-colored field drawn from your bunkers.</p>
           <ul class="tool-steps">
             <li>Tap <strong>Design</strong> to open its panel, and flip between photo and design with the <strong>Design map</strong> switch.</li>
@@ -352,6 +362,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-intel" /></svg></span>
             <div><span class="feature-kicker">Panel</span><h3>Field intel</h3></div>
           </div>
+          <div class="tool-demo" data-tool-demo="intel" aria-hidden="true"><canvas class="tool-demo-canvas"></canvas><span class="tool-demo-caption" data-demo-caption></span></div>
           <p class="tool-lead">Name every bunker and keep your team's notes in one place.</p>
           <ul class="tool-steps">
             <li>Shows under the map with Move, Brush, and Vision. On mobile, it's the <strong>Intel</strong> button.</li>
@@ -474,6 +485,8 @@
   </footer>
 
   <script src="main.js?v=6"></script>
-  <script src="hero-scene.js?v=3"></script>
+  <script src="field-game.js?v=1"></script>
+  <script src="hero-scene.js?v=4"></script>
+  <script src="tool-demos.js?v=5"></script>
 </body>
 </html>
