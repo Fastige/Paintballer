@@ -2726,6 +2726,8 @@
     [sizerHeight, sizerHeightNum].forEach((el) => {
       if (el) el.value = String(heightPct);
     });
+    syncSizerRangeFill(sizerWidth);
+    syncSizerRangeFill(sizerHeight);
     syncSizerRotateUi(getStructureRotation(shape));
     sizerSyncing = false;
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
@@ -2884,6 +2886,14 @@
     });
   }
 
+  function syncSizerRangeFill(rangeEl) {
+    if (!rangeEl) return;
+    const min = Number(rangeEl.min) || 0;
+    const max = Number(rangeEl.max) || 100;
+    const pct = Math.min(100, Math.max(0, ((Number(rangeEl.value) - min) / (max - min)) * 100));
+    rangeEl.style.setProperty("--fill", `${pct}%`);
+  }
+
   function setSizerClicker(on) {
     sizerClickerOn = Boolean(on);
     sizerClickerBtn?.classList.toggle("is-active", sizerClickerOn);
@@ -2905,7 +2915,10 @@
     initSizerClicker();
     bindSizerRotate();
     const bindPair = (rangeEl, numEl, axis) => {
-      rangeEl?.addEventListener("input", () => onSizerAxisInput(axis, rangeEl.value));
+      rangeEl?.addEventListener("input", () => {
+        onSizerAxisInput(axis, rangeEl.value);
+        syncSizerRangeFill(rangeEl);
+      });
       rangeEl?.addEventListener("change", endSizerEdit);
       rangeEl?.addEventListener("pointerup", endSizerEdit);
       rangeEl?.addEventListener("blur", endSizerEdit);

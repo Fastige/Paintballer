@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=63" />
+  <link rel="stylesheet" href="field-mapper.css?v=64" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -24,6 +24,8 @@
     <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle cx="12" cy="12" r="1" /></symbol>
     <symbol id="i-auto" viewBox="0 0 24 24"><path d="M4 20L15 9M13 7l4 4" /><path d="M18 2.5v3.5M16.25 4.25h3.5M20.5 10v3M19 11.5h3M8.5 2.5v3M7 4h3" /></symbol>
     <symbol id="i-sizer" viewBox="0 0 24 24"><path d="M14 3h7v7M10 21H3v-7M21 3l-7 7M3 21l7-7" /></symbol>
+    <symbol id="i-pan" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" /></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v4.5h-4.5" /></symbol>
     <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9.5v5M12 18.5V21" /><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></symbol>
     <symbol id="i-intel" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.8h6V4M9 10h6M9 14h6M9 18h3" /></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M4 15v5h16v-5" /></symbol>
@@ -398,35 +400,33 @@
         </div>
 
         <aside class="fm-sizer-panel fm-map-tool-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
-          <div class="fm-sizer-head">
+          <header class="fm-sizer-head">
             <div class="fm-sizer-head-title">
               <span class="fm-sizer-head-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
               <div>
                 <p class="eyebrow">Sizer</p>
                 <h2 class="fm-sizer-title">Structure size</h2>
               </div>
+              <span class="fm-sizer-type" id="fm-sizer-type" hidden>Rectangle</span>
             </div>
-            <span class="fm-sizer-type" id="fm-sizer-type" hidden>Rectangle</span>
-          </div>
+            <button type="button" class="fm-sizer-undo" id="undo-sizer" disabled aria-label="Undo Sizer change" title="Undo Sizer change"><svg class="fm-ico"><use href="#i-reset" /></svg><span>Undo</span></button>
+          </header>
           <button type="button" class="fm-sizer-clicker" id="sizer-clicker" aria-pressed="false">
             <span class="fm-sizer-clicker-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
             <span class="fm-sizer-clicker-text">
               <strong>Clicker</strong>
               <span id="sizer-clicker-state">Off · turn on to pick or drag structures on the map</span>
             </span>
+            <span class="fm-sizer-switch" aria-hidden="true"></span>
           </button>
           <p class="fm-sizer-empty" id="fm-sizer-empty">Turn on the Clicker, then click a structure on the map to resize it or drag it to move it.</p>
           <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
-            <section class="fm-sizer-card fm-sizer-position" aria-label="Move structure">
-              <p class="fm-sizer-card-label">Move</p>
-              <div class="fm-throttle">
-                <div class="fm-throttle-head">
-                  <label for="sizer-step">Move step</label>
-                  <output class="fm-throttle-value" id="sizer-step-value" for="sizer-step">0.75%</output>
-                </div>
-                <input type="range" class="fm-throttle-range" id="sizer-step" min="0.25" max="5" step="0.25" value="0.75" />
-                <div class="fm-throttle-scale" aria-hidden="true"><span>Fine</span><span>Fast</span></div>
-              </div>
+            <section class="fm-sizer-card" aria-label="Move structure">
+              <header class="fm-sizer-card-head">
+                <span class="fm-sizer-card-title"><svg class="fm-ico" aria-hidden="true"><use href="#i-pan" /></svg>Move</span>
+                <output class="fm-sizer-readout" id="sizer-step-value" for="sizer-step">0.75%</output>
+              </header>
+              <div class="fm-sizer-move">
               <div class="fm-sizer-pad" role="group" aria-label="Move structure">
                 <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
                 <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
@@ -434,28 +434,40 @@
                 <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
                 <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
               </div>
+              <div class="fm-throttle fm-sizer-step">
+                <label for="sizer-step">Step per tap</label>
+                <input type="range" class="fm-throttle-range" id="sizer-step" min="0.25" max="5" step="0.25" value="0.75" />
+                <div class="fm-throttle-scale" aria-hidden="true"><span>Fine</span><span>Fast</span></div>
+              </div>
+              </div>
             </section>
             <section class="fm-sizer-card" aria-label="Structure size">
-              <p class="fm-sizer-card-label">Size</p>
+              <header class="fm-sizer-card-head">
+                <span class="fm-sizer-card-title"><svg class="fm-ico" aria-hidden="true"><use href="#i-sizer" /></svg>Size</span>
+                <span class="fm-sizer-card-note">% of map</span>
+              </header>
               <div class="fm-sizer-axis">
-                <label class="fm-range-label" for="sizer-width">Width</label>
-                <div class="fm-sizer-axis-row">
-                  <input type="range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
-                  <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" aria-label="Width percent" />
-                  <span class="fm-sizer-unit">%</span>
-                </div>
+                <label class="fm-sizer-axis-key" for="sizer-width">Width</label>
+                <input type="range" class="fm-sizer-range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
+                <label class="fm-sizer-num">
+                  <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" inputmode="decimal" aria-label="Width percent" />
+                  <span aria-hidden="true">%</span>
+                </label>
               </div>
               <div class="fm-sizer-axis">
-                <label class="fm-range-label" for="sizer-height">Height</label>
-                <div class="fm-sizer-axis-row">
-                  <input type="range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
-                  <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
-                  <span class="fm-sizer-unit">%</span>
-                </div>
+                <label class="fm-sizer-axis-key" for="sizer-height">Height</label>
+                <input type="range" class="fm-sizer-range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
+                <label class="fm-sizer-num">
+                  <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" inputmode="decimal" aria-label="Height percent" />
+                  <span aria-hidden="true">%</span>
+                </label>
               </div>
             </section>
             <section class="fm-sizer-card" aria-label="Structure rotation">
-              <p class="fm-sizer-card-label">Rotate</p>
+              <header class="fm-sizer-card-head">
+                <span class="fm-sizer-card-title"><svg class="fm-ico" aria-hidden="true"><use href="#i-rotate" /></svg>Rotate</span>
+                <button type="button" class="fm-sizer-card-link" data-rotate-to="0" aria-label="Reset rotation">Reset</button>
+              </header>
               <div class="fm-rotate">
                 <div class="fm-rotate-wheel" id="sizer-rotate-wheel" role="slider" tabindex="0" aria-label="Rotation" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" aria-valuetext="0 degrees">
                   <span class="fm-rotate-arm" aria-hidden="true"><span class="fm-rotate-knob"></span></span>
@@ -474,26 +486,27 @@
                     <button type="button" class="fm-rotate-step" data-rotate-by="-15" aria-label="Rotate 15 degrees counterclockwise">−15°</button>
                     <button type="button" class="fm-rotate-step" data-rotate-by="15" aria-label="Rotate 15 degrees clockwise">+15°</button>
                     <button type="button" class="fm-rotate-step" data-rotate-by="90" aria-label="Rotate 90 degrees clockwise">+90°</button>
-                    <button type="button" class="fm-rotate-step" data-rotate-to="0" aria-label="Reset rotation">Reset</button>
                   </div>
                 </div>
               </div>
-              <p class="fm-rotate-hint">Drag the wheel to spin it. Hold Shift to snap to 15°.</p>
+              <p class="fm-sizer-hint">Drag the wheel to spin · Shift snaps to 15°</p>
             </section>
             <section class="fm-sizer-card" aria-label="Wall style">
-              <p class="fm-sizer-card-label">Wall style</p>
-              <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
+              <header class="fm-sizer-card-head">
+                <span class="fm-sizer-card-title"><svg class="fm-ico" aria-hidden="true"><use href="#i-shape-rect" /></svg>Wall style</span>
+              </header>
+              <div class="fm-sizer-styles" role="group" aria-label="Selected structure wall style">
                 <button type="button" class="fm-style-btn is-active" data-sizer-style="filled">Filled</button>
                 <button type="button" class="fm-style-btn" data-sizer-style="border">Border only</button>
                 <button type="button" class="fm-style-btn" data-sizer-style="transparent">Transparent wall</button>
               </div>
+              <p class="fm-sizer-hint">Every style still blocks vision and shoot lines.</p>
             </section>
             <div class="fm-sizer-actions">
               <button type="button" class="fm-sizer-action" id="duplicate-structure"><svg class="fm-ico"><use href="#i-copy" /></svg>Duplicate</button>
               <button type="button" class="fm-sizer-action is-danger" id="delete-structure"><svg class="fm-ico"><use href="#i-trash" /></svg>Delete</button>
             </div>
           </div>
-          <button type="button" class="fm-sizer-action fm-sizer-undo" id="undo-sizer" disabled><svg class="fm-ico"><use href="#i-reset" /></svg>Undo Sizer change</button>
         </aside>
 
         <aside class="fm-team-panel fm-map-tool-panel fm-kit" id="fm-team-panel" hidden aria-label="Team placement controls" data-mobile-panel="players" style="--tool-color: #ff7a1a">
@@ -853,6 +866,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=89"></script>
+  <script src="field-mapper.js?v=90"></script>
 </body>
 </html>
