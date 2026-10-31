@@ -193,7 +193,7 @@
   let shootOver = false;
   let sceneAutoResetTimer = null;
   const SCENE_AUTO_RESET_MS = 1500;
-  let shootMode = "shoot";
+  let shootMode = "run";
   let shootPoint = null;
   let runPoint = null;
   let targetRunPoint = null;
@@ -954,6 +954,7 @@
       shootTargetPlayerEl = null;
       targetRunPoint = null;
     }
+    shootMode = shootStandStill ? "shoot" : "run";
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -1320,7 +1321,7 @@
     runPoint = shootStandStill ? null : clonePoint(setup.runPoint);
     targetRunPoint = clonePoint(setup.targetRunPoint);
     if (shootTimeInput) shootTimeInput.value = String(setup.timeSec || 3);
-    shootMode = shootNoShot ? "run" : "shoot";
+    shootMode = shootStandStill ? "shoot" : "run";
 
     updateShootPanel();
     redrawShootOverlay();
@@ -1668,6 +1669,7 @@
       runPoint = point;
       shootStandStill = false;
       if (shootStandStillInput) shootStandStillInput.checked = false;
+      if (!shootNoShot && !shootPoint && !shootTargetPlayerEl) shootMode = "shoot";
     } else if (!shootUseTargetPlayer && !shootNoShot) {
       shootPoint = point;
     }
