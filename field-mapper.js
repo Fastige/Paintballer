@@ -1741,7 +1741,7 @@
     };
   }
 
-  function drawPointMarker(context, point, color, label) {
+  function drawPointMarker(context, point, color) {
     const { x, y } = denormalizePoint(point);
     context.save();
     context.beginPath();
@@ -1756,14 +1756,6 @@
     context.closePath();
     context.fill();
     context.stroke();
-    context.beginPath();
-    context.font = "700 11px Outfit, sans-serif";
-    context.textBaseline = "bottom";
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = "rgba(0, 0, 0, 0.75)";
-    context.lineWidth = 3;
-    context.strokeText(label, x + 9, y - 7);
-    context.fillText(label, x + 9, y - 7);
     context.restore();
     context.beginPath();
   }
@@ -1943,11 +1935,11 @@
     shootCtx.beginPath();
 
     if (setup.shootPoint && !setup.useTargetPlayer && !setup.noShoot) {
-      drawPointMarker(shootCtx, setup.shootPoint, SHOOT_LINE_COLOR, setup.shootOver ? "Shoot over" : "Shoot");
+      drawPointMarker(shootCtx, setup.shootPoint, SHOOT_LINE_COLOR);
     }
-    if (setup.runPoint) drawPointMarker(shootCtx, setup.runPoint, RUN_POINT_COLOR, "Run");
+    if (setup.runPoint) drawPointMarker(shootCtx, setup.runPoint, RUN_POINT_COLOR);
     if (setup.targetRunPoint) {
-      drawPointMarker(shootCtx, setup.targetRunPoint, SHOOT_BLOCKED_COLOR, "Target run");
+      drawPointMarker(shootCtx, setup.targetRunPoint, SHOOT_BLOCKED_COLOR);
     }
 
     if (shootTarget) {
