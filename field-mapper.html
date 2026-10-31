@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=61" />
+  <link rel="stylesheet" href="field-mapper.css?v=62" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -408,7 +408,14 @@
             </div>
             <span class="fm-sizer-type" id="fm-sizer-type" hidden>Rectangle</span>
           </div>
-          <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it, or drag it to move it.</p>
+          <button type="button" class="fm-sizer-clicker" id="sizer-clicker" aria-pressed="false">
+            <span class="fm-sizer-clicker-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
+            <span class="fm-sizer-clicker-text">
+              <strong>Clicker</strong>
+              <span id="sizer-clicker-state">Off · turn on to pick or drag structures on the map</span>
+            </span>
+          </button>
+          <p class="fm-sizer-empty" id="fm-sizer-empty">Turn on the Clicker, then click a structure on the map to resize it or drag it to move it.</p>
           <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
             <section class="fm-sizer-card fm-sizer-position" aria-label="Move structure">
               <p class="fm-sizer-card-label">Move</p>
@@ -842,6 +849,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=84"></script>
+  <script src="field-mapper.js?v=85"></script>
 </body>
 </html>

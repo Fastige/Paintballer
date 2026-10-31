@@ -116,6 +116,8 @@
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const sizerRotateWheel = document.getElementById("sizer-rotate-wheel");
   const sizerRotateNum = document.getElementById("sizer-rotate-num");
+  const sizerClickerBtn = document.getElementById("sizer-clicker");
+  const sizerClickerState = document.getElementById("sizer-clicker-state");
   const undoSizerBtn = document.getElementById("undo-sizer");
   const sizerStepInput = document.getElementById("sizer-step");
   const sizerStepValue = document.getElementById("sizer-step-value");
@@ -353,6 +355,7 @@
   let mirrorToastTimer = null;
   let sizerSyncing = false;
   let activeSizerEdit = null;
+  let sizerClickerOn = false;
   let sizerUndoState = null;
   /** @type {{data:Uint8ClampedArray,w:number,h:number}|null} */
   let mapPixelCache = null;
@@ -555,11 +558,11 @@
       select: "Move — drag players, or tap green bunkers for Intel.",
       players: "Teams — choose Team 1 count, tap spawn, nudge with ghost arrows, then lock.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
-      structure: "Struct — drag to place. Tap existing bunkers for Intel.",
+      structure: "Struct — drag to place a new bunker. Use the Sizer Clicker to move existing ones.",
       auto: "Auto — drag a box, brush white over text and lines, then press Done.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
       shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
-      sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
+      sizer: "Sizer — turn on the Clicker to pick and drag bunkers, or resize / use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
     mobileTip.innerHTML = tips[tool] || tips.select;
@@ -678,7 +681,7 @@
           "<strong>Players</strong> — choose team size, click a spawn, nudge with ghost arrows, then lock with ✓",
         brush: "<strong>Brush</strong> — draw tactics on the map · click structures for intel",
         structure:
-          "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
+          "<strong>Structure</strong> — drag to place a new structure · use the Sizer <strong>Clicker</strong> to move existing ones",
         auto:
           "<strong>Auto</strong> — drag a box around the area to scan · brush white over text and lines · press Done to detect every color",
         vision:
@@ -686,7 +689,7 @@
         shoot:
           "<strong>Shoot</strong> — click a runner, <strong>drag</strong> to draw the run route, then set a shoot point or target",
         sizer:
-          "<strong>Sizer</strong> — resize structures · <strong>drag</strong> or arrows to move · intel below map",
+          "<strong>Sizer</strong> — resize structures · turn on the <strong>Clicker</strong> to pick and drag · arrows to move",
         intel:
           "<strong>Intel</strong> — click a green bunker on the map, then file name and bio below",
       };
@@ -2839,7 +2842,25 @@
     });
   }
 
+  function setSizerClicker(on) {
+    sizerClickerOn = Boolean(on);
+    sizerClickerBtn?.classList.toggle("is-active", sizerClickerOn);
+    sizerClickerBtn?.setAttribute("aria-pressed", String(sizerClickerOn));
+    workspace?.classList.toggle("is-sizer-clicker", sizerClickerOn);
+    if (sizerClickerState) {
+      sizerClickerState.textContent = sizerClickerOn
+        ? "On · click a structure to pick it, drag to move it"
+        : "Off · turn on to pick or drag structures on the map";
+    }
+  }
+
+  function initSizerClicker() {
+    setSizerClicker(false);
+    sizerClickerBtn?.addEventListener("click", () => setSizerClicker(!sizerClickerOn));
+  }
+
   function bindSizerInputs() {
+    initSizerClicker();
     bindSizerRotate();
     const bindPair = (rangeEl, numEl, axis) => {
       rangeEl?.addEventListener("input", () => onSizerAxisInput(axis, rangeEl.value));
@@ -5985,11 +6006,14 @@
       return;
     }
 
+    if (activeTool === "sizer" && !sizerClickerOn) return;
+
     const { x, y } = getLayerPoint(e, structureCanvas);
-    const canDrag = activeTool === "sizer" || activeTool === "structure";
+    const canDrag = activeTool === "sizer";
     const hit =
-      hitTestStructure(x, y) ||
-      (canDrag ? hitTestStructureBounds(x, y, IS_COARSE ? 14 : 8) : null);
+      activeTool === "structure"
+        ? null
+        : hitTestStructure(x, y) || (canDrag ? hitTestStructureBounds(x, y, IS_COARSE ? 14 : 8) : null);
 
     structurePointer = {
       x: e.clientX,
@@ -6136,6 +6160,7 @@
       placePreview = null;
       persistFieldState();
       redrawStructures();
+      setSizerClicker(false);
       setTool("sizer");
       return;
     }
