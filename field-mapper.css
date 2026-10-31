@@ -710,57 +710,8 @@
   display: flex;
 }
 
-.fm-workspace.tool-name-active .fm-name-panel:not([hidden]) {
-  display: flex;
-}
-
 .fm-workspace.tool-shoot-active .fm-shoot-panel:not([hidden]) {
   display: flex;
-}
-
-.fm-player-names {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--border);
-}
-
-.fm-player-names[hidden] {
-  display: none;
-}
-
-.fm-player-name-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.fm-player-name-row {
-  display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.fm-player-name-row span {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.fm-player-name-row input,
-#player-name-input,
-#shoot-player-name {
-  width: 100%;
-  min-height: 40px;
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.9rem;
 }
 
 .fm-sizer-head {
@@ -907,14 +858,6 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-.fm-editor #shoot-player-name {
-  flex: 1;
-  min-width: 0;
-  min-height: 36px;
-  background: var(--ed-deep);
-  font-size: 0.85rem;
 }
 
 .fm-editor-transport {
@@ -2276,32 +2219,6 @@
   pointer-events: none;
 }
 
-.fm-player-name {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 5px);
-  transform: translateX(-50%);
-  max-width: 7.5rem;
-  padding: 0.08rem 0.28rem;
-  border-radius: 4px;
-  background: rgba(15, 18, 16, 0.78);
-  color: #fff;
-  font-family: Outfit, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-  z-index: 12;
-}
-
-.fm-player-name:empty {
-  display: none;
-}
-
 .fm-player.team-a {
   background: var(--team-a, #ff5c00);
 }
@@ -2418,10 +2335,6 @@
 
 .fm-player.has-vision-lines {
   box-shadow: 0 0 0 3px rgba(255, 79, 200, 0.85), 0 4px 14px rgba(0, 0, 0, 0.45);
-}
-
-.fm-player.is-named-selected {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .fm-player.is-shoot-selected {

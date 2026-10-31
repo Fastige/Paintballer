@@ -89,14 +89,6 @@
   const playerCountInput = document.getElementById("player-count");
   const playerCountMinus = document.getElementById("player-count-minus");
   const playerCountPlus = document.getElementById("player-count-plus");
-  const playerNamesSection = document.getElementById("fm-player-names");
-  const playerNameList = document.getElementById("fm-player-name-list");
-  const namePanel = document.getElementById("fm-name-panel");
-  const nameEmpty = document.getElementById("fm-name-empty");
-  const nameControls = document.getElementById("fm-name-controls");
-  const namePlayerLabel = document.getElementById("fm-name-player");
-  const playerNameInput = document.getElementById("player-name-input");
-  const shootPlayerNameInput = document.getElementById("shoot-player-name");
   const shootPanel = document.getElementById("fm-shoot-panel");
   const shootEmpty = document.getElementById("fm-shoot-empty");
   const shootControls = document.getElementById("fm-shoot-controls");
@@ -216,10 +208,6 @@
   let mirrorLinePoints = [];
   let mirrorHoverPoint = null;
   let mirrorToastTimer = null;
-  /** @type {Record<string,string>} */
-  let playerNames = {};
-  let namedPlayerEl = null;
-  let syncingPlayerName = false;
   let sizerSyncing = false;
   let activeSizerEdit = null;
   let sizerUndoState = null;
@@ -358,7 +346,7 @@
       return;
     }
     const tips = {
-      select: "Move — drag players. Tap a player to name them, or leave the name blank.",
+      select: "Move — drag players, or tap green bunkers for Intel.",
       players: "Teams — choose Team 1 count, tap spawn, nudge with ghost arrows, then lock.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
@@ -414,7 +402,6 @@
     workspace?.classList.toggle("tool-sizer-active", activeTool === "sizer");
     workspace?.classList.toggle("tool-structure-active", activeTool === "structure");
     workspace?.classList.toggle("tool-players-active", activeTool === "players");
-    workspace?.classList.toggle("tool-name-active", activeTool === "select" && tool !== "intel");
     workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
@@ -422,7 +409,6 @@
     if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "players" || activeTool === "sizer" || activeTool === "shoot";
     if (sizerPanel) sizerPanel.hidden = activeTool !== "sizer";
     if (teamPanel) teamPanel.hidden = activeTool !== "players";
-    if (namePanel) namePanel.hidden = !(activeTool === "select" && tool !== "intel");
     if (shootPanel) shootPanel.hidden = activeTool !== "shoot";
 
     if (activeTool === "sizer" && structures.length && !selectedStructureId) {
@@ -438,7 +424,6 @@
     if (activeTool === "sizer") scrollMobilePanel(sizerPanel);
     if (activeTool === "structure") scrollMobilePanel(structurePanel);
     if (activeTool === "players") scrollMobilePanel(teamPanel);
-    if (activeTool === "select" && tool !== "intel") scrollMobilePanel(namePanel);
     if (activeTool === "shoot") scrollMobilePanel(shootPanel);
 
     if (hint && !isMobileLayout()) {
@@ -784,92 +769,7 @@
   function getPlayerLabel(el) {
     if (!el) return "No player selected";
     const team = el.dataset.team === "a" ? "Team 1 / Alpha" : "Team 2 / Bravo";
-    const base = `${team} ${el.dataset.num || ""}`.trim();
-    const name = getStoredPlayerName(el);
-    return name ? `${base} · ${name}` : base;
-  }
-
-  function getStoredPlayerName(el) {
-    if (!el) return "";
-    return String(playerNames[getPlayerKey(el)] || "").trim();
-  }
-
-  function renderPlayerNameTag(el) {
-    if (!el) return;
-    const tag = el.querySelector(".fm-player-name");
-    if (!tag) return;
-    tag.textContent = getStoredPlayerName(el);
-  }
-
-  function applyPlayerName(el, value, source) {
-    if (!el) return;
-    const key = getPlayerKey(el);
-    const name = String(value || "").slice(0, 24).trim();
-    if (name) playerNames[key] = name;
-    else delete playerNames[key];
-    renderPlayerNameTag(el);
-    persistFieldState();
-    syncingPlayerName = true;
-    if (source !== "panel" && namedPlayerEl === el && playerNameInput) playerNameInput.value = name;
-    if (source !== "shoot" && shootPlayerEl === el && shootPlayerNameInput) {
-      shootPlayerNameInput.value = name;
-    }
-    syncingPlayerName = false;
-    if (source !== "list") renderPlayerNameList();
-    if (namePlayerLabel && namedPlayerEl === el) namePlayerLabel.textContent = getPlayerLabel(el);
-    if (shootPlayerLabel && shootPlayerEl === el) shootPlayerLabel.textContent = getPlayerLabel(el);
-  }
-
-  function selectNamedPlayer(el) {
-    if (namedPlayerEl && namedPlayerEl !== el) namedPlayerEl.classList.remove("is-named-selected");
-    namedPlayerEl = el && !isGhostPlayer(el) ? el : null;
-    if (namedPlayerEl) namedPlayerEl.classList.add("is-named-selected");
-    updatePlayerNameUi();
-  }
-
-  function updatePlayerNameUi() {
-    const hasPlayer = Boolean(namedPlayerEl?.isConnected);
-    if (!hasPlayer && namedPlayerEl) {
-      namedPlayerEl = null;
-    }
-    if (nameEmpty) nameEmpty.hidden = hasPlayer;
-    if (nameControls) nameControls.hidden = !hasPlayer;
-    if (namePlayerLabel) namePlayerLabel.textContent = hasPlayer ? getPlayerLabel(namedPlayerEl) : "No player selected";
-    syncingPlayerName = true;
-    if (playerNameInput) playerNameInput.value = hasPlayer ? getStoredPlayerName(namedPlayerEl) : "";
-    if (shootPlayerNameInput) {
-      shootPlayerNameInput.value = shootPlayerEl ? getStoredPlayerName(shootPlayerEl) : "";
-      shootPlayerNameInput.disabled = !shootPlayerEl;
-    }
-    syncingPlayerName = false;
-    renderPlayerNameList();
-  }
-
-  function renderPlayerNameList() {
-    if (!playerNameList || !playerNamesSection) return;
-    const lockedPlayers = Array.from(playersLayer.querySelectorAll(".fm-player")).filter(
-      (el) => !isGhostPlayer(el) && teamPlacement[el.dataset.team]?.locked
-    );
-    playerNamesSection.hidden = lockedPlayers.length === 0;
-    playerNameList.innerHTML = "";
-    lockedPlayers.forEach((el) => {
-      const row = document.createElement("label");
-      row.className = "fm-player-name-row";
-      const label = document.createElement("span");
-      const team = el.dataset.team === "a" ? "Team 1" : "Team 2";
-      label.textContent = `${team} - ${el.dataset.num || ""}`;
-      const input = document.createElement("input");
-      input.type = "text";
-      input.maxLength = 24;
-      input.placeholder = "Optional";
-      input.autocomplete = "off";
-      input.spellcheck = false;
-      input.value = getStoredPlayerName(el);
-      input.setAttribute("aria-label", `Name for ${getPlayerLabel(el)}`);
-      input.addEventListener("input", () => applyPlayerName(el, input.value, "list"));
-      row.append(label, input);
-      playerNameList.append(row);
-    });
+    return `${team} ${el.dataset.num || ""}`.trim();
   }
 
   function getPlayerKey(el) {
@@ -948,7 +848,6 @@
     }
     shootPlayerEl = el;
     if (shootPlayerEl) shootPlayerEl.classList.add("is-shoot-selected");
-    selectNamedPlayer(shootPlayerEl);
     if (shootTargetPlayerEl && shootTargetPlayerEl.dataset.team === shootPlayerEl.dataset.team) {
       shootTargetPlayerEl.classList.remove("is-shoot-target");
       shootTargetPlayerEl = null;
@@ -1007,14 +906,6 @@
     if (shootEmpty) shootEmpty.hidden = hasPlayer;
     if (shootControls) shootControls.hidden = !hasPlayer;
     if (shootPlayerLabel) shootPlayerLabel.textContent = getPlayerLabel(shootPlayerEl);
-    if (shootPlayerNameInput) {
-      shootPlayerNameInput.disabled = !hasPlayer;
-      if (!syncingPlayerName) {
-        syncingPlayerName = true;
-        shootPlayerNameInput.value = hasPlayer ? getStoredPlayerName(shootPlayerEl) : "";
-        syncingPlayerName = false;
-      }
-    }
     if (shootStandStillInput) shootStandStillInput.checked = shootStandStill;
     if (shootNoShotInput) shootNoShotInput.checked = shootNoShot;
     if (shootOverInput) {
@@ -1139,12 +1030,7 @@
     name.textContent = getPlayerLabelByKey(setup.playerKey);
     const short = document.createElement("span");
     short.className = "fm-track-short";
-    if (player) {
-      const nickname = getStoredPlayerName(player);
-      short.textContent = `${player.dataset.team === "a" ? "A" : "B"}${player.dataset.num || ""}${
-        nickname ? ` · ${nickname}` : ""
-      }`;
-    }
+    if (player) short.textContent = `${player.dataset.team === "a" ? "A" : "B"}${player.dataset.num || ""}`;
     const meta = document.createElement("span");
     meta.className = "fm-shoot-scene-meta";
     meta.textContent = options.draft ? "Unsaved edit" : getShootSetupSummary(setup);
@@ -2632,7 +2518,6 @@
         name: s.name || "",
         bio: s.bio || "",
       })),
-      playerNames: { ...playerNames },
       shootScene: shootSceneSetups.map((setup) => ({
         playerKey: setup.playerKey,
         timeSec: setup.timeSec,
@@ -2830,13 +2715,6 @@
         })
       : [];
     activeShootSetupId = null;
-    playerNames = {};
-    if (state.playerNames && typeof state.playerNames === "object") {
-      Object.entries(state.playerNames).forEach(([key, name]) => {
-        const trimmed = String(name || "").trim().slice(0, 24);
-        if (trimmed) playerNames[key] = trimmed;
-      });
-    }
     try {
       localStorage.setItem(FIELD_STATE_KEY, JSON.stringify(state));
     } catch {
@@ -3163,14 +3041,11 @@
     const numEl = document.createElement("span");
     numEl.className = "fm-player-num";
     numEl.textContent = String(n);
-    const nameEl = document.createElement("span");
-    nameEl.className = "fm-player-name";
-    el.append(numEl, nameEl);
+    el.append(numEl);
     el.setAttribute("role", "button");
     el.setAttribute("aria-label", `${getTeamLabel(team)} player ${n}`);
     playersLayer.appendChild(el);
     bindPlayerDrag(el);
-    renderPlayerNameTag(el);
     return el;
   }
 
@@ -3296,7 +3171,6 @@
     }
 
     renderTeamNudges();
-    renderPlayerNameList();
   }
 
   function setPlacementTeam(team) {
@@ -3388,8 +3262,6 @@
     clearVisionLines();
     teamPlacement = createDefaultTeamPlacement();
     activePlacementTeam = "a";
-    playerNames = {};
-    namedPlayerEl = null;
     playersLayer.innerHTML = "";
     lastRunStartPositions = null;
     setTool("players");
@@ -3430,7 +3302,6 @@
       if (teamPlacement[el.dataset.team]?.placed && !teamPlacement[el.dataset.team]?.locked) return;
       e.preventDefault();
       e.stopPropagation();
-      selectNamedPlayer(el);
       draggedPlayer = el;
       el.classList.add("is-dragging");
       el.setPointerCapture(e.pointerId);
@@ -3528,15 +3399,6 @@
     },
     true
   );
-  playerNameInput?.addEventListener("input", () => {
-    if (syncingPlayerName || !namedPlayerEl) return;
-    applyPlayerName(namedPlayerEl, playerNameInput.value, "panel");
-  });
-  shootPlayerNameInput?.addEventListener("input", () => {
-    if (syncingPlayerName || !shootPlayerEl) return;
-    applyPlayerName(shootPlayerEl, shootPlayerNameInput.value, "shoot");
-  });
-
   function normalizedShapeFromPoints(x1, y1, x2, y2) {
     const { w, h } = getCanvasSize();
     if (!w || !h) return null;
@@ -3752,8 +3614,6 @@
       structures = [];
       shootSceneSetups = [];
       activeShootSetupId = null;
-      playerNames = {};
-      namedPlayerEl = null;
     }
 
     stage.classList.add("has-map");
@@ -3816,8 +3676,6 @@
     clearShootPlan();
     shootSceneSetups = [];
     activeShootSetupId = null;
-    playerNames = {};
-    namedPlayerEl = null;
     teamPlacement = createDefaultTeamPlacement();
     activePlacementTeam = "a";
     updateSizerPanel();
@@ -3970,20 +3828,6 @@
       context.textAlign = "center";
       context.textBaseline = "middle";
       context.fillText(el.dataset.num || "", x, y + r * 0.08);
-
-      const name = getStoredPlayerName(el);
-      if (name) {
-        const fontPx = Math.max(9, Math.round(10 * scale));
-        context.font = `700 ${fontPx}px Outfit, sans-serif`;
-        const textW = context.measureText(name).width;
-        const padX = fontPx * 0.35;
-        const boxH = fontPx * 1.35;
-        const boxY = y - r - 5 * scale - boxH;
-        context.fillStyle = "rgba(15, 18, 16, 0.78)";
-        context.fillRect(x - textW / 2 - padX, boxY, textW + padX * 2, boxH);
-        context.fillStyle = "#ffffff";
-        context.fillText(name, x, boxY + boxH / 2);
-      }
     });
     context.restore();
   }
