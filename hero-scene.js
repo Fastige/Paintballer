@@ -15,13 +15,17 @@
     let frame = 0;
     let visible = true;
 
-    const loop = G.createLoop(index, (scene) => {
-      if (sceneName) sceneName.textContent = scene.name;
+    const loop = G.createLoop(index, (scene, sceneIndex) => {
+      if (sceneName) {
+        sceneName.textContent = root.hasAttribute("data-breakout-loop")
+          ? `${scene.name} · ${sceneIndex + 1}/10`
+          : scene.name;
+      }
       if (timeline) {
         timeline.querySelectorAll(".hero-track").forEach((el) => el.remove());
         timeline.insertAdjacentHTML("afterbegin", G.timelineTracks(scene).map(G.clipHtml).join(""));
       }
-    });
+    }, { sequential: root.hasAttribute("data-breakout-loop") });
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);

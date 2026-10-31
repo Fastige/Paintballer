@@ -496,20 +496,26 @@
     if (players) drawGamePlayers(ctx, scene, t, { hide, extra, scale, r: opts.r });
   }
 
-  function createLoop(index, onScene) {
+  function createLoop(index, onScene, opts = {}) {
+    const sequential = Boolean(opts.sequential);
     let sceneIndex = -1;
     let scene = null;
-    let startedAt = performance.now() - index * 1400;
+    let startedAt = performance.now() - (sequential ? 0 : index * 1400);
+
+    function nextIndex(previous) {
+      if (sequential) return previous < 0 ? 0 : (previous + 1) % scenes.length;
+      return pickScene(previous);
+    }
 
     function useScene(i) {
       if (sceneIndex >= 0) showing.delete(sceneIndex);
       sceneIndex = i;
-      showing.add(i);
+      if (!sequential) showing.add(i);
       scene = scenes[i];
-      onScene?.(scene);
+      onScene?.(scene, i);
     }
 
-    useScene(pickScene(-1));
+    useScene(nextIndex(-1));
 
     return {
       get scene() {
@@ -518,7 +524,7 @@
       time(now) {
         if (now - startedAt >= LOOP_MS) {
           startedAt = now - ((now - startedAt) % LOOP_MS);
-          useScene(pickScene(sceneIndex));
+          useScene(nextIndex(sceneIndex));
         }
         return Math.max(0, now - startedAt);
       },
