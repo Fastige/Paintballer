@@ -82,6 +82,8 @@
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
   const undoSizerBtn = document.getElementById("undo-sizer");
+  const sizerStepInput = document.getElementById("sizer-step");
+  const sizerStepValue = document.getElementById("sizer-step-value");
   const duplicateStructureBtn = document.getElementById("duplicate-structure");
   const deleteStructureBtn = document.getElementById("delete-structure");
   const sizerStyleBtns = document.querySelectorAll(".fm-style-btn[data-sizer-style]");
@@ -149,6 +151,7 @@
   const SIZER_MIN_PCT = 0.5;
   const SIZER_MAX_PCT = 80;
   const SIZER_MOVE_STEP = 0.75;
+  const SIZER_STEP_KEY = "paintballer-sizer-step";
   const FIELD_STATE_KEY = "paintballer-field-state";
   const SHOOT_LINE_COLOR = "#ffd43b";
   const SHOOT_BLOCKED_COLOR = "#ff4f4f";
@@ -1997,7 +2000,7 @@
 
   function moveStructure(shape, direction) {
     const bounds = getStructureBounds(shape);
-    const step = SIZER_MOVE_STEP / 100;
+    const step = getSizerMoveStep() / 100;
     let left = bounds.left;
     let top = bounds.top;
 
@@ -2015,6 +2018,35 @@
     shape.y2 = top + bounds.height;
   }
 
+  function getSizerMoveStep() {
+    const n = Number(sizerStepInput?.value);
+    return Number.isFinite(n) && n > 0 ? n : SIZER_MOVE_STEP;
+  }
+
+  function syncSizerStepUi() {
+    if (!sizerStepInput) return;
+    const min = Number(sizerStepInput.min) || 0;
+    const max = Number(sizerStepInput.max) || 1;
+    const step = getSizerMoveStep();
+    sizerStepInput.closest(".fm-throttle")?.style.setProperty("--fill", `${((step - min) / (max - min)) * 100}%`);
+    if (sizerStepValue) sizerStepValue.textContent = `${step}%`;
+  }
+
+  function initSizerStep() {
+    if (!sizerStepInput) return;
+    try {
+      const saved = Number(localStorage.getItem(SIZER_STEP_KEY));
+      if (saved > 0) sizerStepInput.value = String(saved);
+    } catch {}
+    syncSizerStepUi();
+    sizerStepInput.addEventListener("input", () => {
+      syncSizerStepUi();
+      try {
+        localStorage.setItem(SIZER_STEP_KEY, String(getSizerMoveStep()));
+      } catch {}
+    });
+  }
+
   function updateSizerPanel() {
     const shape = getSelectedStructure();
     const hasSelection = Boolean(shape);
@@ -2022,6 +2054,7 @@
     workspace?.classList.toggle("has-sizer-selection", hasSelection);
     if (sizerEmpty) sizerEmpty.hidden = hasSelection;
     if (sizerControls) sizerControls.hidden = !hasSelection;
+    if (sizerTypeLabel) sizerTypeLabel.hidden = !hasSelection;
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
     if (deleteStructureBtn) deleteStructureBtn.disabled = !hasMap || !hasSelection;
 
@@ -2104,6 +2137,7 @@
       });
     });
 
+    initSizerStep();
     undoSizerBtn?.addEventListener("click", undoSizerChange);
     duplicateStructureBtn?.addEventListener("click", duplicateSelectedStructure);
     deleteStructureBtn?.addEventListener("click", deleteSelectedStructure);

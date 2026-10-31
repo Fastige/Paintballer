@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=9" />
-  <link rel="stylesheet" href="field-mapper.css?v=46" />
+  <link rel="stylesheet" href="field-mapper.css?v=47" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -34,6 +34,8 @@
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" /><path d="M3 4v5h5" /></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
     <symbol id="i-design" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2" /><path d="M12 4.5v3M12 10.5v3M12 16.5v3" /><rect x="5.5" y="8" width="3.5" height="3" rx="0.6" /><rect x="15" y="13" width="3.5" height="3" rx="0.6" /></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" /></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v12H4z" /><circle cx="12" cy="13.5" r="3.5" /></symbol>
   </svg>
   <div class="splatter splatter-1" aria-hidden="true"></div>
@@ -221,50 +223,68 @@
 
         <aside class="fm-sizer-panel fm-map-tool-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
           <div class="fm-sizer-head">
-            <p class="eyebrow">Sizer</p>
-            <h2 class="fm-sizer-title">Structure size</h2>
+            <div class="fm-sizer-head-title">
+              <span class="fm-sizer-head-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
+              <div>
+                <p class="eyebrow">Sizer</p>
+                <h2 class="fm-sizer-title">Structure size</h2>
+              </div>
+            </div>
+            <span class="fm-sizer-type" id="fm-sizer-type" hidden>Rectangle</span>
           </div>
           <p class="fm-sizer-empty" id="fm-sizer-empty">Click a structure on the map to resize it, or drag it to move it.</p>
           <div class="fm-sizer-controls" id="fm-sizer-controls" hidden>
-            <p class="fm-sizer-type" id="fm-sizer-type">Rectangle</p>
-            <div class="fm-sizer-position">
-              <p class="fm-range-label">Position</p>
+            <section class="fm-sizer-card fm-sizer-position" aria-label="Move structure">
+              <p class="fm-sizer-card-label">Move</p>
+              <div class="fm-throttle">
+                <div class="fm-throttle-head">
+                  <label for="sizer-step">Move step</label>
+                  <output class="fm-throttle-value" id="sizer-step-value" for="sizer-step">0.75%</output>
+                </div>
+                <input type="range" class="fm-throttle-range" id="sizer-step" min="0.25" max="5" step="0.25" value="0.75" />
+                <div class="fm-throttle-scale" aria-hidden="true"><span>Fine</span><span>Fast</span></div>
+              </div>
               <div class="fm-sizer-pad" role="group" aria-label="Move structure">
-                <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up">▲</button>
-                <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left">◀</button>
+                <button type="button" class="fm-pad-btn fm-pad-up" data-move="up" aria-label="Move up"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
+                <button type="button" class="fm-pad-btn fm-pad-left" data-move="left" aria-label="Move left"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
                 <span class="fm-pad-center" aria-hidden="true"></span>
-                <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right">▶</button>
-                <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down">▼</button>
+                <button type="button" class="fm-pad-btn fm-pad-right" data-move="right" aria-label="Move right"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
+                <button type="button" class="fm-pad-btn fm-pad-down" data-move="down" aria-label="Move down"><svg class="fm-ico"><use href="#i-chevron" /></svg></button>
               </div>
-            </div>
+            </section>
+            <section class="fm-sizer-card" aria-label="Structure size">
+              <p class="fm-sizer-card-label">Size</p>
+              <div class="fm-sizer-axis">
+                <label class="fm-range-label" for="sizer-width">Width</label>
+                <div class="fm-sizer-axis-row">
+                  <input type="range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
+                  <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" aria-label="Width percent" />
+                  <span class="fm-sizer-unit">%</span>
+                </div>
+              </div>
+              <div class="fm-sizer-axis">
+                <label class="fm-range-label" for="sizer-height">Height</label>
+                <div class="fm-sizer-axis-row">
+                  <input type="range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
+                  <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
+                  <span class="fm-sizer-unit">%</span>
+                </div>
+              </div>
+            </section>
+            <section class="fm-sizer-card" aria-label="Wall style">
+              <p class="fm-sizer-card-label">Wall style</p>
+              <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
+                <button type="button" class="fm-style-btn is-active" data-sizer-style="filled">Filled</button>
+                <button type="button" class="fm-style-btn" data-sizer-style="border">Border only</button>
+                <button type="button" class="fm-style-btn" data-sizer-style="transparent">Transparent wall</button>
+              </div>
+            </section>
             <div class="fm-sizer-actions">
-              <button type="button" class="btn btn-primary fm-btn-full" id="duplicate-structure">Duplicate</button>
-              <button type="button" class="btn btn-ghost fm-btn-full" id="delete-structure">Delete</button>
-            </div>
-            <p class="fm-range-label">Wall style</p>
-            <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
-              <button type="button" class="fm-style-btn is-active" data-sizer-style="filled">Filled</button>
-              <button type="button" class="fm-style-btn" data-sizer-style="border">Border only</button>
-              <button type="button" class="fm-style-btn" data-sizer-style="transparent">Transparent wall</button>
-            </div>
-            <div class="fm-sizer-axis">
-              <label class="fm-range-label" for="sizer-width">Width</label>
-              <div class="fm-sizer-axis-row">
-                <input type="range" id="sizer-width" min="0.5" max="80" step="0.5" value="20" />
-                <input type="number" id="sizer-width-num" min="0.5" max="80" step="0.5" value="20" aria-label="Width percent" />
-                <span class="fm-sizer-unit">%</span>
-              </div>
-            </div>
-            <div class="fm-sizer-axis">
-              <label class="fm-range-label" for="sizer-height">Height</label>
-              <div class="fm-sizer-axis-row">
-                <input type="range" id="sizer-height" min="0.5" max="80" step="0.5" value="20" />
-                <input type="number" id="sizer-height-num" min="0.5" max="80" step="0.5" value="20" aria-label="Height percent" />
-                <span class="fm-sizer-unit">%</span>
-              </div>
+              <button type="button" class="fm-sizer-action" id="duplicate-structure"><svg class="fm-ico"><use href="#i-copy" /></svg>Duplicate</button>
+              <button type="button" class="fm-sizer-action is-danger" id="delete-structure"><svg class="fm-ico"><use href="#i-trash" /></svg>Delete</button>
             </div>
           </div>
-          <button type="button" class="btn btn-ghost fm-btn-full" id="undo-sizer" disabled>Undo Sizer change</button>
+          <button type="button" class="fm-sizer-action fm-sizer-undo" id="undo-sizer" disabled><svg class="fm-ico"><use href="#i-reset" /></svg>Undo Sizer change</button>
         </aside>
 
         <aside class="fm-team-panel fm-map-tool-panel" id="fm-team-panel" hidden aria-label="Team placement controls" data-mobile-panel="players">
@@ -570,6 +590,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=55"></script>
+  <script src="field-mapper.js?v=56"></script>
 </body>
 </html>
