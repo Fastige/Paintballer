@@ -3785,8 +3785,15 @@
   const AUTO_HISTORY_LIMIT = 60;
   const AUTO_DARK_MAX = 80;
   const AUTO_MAX_COLORS = 8;
+  const AUTO_MAX_SCAN_ROUNDS = 20;
+  const AUTO_SEED_MIN_SATURATION = 0.5;
   const AUTO_SEED_MIN_CHROMA = 40;
-  const AUTO_TINT_MIN = 12;
+  const AUTO_TINT_MIN = 24;
+  const AUTO_HUE_MIN_SATURATION = 0.3;
+  const AUTO_MIN_SOLIDITY = 0.5;
+  const AUTO_PALE_MIN = 170;
+  const AUTO_PALE_CHROMA = 75;
+  const AUTO_WHITEOUT_PAD = 2;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3812,7 +3819,7 @@
     if (data[i + 3] < 80) return true;
     const min = Math.min(data[i], data[i + 1], data[i + 2]);
     const max = Math.max(data[i], data[i + 1], data[i + 2]);
-    return min > 215 && max - min < 25;
+    return (min > 215 && max - min < 25) || (min >= AUTO_PALE_MIN && max - min < AUTO_PALE_CHROMA);
   }
 
   function setAutoStatus(html) {
@@ -3878,10 +3885,13 @@
     off.height = h;
     const octx = off.getContext("2d", { willReadFrequently: true });
     paintAutoWhiteout(octx, autoWhiteout, w, h, "#000000");
-    const cover = octx.getImageData(0, 0, w, h).data;
+    const coverData = octx.getImageData(0, 0, w, h).data;
+    let cover = new Uint8Array(w * h);
+    for (let p = 0; p < cover.length; p++) cover[p] = coverData[p * 4 + 3] ? 1 : 0;
+    for (let i = 0; i < AUTO_WHITEOUT_PAD; i++) cover = morphAutoMask(cover, w, h, true);
     const data = new Uint8ClampedArray(base.data);
     for (let i = 0; i < data.length; i += 4) {
-      if (!cover[i + 3]) continue;
+      if (!cover[i >> 2]) continue;
       data[i] = 255;
       data[i + 1] = 255;
       data[i + 2] = 255;
@@ -3893,7 +3903,18 @@
 
   function isAutoNeutralDark(r, g, b) {
     const max = Math.max(r, g, b);
-    return max < AUTO_DARK_MAX && max - Math.min(r, g, b) < Math.max(AUTO_TINT_MIN, max * 0.4);
+    return max < AUTO_DARK_MAX && max - Math.min(r, g, b) < Math.max(AUTO_TINT_MIN, max * 0.5);
+  }
+
+  function autoHue(r, g, b) {
+    const max = Math.max(r, g, b);
+    const c = max - Math.min(r, g, b);
+    if (!c) return 0;
+    let hue;
+    if (max === r) hue = ((g - b) / c) % 6;
+    else if (max === g) hue = (b - r) / c + 2;
+    else hue = (r - g) / c + 4;
+    return (hue * 60 + 360) % 360;
   }
 
   function isAutoDark(data, p) {
@@ -3931,11 +3952,16 @@
     const [r, g, b] = rgb;
     const cc = r * r + g * g + b * b || 1;
     const targetBlack = isAutoDarkColor(rgb);
+    const targetMax = Math.max(r, g, b);
+    const targetChroma = targetMax - Math.min(r, g, b);
+    const useHue = !targetBlack && targetChroma >= targetMax * 0.35;
+    const targetHue = autoHue(r, g, b);
+    const hueTol = tolerance / 7;
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
         const p = y * w + x;
         const i = p * 4;
-        if (data[i + 3] < 80) continue;
+        if (isAutoBackground(data, p)) continue;
         const pr = data[i];
         const pg = data[i + 1];
         const pb = data[i + 2];
@@ -3944,6 +3970,17 @@
         if (autoColorDistance(pr, pg, pb, r, g, b) <= tolerance) {
           mask[p] = 1;
           continue;
+        }
+        if (useHue) {
+          const pmax = Math.max(pr, pg, pb);
+          const pc = pmax - Math.min(pr, pg, pb);
+          if (pc >= AUTO_TINT_MIN && pc >= pmax * AUTO_HUE_MIN_SATURATION) {
+            const dh = Math.abs(autoHue(pr, pg, pb) - targetHue);
+            if (Math.min(dh, 360 - dh) <= hueTol) {
+              mask[p] = 1;
+              continue;
+            }
+          }
         }
         if (!shades) continue;
         const k = (pr * r + pg * g + pb * b) / cc;
@@ -4084,10 +4121,14 @@
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
     const local = new Uint8Array(bw * bh);
+    let raw = 0;
     for (let y = 0; y < bh; y++) {
       const row = (comp.minY + y) * w + comp.minX;
       for (let x = 0; x < bw; x++) {
-        if (labels[row + x] === comp.id && (!only || only[row + x])) local[y * bw + x] = 1;
+        if (labels[row + x] === comp.id && (!only || only[row + x])) {
+          local[y * bw + x] = 1;
+          raw++;
+        }
       }
     }
     const outside = new Uint8Array(bw * bh);
@@ -4124,7 +4165,7 @@
         area++;
       }
     }
-    return { local, bw, bh, area };
+    return { local, bw, bh, area, raw };
   }
 
   function autoCoreCount(local, bw, bh) {
@@ -4159,9 +4200,9 @@
     return Math.abs(u - 0.5) <= t / 2;
   }
 
-  function fitAutoShape(local, bw, bh, area) {
+  function fitAutoShape(local, bw, bh, area, candidates = AUTO_CANDIDATES) {
     let best = { type: "rectangle", flip: false, iou: 0 };
-    AUTO_CANDIDATES.forEach(([type, flip]) => {
+    candidates.forEach(([type, flip]) => {
       let inter = 0;
       let shapeArea = 0;
       for (let y = 0; y < bh; y++) {
@@ -4202,11 +4243,11 @@
   function splitAutoComponent(local, bw, bh, area) {
     const remaining = local.slice();
     const pieces = [];
-    const minPiece = Math.max(8, area * 0.025);
+    const minPiece = Math.max(12, area * 0.04);
     let covered = 0;
     while (pieces.length < AUTO_MAX_PIECES && covered < area * 0.92) {
       const r = largestAutoRect(remaining, bw, bh);
-      if (r.area < minPiece || Math.min(r.w, r.h) < 2) break;
+      if (r.area < minPiece || Math.min(r.w, r.h) < 3) break;
       pieces.push(r);
       covered += r.area;
       for (let y = r.y; y < r.y + r.h; y++) remaining.fill(0, y * bw + r.x, y * bw + r.x + r.w);
@@ -4323,7 +4364,7 @@
     };
   }
 
-  function autoStructuresForComponent(labels, w, h, fullComp, split, strict, region, colorMask, margin) {
+  function autoStructuresForComponent(labels, w, h, fullComp, split, strict, region, colorMask, margin, openRadius) {
     const comp = colorMask ? clipAutoComponentToColor(labels, w, h, fullComp, colorMask, margin) : fullComp;
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
@@ -4334,7 +4375,8 @@
       const isLine = comp.count / Math.max(bw, bh) < 2.5 && Math.max(bw, bh) > 24;
       if (isFrame || isLine) return null;
     }
-    const { local, area } = autoComponentMask(labels, w, comp);
+    const { local, area, raw } = autoComponentMask(labels, w, comp);
+    if (strict && raw < area * AUTO_MIN_SOLIDITY) return null;
     if (strict && autoCoreCount(local, bw, bh) < Math.max(3, area * 0.12)) return null;
 
     const fit = fitAutoShape(local, bw, bh, area);
@@ -4352,11 +4394,13 @@
       }
     }
     if (fit.iou < AUTO_FIT_MIN_IOU && split) {
-      const rects = splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area);
-      if (rects.length > 1) {
+      const shapes =
+        (openRadius && splitAutoByOpening(local, bw, bh, openRadius)) ||
+        (splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area)).map((r) => ({ ...r, type: "rectangle", flip: false }));
+      if (shapes.length > 1) {
         return {
           split: true,
-          pieces: rects.map((r) => makeAutoStructure(comp.minX + r.x, comp.minY + r.y, r.w, r.h, w, h, "rectangle", false)),
+          pieces: shapes.map((s) => makeAutoStructure(comp.minX + s.x, comp.minY + s.y, s.w, s.h, w, h, s.type, s.flip)),
         };
       }
     }
@@ -4364,6 +4408,53 @@
       split: false,
       pieces: [makeAutoStructure(comp.minX, comp.minY, bw, bh, w, h, fit.type, fit.flip)],
     };
+  }
+
+  function autoShapesForLocal(local, bw, bh, area, beam) {
+    const fit = beam ? fitAutoShape(local, bw, bh, area, [["rectangle", false]]) : fitAutoShape(local, bw, bh, area);
+    const whole = [{ x: 0, y: 0, w: bw, h: bh, type: fit.type, flip: fit.flip }];
+    if (fit.iou >= AUTO_FIT_MIN_IOU) return whole;
+    const rects = splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area);
+    return rects.length ? rects.map((r) => ({ ...r, type: "rectangle", flip: false })) : whole;
+  }
+
+  function splitAutoByOpening(local, bw, bh, radius) {
+    let blobs = local;
+    for (let i = 0; i < radius; i++) blobs = morphAutoMask(blobs, bw, bh, false);
+    for (let i = 0; i < radius; i++) blobs = morphAutoMask(blobs, bw, bh, true);
+    const grown = morphAutoMask(blobs, bw, bh, true);
+    const blobMask = new Uint8Array(bw * bh);
+    const beamMask = new Uint8Array(bw * bh);
+    for (let p = 0; p < local.length; p++) {
+      if (!local[p]) continue;
+      if (blobs[p]) blobMask[p] = 1;
+      else if (!grown[p]) beamMask[p] = 1;
+    }
+    const labels = new Int32Array(bw * bh);
+    const stack = new Int32Array(bw * bh);
+    const minCount = Math.max(12, radius * radius * 2);
+    const parts = [];
+    let id = 1;
+    [blobMask, beamMask].forEach((m) => {
+      for (let p = 0; p < m.length; p++) {
+        if (!m[p] || labels[p]) continue;
+        const part = floodAutoComponent(m, bw, bh, p, labels, id++, stack);
+        part.beam = m === beamMask;
+        if (part.count >= minCount) parts.push(part);
+      }
+    });
+    if (parts.length < 2) return null;
+    return parts.flatMap((part) => {
+      const pw = part.maxX - part.minX + 1;
+      const ph = part.maxY - part.minY + 1;
+      const sub = new Uint8Array(pw * ph);
+      for (let y = 0; y < ph; y++) {
+        for (let x = 0; x < pw; x++) {
+          if (labels[(part.minY + y) * bw + part.minX + x] === part.id) sub[y * pw + x] = 1;
+        }
+      }
+      return autoShapesForLocal(sub, pw, ph, part.count, part.beam).map((s) => ({ ...s, x: s.x + part.minX, y: s.y + part.minY }));
+    });
   }
 
   function plural(n, word) {
@@ -4542,13 +4633,15 @@
     }
 
     const rgb = sampleAutoColor(data, w, h, sx, sy);
-    const { found, bunkers } = scanAutoColor(data, w, h, region, rgb, start);
+    const { found, groups } = scanAutoColor(data, w, h, region, rgb, start);
     if (!found.length) {
       setAutoStatus(`No bunkers matched ${autoSwatchHtml(rgb)} in the box. Try raising <strong>Color match</strong>.`);
       return;
     }
 
-    const fresh = found.filter((f) => !overlapsAutoPieces(f, structures));
+    const freshGroups = freshAutoGroups(groups, structures);
+    const fresh = freshGroups.flat();
+    const bunkers = freshGroups.length;
     if (!fresh.length) {
       setAutoStatus(`Every ${autoSwatchHtml(rgb)} bunker in the box is already mapped.`);
       return;
@@ -4570,7 +4663,14 @@
 
   function overlapsAutoPieces(piece, others) {
     const pb = getStructureBounds(piece);
-    return others.some((s) => boundsIoU(getStructureBounds(s), pb) > 0.3);
+    const pa = pb.width * pb.height;
+    return others.some((s) => {
+      const sb = getStructureBounds(s);
+      if (boundsIoU(sb, pb) > 0.3) return true;
+      const ix = Math.max(0, Math.min(sb.left + sb.width, pb.left + pb.width) - Math.max(sb.left, pb.left));
+      const iy = Math.max(0, Math.min(sb.top + sb.height, pb.top + pb.height) - Math.max(sb.top, pb.top));
+      return ix * iy > pa * 0.6;
+    });
   }
 
   function scanAutoColor(data, w, h, region, rgb, start) {
@@ -4578,6 +4678,7 @@
     const minPixels = Math.max(12, Math.round(w * h * 0.00004));
     const bridgeSteps = Math.max(3, Math.round(Math.max(w, h) * 0.006));
     const outlineMargin = Math.max(2, Math.round(bridgeSteps / 2));
+    const openRadius = Math.max(3, Math.round(Math.max(w, h) * 0.0045));
     const matched = buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance(), withDark);
     let mask = matched.slice();
     let colorMask = null;
@@ -4591,7 +4692,7 @@
     const stack = new Int32Array(w * h);
     const split = autoSplitInput?.checked !== false;
     const found = [];
-    let bunkers = 0;
+    const groups = [];
     let nextId = 1;
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
@@ -4600,13 +4701,22 @@
         const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
         const tapped = start >= 0 && labels[start] === comp.id;
         if (!tapped && comp.count < minPixels) continue;
-        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin);
+        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region, colorMask, outlineMargin, openRadius);
         if (!result) continue;
-        bunkers++;
+        groups.push(result.pieces);
         found.push(...result.pieces);
       }
     }
-    return { found, bunkers, matched, minPixels };
+    return { found, groups, matched };
+  }
+
+  function freshAutoGroups(groups, ...existing) {
+    const kept = [];
+    groups.forEach((group) => {
+      const fresh = group.filter((piece) => !existing.some((list) => overlapsAutoPieces(piece, list)));
+      if (fresh.length) kept.push(fresh);
+    });
+    return kept;
   }
 
   function isAutoSeedPixel(data, p) {
@@ -4614,7 +4724,7 @@
     const i = p * 4;
     const max = Math.max(data[i], data[i + 1], data[i + 2]);
     const chroma = max - Math.min(data[i], data[i + 1], data[i + 2]);
-    return chroma >= Math.min(AUTO_SEED_MIN_CHROMA, Math.max(AUTO_TINT_MIN, max * 0.4));
+    return chroma >= AUTO_SEED_MIN_CHROMA && chroma >= max * AUTO_SEED_MIN_SATURATION;
   }
 
   function findAutoSeedColor(data, w, region, used, hist, minCount) {
@@ -4690,19 +4800,27 @@
     const placed = [];
     const picks = [];
     let bunkers = 0;
-    for (let round = 0; round < AUTO_MAX_COLORS; round++) {
+    for (let round = 0; round < AUTO_MAX_SCAN_ROUNDS && picks.length < AUTO_MAX_COLORS; round++) {
       const seed = findAutoSeedColor(data, w, region, used, hist, minPixels);
       if (!seed) break;
       const result = scanAutoColor(data, w, h, region, seed.rgb, -1);
-      const consumed = morphAutoMask(morphAutoMask(result.matched, w, h, true), w, h, true);
-      for (let p = 0; p < consumed.length; p++) if (consumed[p]) used[p] = 1;
+      for (let p = 0; p < used.length; p++) if (result.matched[p]) used[p] = 1;
       seed.seeds.forEach((p) => {
         used[p] = 1;
       });
-      const fresh = result.found.filter((f) => !overlapsAutoPieces(f, base) && !overlapsAutoPieces(f, placed));
+      result.found.forEach((f) => {
+        const fb = getStructureBounds(f);
+        const x0 = Math.max(region.x0, Math.floor(fb.left * w) - AUTO_WHITEOUT_PAD);
+        const y0 = Math.max(region.y0, Math.floor(fb.top * h) - AUTO_WHITEOUT_PAD);
+        const x1 = Math.min(region.x1, Math.ceil((fb.left + fb.width) * w) + AUTO_WHITEOUT_PAD);
+        const y1 = Math.min(region.y1, Math.ceil((fb.top + fb.height) * h) + AUTO_WHITEOUT_PAD);
+        for (let y = y0; y < y1; y++) used.fill(1, y * w + x0, y * w + x1);
+      });
+      const freshGroups = freshAutoGroups(result.groups, base, placed);
+      const fresh = freshGroups.flat();
       if (!fresh.length) continue;
       placed.push(...fresh);
-      bunkers += result.bunkers;
+      bunkers += freshGroups.length;
       const fb = getStructureBounds(fresh[0]);
       picks.push({
         id: crypto.randomUUID(),
@@ -4710,7 +4828,7 @@
         x: fb.left + fb.width / 2,
         y: fb.top + fb.height / 2,
         ids: fresh.map((f) => f.id),
-        bunkers: result.bunkers,
+        bunkers: freshGroups.length,
       });
     }
 
