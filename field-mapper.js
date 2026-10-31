@@ -1352,7 +1352,7 @@
     if (shootTargetStatus) {
       shootTargetStatus.hidden = !shootNoShot && !shootUseTargetPlayer;
       if (shootNoShot) {
-        shootTargetStatus.textContent = "No shot — draw a run route for this player.";
+        shootTargetStatus.textContent = "No shoot — draw a run route for this player.";
       } else if (!shootUseTargetPlayer) {
         shootTargetStatus.textContent = "";
       } else if (shootTargetPlayerEl) {
@@ -1393,7 +1393,7 @@
 
   function getShootSetupSummary(setup) {
     const targetLabel = setup.noShoot
-      ? "no shot"
+      ? "no shoot"
       : `${
           setup.useTargetPlayer
             ? `shoots ${getPlayerLabelByKey(setup.targetPlayerKey)}`
@@ -1417,7 +1417,7 @@
       if (setup.useTargetPlayer) {
         shot.textContent = setup.targetPlayerKey ? getPlayerLabelByKey(setup.targetPlayerKey) : "Pick target";
       } else {
-        shot.textContent = "Shot";
+        shot.textContent = "Shoot";
       }
       if (setup.standStill) shot.textContent += ` · hold ${setup.timeSec || 3}s`;
       const hasShot = setup.useTargetPlayer ? setup.targetPlayerKey : setup.shootPoint;
