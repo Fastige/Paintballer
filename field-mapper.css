@@ -74,24 +74,6 @@
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent);
 }
 
-.fm-icon-sprite {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
-.fm-ico {
-  width: 1.15em;
-  height: 1.15em;
-  flex-shrink: 0;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .fm-upload-btn {
   display: flex;
   align-items: center;
