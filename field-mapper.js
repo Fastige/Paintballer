@@ -208,9 +208,50 @@
       name: "Inferno",
       theme: { turf: "#1c0d0d", turfCenter: "#341414", stripes: "#ffb3b3", grid: "#ffb3b3", lines: "#ffd6d6", vignette: "#000000", fill: "#ff3b3b", outline: "#ffb000", glow: "#ff3b3b" },
     },
+    {
+      name: "Toxic",
+      theme: { turf: "#120a1c", turfCenter: "#24113a", stripes: "#d8b4ff", grid: "#d8b4ff", lines: "#d8b4ff", vignette: "#000000", fill: "#b6ff00", outline: "#e6ff8a", glow: "#b6ff00" },
+    },
+    {
+      name: "Synthwave",
+      theme: { turf: "#1a0b2e", turfCenter: "#3a0f4f", stripes: "#ffffff", grid: "#ff4fc8", lines: "#3bd5ff", vignette: "#0a0014", fill: "#ff4fc8", outline: "#3bd5ff", glow: "#ff4fc8" },
+    },
+    {
+      name: "Blueprint",
+      theme: { turf: "#0b2a4a", turfCenter: "#12406e", stripes: "#ffffff", grid: "#bfe2ff", lines: "#ffffff", vignette: "#031426", fill: "#e8f4ff", outline: "#ffffff", glow: "#7cc4ff" },
+    },
+    {
+      name: "Woodland",
+      theme: { turf: "#1f2a14", turfCenter: "#34421f", stripes: "#e8dcc0", grid: "#e8dcc0", lines: "#e8dcc0", vignette: "#0a0d05", fill: "#c2a46b", outline: "#6b4f2a", glow: "#e0c48a" },
+    },
+    {
+      name: "Gold Rush",
+      theme: { turf: "#14110a", turfCenter: "#2a2312", stripes: "#ffe08a", grid: "#ffe08a", lines: "#ffe08a", vignette: "#000000", fill: "#ffc83b", outline: "#fff0b3", glow: "#ffb000" },
+    },
+    {
+      name: "Stealth",
+      theme: { turf: "#0e0f10", turfCenter: "#1b1d1f", stripes: "#ffffff", grid: "#c9ced3", lines: "#c9ced3", vignette: "#000000", fill: "#9aa3ab", outline: "#e6e9ec", glow: "#ffffff" },
+    },
+    {
+      name: "Sunset",
+      theme: { turf: "#2a0f1a", turfCenter: "#5a1f2a", stripes: "#ffd27a", grid: "#ffb37a", lines: "#ffc09a", vignette: "#12040a", fill: "#ff8a3b", outline: "#ffd27a", glow: "#ff5c7a" },
+    },
+    {
+      name: "Ocean",
+      theme: { turf: "#04222b", turfCenter: "#0a3d4a", stripes: "#9ff5ff", grid: "#9ff5ff", lines: "#9ff5ff", vignette: "#01090c", fill: "#2ee6c8", outline: "#b3fff3", glow: "#2ee6c8" },
+    },
+    {
+      name: "Bubblegum",
+      theme: { turf: "#2a1430", turfCenter: "#43204d", stripes: "#ffffff", grid: "#ffd1ec", lines: "#ffd1ec", vignette: "#12051a", fill: "#ff9ad5", outline: "#ffffff", glow: "#ff6fc0" },
+    },
+    {
+      name: "Arcade",
+      theme: { turf: "#050505", turfCenter: "#101018", stripes: "#00e5ff", grid: "#ff2bd6", lines: "#00e5ff", vignette: "#000000", fill: "#ffe600", outline: "#ff2bd6", glow: "#00e5ff" },
+    },
   ];
   let designTheme = { ...DESIGN_THEME_DEFAULT };
   let designTab = "structures";
+  let designPanelOpen = false;
   let activeTool = "select";
   let uiTool = "select";
   let activeShape = "rectangle";
@@ -471,6 +512,38 @@
     updateShootPanel();
   }
 
+  function isDesignPanelShown() {
+    return designPanelOpen && designMapOn && hasMap;
+  }
+
+  function isIntelPanelShown() {
+    return hasMap && !isDesignPanelShown() && ["select", "brush", "vision"].includes(activeTool);
+  }
+
+  function syncToolPanels() {
+    const design = isDesignPanelShown();
+    if (structurePanel) structurePanel.hidden = design || activeTool !== "structure";
+    if (sizerPanel) sizerPanel.hidden = design || activeTool !== "sizer";
+    if (teamPanel) teamPanel.hidden = design || activeTool !== "players";
+    if (shootPanel) shootPanel.hidden = design || activeTool !== "shoot";
+    if (designPanel) designPanel.hidden = !design;
+    if (intelSection) intelSection.hidden = !isIntelPanelShown();
+  }
+
+  function onDesignButton() {
+    if (!designMapOn) {
+      designPanelOpen = true;
+      setDesignMap(true);
+    } else if (!designPanelOpen) {
+      designPanelOpen = true;
+      renderDesignMap();
+    } else {
+      designPanelOpen = false;
+      setDesignMap(false);
+    }
+    if (isDesignPanelShown()) scrollMobilePanel(designPanel);
+  }
+
   function setTool(tool) {
     if (mirrorStep) cancelMirrorFlow();
     uiTool = tool;
@@ -498,11 +571,9 @@
     workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
-    if (structurePanel) structurePanel.hidden = activeTool !== "structure";
     if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "players" || activeTool === "sizer" || activeTool === "shoot";
-    if (sizerPanel) sizerPanel.hidden = activeTool !== "sizer";
-    if (teamPanel) teamPanel.hidden = activeTool !== "players";
-    if (shootPanel) shootPanel.hidden = activeTool !== "shoot";
+    designPanelOpen = false;
+    syncToolPanels();
 
     if (activeTool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
@@ -719,7 +790,7 @@
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-pressed", String(on));
     });
-    if (designPanel) designPanel.hidden = !on;
+    syncToolPanels();
     if (on) updateDesignPanel();
     if (!designCanvas || !designCtx) return;
     designCanvas.hidden = !on;
@@ -2591,7 +2662,7 @@
       return;
     }
 
-    intelSection.hidden = false;
+    intelSection.hidden = !isIntelPanelShown();
     const shape = getSelectedStructure();
     const hasSelection = Boolean(shape);
 
@@ -4713,8 +4784,12 @@
   mirrorCanvas?.addEventListener("pointerup", endMirrorBoxDrag);
   mirrorCanvas?.addEventListener("pointercancel", () => endMirrorBoxDrag(null));
 
-  designMapBtn?.addEventListener("click", () => setDesignMap(!designMapOn));
-  designMapMobileBtn?.addEventListener("click", () => setDesignMap(!designMapOn));
+  designMapBtn?.addEventListener("click", onDesignButton);
+  designMapMobileBtn?.addEventListener("click", onDesignButton);
+  document.getElementById("design-turn-off")?.addEventListener("click", () => {
+    designPanelOpen = false;
+    setDesignMap(false);
+  });
   mirrorLayoutBtn?.addEventListener("click", openMirrorConfirm);
   mirrorLayoutMobileBtn?.addEventListener("click", () => {
     closeToolsPanel();

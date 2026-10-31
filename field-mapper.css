@@ -1164,6 +1164,7 @@
 
 .fm-design-reset {
   width: 100%;
+  gap: 0.45rem;
   background: transparent;
 }
 
@@ -4187,6 +4188,20 @@
 
 .fm-kit .fm-intel-modal-subtitle {
   margin: 0 0 0.6rem;
+}
+
+.fm-design-preset span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fm-kit .fm-intel-open-btn.is-primary {
+  --tool-color: var(--accent);
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff8a2a, var(--accent) 45%, #e04400);
+  color: #1a0f08;
+  box-shadow: 0 8px 22px -10px var(--accent);
 }
 
 .fm-intel-modal-panel.fm-kit {
