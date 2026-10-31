@@ -868,6 +868,15 @@
     };
   }
 
+  /** Clears in device pixels; a scaled clear misses the right/bottom edge when the page is zoomed out (devicePixelRatio < 1). */
+  function clearCanvas(context) {
+    if (!context) return;
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.restore();
+  }
+
   function drawDesignField(context, w, h) {
     const horizontal = w >= h;
     const short = Math.min(w, h);
@@ -941,7 +950,7 @@
     if (!on) return;
     const { w, h } = getCanvasSize();
     if (!w || !h) return;
-    designCtx.clearRect(0, 0, w, h);
+    clearCanvas(designCtx);
     drawDesignField(designCtx, w, h);
   }
 
@@ -1109,7 +1118,7 @@
     playersLayer.querySelectorAll(".fm-player").forEach((p) => {
       p.classList.remove("has-vision-lines");
     });
-    visionCtx.clearRect(0, 0, visionCanvas.width, visionCanvas.height);
+    clearCanvas(visionCtx);
   }
 
   function getPlayerCenterPx(el) {
@@ -1280,7 +1289,7 @@
 
   function redrawVisionLines() {
     const { w, h } = getCanvasSize();
-    visionCtx.clearRect(0, 0, visionCanvas.width, visionCanvas.height);
+    clearCanvas(visionCtx);
     if (!visionPlayerEl || !w || !h) return;
 
     const { x: cx, y: cy } = getPlayerCenterPx(visionPlayerEl);
@@ -3831,7 +3840,7 @@
   function redrawStructures() {
     const { w, h } = getCanvasSize();
     if (!w || !h) return;
-    structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
+    clearCanvas(structCtx);
     structures.forEach((s) => drawShapeOnContext(structCtx, s, w, h, false));
     if (placePreview) drawShapeOnContext(structCtx, placePreview, w, h, true);
     const selected = getSelectedStructure();
@@ -6246,12 +6255,8 @@
     shootCanvas.hidden = false;
     playersLayer.hidden = false;
 
-    if (canvas.width > 0 && canvas.height > 0) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    if (structureCanvas.width > 0 && structureCanvas.height > 0) {
-      structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
-    }
+    clearCanvas(ctx);
+    clearCanvas(structCtx);
 
     teamPlacement = createDefaultTeamPlacement();
     activePlacementTeam = "a";
@@ -6320,9 +6325,9 @@
     shootCanvas.hidden = true;
     playersLayer.hidden = true;
     playersLayer.innerHTML = "";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    structCtx.clearRect(0, 0, structureCanvas.width, structureCanvas.height);
-    shootCtx.clearRect(0, 0, shootCanvas.width, shootCanvas.height);
+    clearCanvas(ctx);
+    clearCanvas(structCtx);
+    clearCanvas(shootCtx);
     if (mapUpload) mapUpload.value = "";
     if (mapUploadPromptInput) mapUploadPromptInput.value = "";
     if (mapUploadMobile) mapUploadMobile.value = "";
@@ -6373,7 +6378,7 @@
 
   clearDrawingsBtn?.addEventListener("click", () => {
     resizeCanvases();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    clearCanvas(ctx);
   });
 
   undoStructureBtn?.addEventListener("click", () => {
