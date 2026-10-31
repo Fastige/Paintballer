@@ -3784,8 +3784,7 @@
   const AUTO_MAX_DIM = 900;
   const AUTO_FIT_MIN_IOU = 0.8;
   /** Below this, an unsplittable outline isn't a bunker. */
-  const AUTO_FIT_REJECT_IOU = 0.4;
-  const AUTO_MAX_PIECES = 12;
+  const AUTO_FIT_REJECT_IOU = 0.2;  const AUTO_MAX_PIECES = 12;
   const AUTO_HISTORY_LIMIT = 60;
   const AUTO_DARK_MAX = 80;
   const AUTO_MAX_COLORS = 8;
@@ -4436,6 +4435,70 @@
     return sliceAutoComponent(local, bw, bh, alongX, count);
   }
 
+  function autoShapesIou(local, bw, bh, area, shapes) {
+    const covered = new Uint8Array(bw * bh);
+    shapes.forEach((s) => {
+      for (let y = 0; y < s.h; y++) {
+        for (let x = 0; x < s.w; x++) {
+          if (autoShapeContains(s.type || "rectangle", s.flip, x, y, s.w, s.h)) covered[(s.y + y) * bw + s.x + x] = 1;
+        }
+      }
+    });
+    let inter = 0;
+    let union = 0;
+    for (let p = 0; p < covered.length; p++) {
+      if (covered[p] && local[p]) inter++;
+      if (covered[p]) union++;
+    }
+    union += area - inter;
+    return union ? inter / union : 0;
+  }
+
+  function splitAutoBands(local, bw, bh, area) {
+    let best = null;
+    [false, true].forEach((alongX) => {
+      for (let count = 2; count <= 6; count++) {
+        const shapes = sliceAutoComponent(local, bw, bh, alongX, count).map((r) => ({ ...r, type: "rectangle", flip: false }));
+        const iou = autoShapesIou(local, bw, bh, area, shapes);
+        if (!best || iou > best.iou + 0.02) best = { shapes, iou };
+      }
+    });
+    return best;
+  }
+
+  /** True when one axis narrows steadily but keeps a wide flat end (a trapezoid, not a point or a bulge). */
+  function isAutoTapered(local, bw, bh) {
+    return [false, true].some((alongX) => {
+      const len = alongX ? bw : bh;
+      const span = alongX ? bh : bw;
+      if (len < 12) return false;
+      const from = Math.round(len * 0.1);
+      const to = len - from;
+      let sx = 0, sy = 0, sxx = 0, sxy = 0;
+      const widths = [];
+      for (let i = from; i < to; i++) {
+        let n = 0;
+        for (let j = 0; j < span; j++) n += local[alongX ? j * bw + i : i * bw + j];
+        widths.push(n);
+        sx += i;
+        sy += n;
+        sxx += i * i;
+        sxy += i * n;
+      }
+      const m = widths.length;
+      const slope = (m * sxy - sx * sy) / (m * sxx - sx * sx || 1);
+      const base = (sy - slope * sx) / m;
+      const a = base;
+      const b = base + slope * (len - 1);
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      if (hi <= 0) return false;
+      let err = 0;
+      widths.forEach((n, k) => (err += (n - (base + slope * (from + k))) ** 2));
+      return lo >= hi * 0.2 && lo <= hi * 0.8 && Math.sqrt(err / m) <= hi * 0.08;
+    });
+  }
+
   function makeAutoStructure(x, y, pw, ph, w, h, type, flip) {
     const shape = {
       id: crypto.randomUUID(),
@@ -4557,9 +4620,13 @@
       }
     }
     if (fit.iou < AUTO_FIT_MIN_IOU && split) {
-      const shapes =
+      let shapes =
         (openRadius && splitAutoByOpening(local, bw, bh, openRadius)) ||
         (splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area)).map((r) => ({ ...r, type: "rectangle", flip: false }));
+      const bands = fit.type === "rectangle" || isAutoTapered(local, bw, bh) ? splitAutoBands(local, bw, bh, area) : null;
+      if (bands && bands.iou >= AUTO_FIT_MIN_IOU && (shapes.length < 2 || bands.iou > autoShapesIou(local, bw, bh, area, shapes) + 0.03)) {
+        shapes = bands.shapes;
+      }
       if (shapes.length > 1) {
         return {
           split: true,
