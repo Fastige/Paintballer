@@ -2612,6 +2612,86 @@
   gap: 0.5rem;
 }
 
+.fm-rotate-num {
+  display: grid;
+  grid-template-columns: 38px 1fr 38px;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+
+.fm-rotate-nudge {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #2a312c, #1c221e);
+  color: var(--tool-color);
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s, box-shadow 0.08s;
+}
+
+.fm-rotate-nudge:hover {
+  border-color: var(--tool-color);
+}
+
+.fm-rotate-nudge:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  background: var(--tool-color);
+  color: #0d100c;
+}
+
+.fm-rotate-num-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 0.4rem;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--sz-deep, var(--bg));
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: text;
+}
+
+.fm-rotate-num-field:focus-within {
+  border-color: var(--tool-color);
+}
+
+.fm-rotate-num-field input {
+  width: 3ch;
+  min-width: 0;
+  padding: 0.4rem 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.fm-rotate-num-field input::-webkit-inner-spin-button,
+.fm-rotate-num-field input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .fm-rotate-steps {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=62" />
+  <link rel="stylesheet" href="field-mapper.css?v=63" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -462,9 +462,13 @@
                   <span class="fm-rotate-hub" aria-hidden="true"></span>
                 </div>
                 <div class="fm-rotate-side">
-                  <div class="fm-sizer-axis-row">
-                    <input type="number" id="sizer-rotate-num" min="0" max="359" step="1" value="0" aria-label="Rotation degrees" />
-                    <span class="fm-sizer-unit">°</span>
+                  <div class="fm-rotate-num">
+                    <button type="button" class="fm-rotate-nudge" data-rotate-nudge="-1" aria-label="Rotate 1 degree counterclockwise">−</button>
+                    <label class="fm-rotate-num-field">
+                      <input type="number" id="sizer-rotate-num" min="0" max="359" step="1" value="0" inputmode="numeric" aria-label="Rotation degrees" />
+                      <span aria-hidden="true">°</span>
+                    </label>
+                    <button type="button" class="fm-rotate-nudge" data-rotate-nudge="1" aria-label="Rotate 1 degree clockwise">+</button>
                   </div>
                   <div class="fm-rotate-steps">
                     <button type="button" class="fm-rotate-step" data-rotate-by="-15" aria-label="Rotate 15 degrees counterclockwise">−15°</button>
@@ -849,6 +853,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=87"></script>
+  <script src="field-mapper.js?v=88"></script>
 </body>
 </html>

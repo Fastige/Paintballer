@@ -2849,6 +2849,36 @@
     document.querySelectorAll("[data-rotate-to]").forEach((btn) => {
       btn.addEventListener("click", () => rotateSelectedStructure(Number(btn.dataset.rotateTo)));
     });
+
+    document.querySelectorAll("[data-rotate-nudge]").forEach((btn) => {
+      const step = Number(btn.dataset.rotateNudge) || 0;
+      let holdTimer = null;
+      const nudge = () => {
+        const shape = getSelectedStructure();
+        if (shape) rotateSelectedStructure(getStructureRotation(shape) + step, "rotate-nudge");
+      };
+      const stop = () => {
+        clearTimeout(holdTimer);
+        clearInterval(holdTimer);
+        holdTimer = null;
+        endSizerEdit();
+      };
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        stop();
+        nudge();
+        holdTimer = setTimeout(() => {
+          holdTimer = setInterval(nudge, 60);
+        }, 380);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => btn.addEventListener(type, stop));
+      btn.addEventListener("click", (e) => {
+        if (e.detail !== 0) return;
+        nudge();
+        endSizerEdit();
+      });
+    });
   }
 
   function setSizerClicker(on) {
