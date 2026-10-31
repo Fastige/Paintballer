@@ -2822,6 +2822,9 @@
 }
 
 .fm-player {
+  --player-color: var(--team-a, #ff5c00);
+  --player-ring: 0 0 0 0 transparent;
+  --player-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.5);
   position: absolute;
   width: var(--player-size, 12px);
   height: var(--player-size, 12px);
@@ -2831,44 +2834,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
-  font-size: 0.5rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: calc(var(--player-size, 12px) * 0.56);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   letter-spacing: 0;
-  color: #0f1210;
-  border: 1px solid rgba(15, 18, 16, 0.85);
+  color: #fff;
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+  background: var(--player-color);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
   cursor: grab;
   z-index: 10;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: var(--player-ring), var(--player-shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   touch-action: none;
   overflow: visible;
 }
 
 .fm-player-num {
   pointer-events: none;
-}
-
-.fm-player.team-a {
-  background: var(--team-a, #ff5c00);
+  transform: translateY(0.04em);
 }
 
 .fm-player.team-b {
-  background: var(--team-b, #3b9eff);
-  color: #fff;
+  --player-color: var(--team-b, #3b9eff);
 }
 
 @media (hover: hover) {
   .fm-player:hover {
-    transform: scale(1.08);
+    transform: scale(1.15);
     z-index: 11;
   }
 }
 
 .fm-player.is-dragging {
+  --player-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.55);
   cursor: grabbing;
-  transform: scale(1.12);
+  transform: scale(1.2);
   z-index: 20;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .fm-stage.tool-brush .fm-player,
@@ -2879,11 +2883,11 @@
 }
 
 .fm-player.is-team-ghost {
-  opacity: 0.52;
+  opacity: 0.6;
   cursor: default;
-  filter: saturate(0.85);
+  background: color-mix(in srgb, var(--player-color) 45%, transparent);
   border-style: dashed;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16), 0 4px 14px rgba(0, 0, 0, 0.35);
+  --player-shadow: 0 0 0 0 transparent;
 }
 
 .fm-stage.has-map .fm-player.is-team-ghost,
@@ -2988,16 +2992,22 @@
   cursor: pointer;
 }
 
+.fm-player.has-vision-lines,
+.fm-player.is-shoot-selected,
+.fm-player.is-shoot-target {
+  z-index: 12;
+}
+
 .fm-player.has-vision-lines {
-  box-shadow: 0 0 0 3px rgba(255, 79, 200, 0.85), 0 4px 14px rgba(0, 0, 0, 0.45);
+  --player-ring: 0 0 0 1.5px rgba(15, 18, 16, 0.9), 0 0 0 3px #ff4fc8;
 }
 
 .fm-player.is-shoot-selected {
-  box-shadow: 0 0 0 3px rgba(255, 220, 90, 0.9), 0 4px 14px rgba(0, 0, 0, 0.45);
+  --player-ring: 0 0 0 1.5px rgba(15, 18, 16, 0.9), 0 0 0 3px #ffdc5a;
 }
 
 .fm-player.is-shoot-target {
-  box-shadow: 0 0 0 3px rgba(255, 79, 79, 0.9), 0 4px 14px rgba(0, 0, 0, 0.45);
+  --player-ring: 0 0 0 1.5px rgba(15, 18, 16, 0.9), 0 0 0 3px #ff4f4f;
 }
 
 .fm-intel-section {
@@ -3832,11 +3842,6 @@
 @media (max-width: 900px) and (pointer: coarse) {
   :root {
     --player-size: 14px;
-  }
-
-  .fm-player {
-    font-size: 0.55rem;
-    border-width: 1px;
   }
 
   /* Small markers, larger invisible touch target */

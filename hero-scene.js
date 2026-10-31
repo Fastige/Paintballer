@@ -317,31 +317,32 @@
   }
 
   function drawPlayers(t) {
-    ctx.font = `${PLAYER_R * 1.45}px "Bebas Neue", sans-serif`;
+    ctx.font = `700 ${PLAYER_R * 1.15}px "Outfit", sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     Object.entries(players).forEach(([key, p]) => {
       const pos = playerPos(key, t);
+      if (key === "a2") {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, PLAYER_R + 1.9, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffdc5a";
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      }
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-      ctx.shadowBlur = 3 * scale;
+      ctx.shadowBlur = 2 * scale;
+      ctx.shadowOffsetY = 0.6 * scale;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, PLAYER_R, 0, Math.PI * 2);
       ctx.fillStyle = p.team === "a" ? "#ff5c00" : "#3b9eff";
       ctx.fill();
       ctx.restore();
-      ctx.lineWidth = 0.7;
-      ctx.strokeStyle = "rgba(15, 18, 16, 0.85)";
+      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
       ctx.stroke();
-      if (key === "a2") {
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, PLAYER_R + 1.4, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255, 220, 90, 0.9)";
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      }
-      ctx.fillStyle = p.team === "a" ? EDGE : "#fff";
-      ctx.fillText(String(p.num), pos.x, pos.y + 0.4);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(String(p.num), pos.x, pos.y + 0.3);
     });
   }
 
