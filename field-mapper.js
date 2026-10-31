@@ -24,6 +24,7 @@
   const designMapBtn = document.getElementById("design-map");
   const designMapMobileBtn = document.getElementById("design-map-mobile");
   const designPanel = document.getElementById("fm-design-panel");
+  const designSwitch = document.getElementById("design-switch");
   const designSelectedLabel = document.getElementById("fm-design-selected");
   const designSelectHint = document.getElementById("fm-design-select-hint");
   const designSelectedRow = document.getElementById("fm-design-selected-row");
@@ -328,6 +329,7 @@
   let intelModalOpen = false;
   /** @type {ReturnType<typeof serializeFieldState>|null} */
   let pendingPackState = null;
+  let pendingPackLoad = false;
 
   if (IS_COARSE && brushSizeInput) {
     brushSizeInput.value = "12";
@@ -530,7 +532,7 @@
   }
 
   function isDesignPanelShown() {
-    return designPanelOpen && designMapOn && hasMap;
+    return designPanelOpen && hasMap;
   }
 
   function isIntelPanelShown() {
@@ -548,16 +550,8 @@
   }
 
   function onDesignButton() {
-    if (!designMapOn) {
-      designPanelOpen = true;
-      setDesignMap(true);
-    } else if (!designPanelOpen) {
-      designPanelOpen = true;
-      renderDesignMap();
-    } else {
-      designPanelOpen = false;
-      setDesignMap(false);
-    }
+    designPanelOpen = !designPanelOpen;
+    renderDesignMap();
     if (isDesignPanelShown()) scrollMobilePanel(designPanel);
   }
 
@@ -802,13 +796,19 @@
   function renderDesignMap() {
     const on = designMapOn && hasMap;
     stage.classList.toggle("is-design-map", on);
+    const panelShown = isDesignPanelShown();
     [designMapBtn, designMapMobileBtn].forEach((btn) => {
       if (!btn) return;
-      btn.classList.toggle("is-active", on);
-      btn.setAttribute("aria-pressed", String(on));
+      btn.classList.toggle("is-active", on || panelShown);
+      btn.setAttribute("aria-pressed", String(panelShown));
     });
+    if (designSwitch) {
+      designSwitch.setAttribute("aria-checked", String(on));
+      designSwitch.classList.toggle("is-on", on);
+    }
+    designPanel?.classList.toggle("is-off", !on);
     syncToolPanels();
-    if (on) updateDesignPanel();
+    updateDesignPanel();
     if (!designCanvas || !designCtx) return;
     designCanvas.hidden = !on;
     if (!on) return;
@@ -3257,7 +3257,9 @@
       }
     }
 
+    pendingPackLoad = true;
     if (!loadMapImageFromFile(imageFile, packState)) {
+      pendingPackLoad = false;
       window.alert("Could not load map.png from the map pack.");
     }
   }
@@ -4059,6 +4061,7 @@
   });
 
   function handleMapFile(file) {
+    pendingPackLoad = false;
     loadMapImageFromFile(file, null);
   }
 
@@ -4067,7 +4070,10 @@
     clearSizerUndo();
     clearShootPlan();
     const packToApply = pendingPackState;
+    const fromPack = pendingPackLoad;
     pendingPackState = null;
+    pendingPackLoad = false;
+    designPanelOpen = false;
     if (!packToApply) {
       structures = [];
       shootSceneSetups = [];
@@ -4109,6 +4115,10 @@
           mergeIntelFromSavedState();
         }
       }
+      if (fromPack) {
+        designMapOn = true;
+        persistFieldState();
+      }
       renderDesignMap();
       redrawStructures();
       setTool("players");
@@ -4140,6 +4150,7 @@
     teamPlacement = createDefaultTeamPlacement();
     activePlacementTeam = "a";
     designMapOn = false;
+    designPanelOpen = false;
     renderDesignMap();
     updateSizerPanel();
     updateIntelReport();
@@ -4830,10 +4841,7 @@
 
   designMapBtn?.addEventListener("click", onDesignButton);
   designMapMobileBtn?.addEventListener("click", onDesignButton);
-  document.getElementById("design-turn-off")?.addEventListener("click", () => {
-    designPanelOpen = false;
-    setDesignMap(false);
-  });
+  designSwitch?.addEventListener("click", () => setDesignMap(!designMapOn));
   mirrorLayoutBtn?.addEventListener("click", openMirrorConfirm);
   mirrorLayoutMobileBtn?.addEventListener("click", () => {
     closeToolsPanel();
