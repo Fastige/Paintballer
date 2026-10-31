@@ -2259,7 +2259,8 @@
   function runShootPlayer() {
     const setup = getCurrentShootSetup(false);
     if (!setup) return;
-    runShootSetups([setup]);
+    if (lastRunStartPositions) resetShootRun();
+    runShootSetups([setup], { autoReset: true });
   }
 
   function runShootScene(onDone) {
