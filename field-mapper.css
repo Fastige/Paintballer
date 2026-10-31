@@ -2861,6 +2861,32 @@
   pointer-events: none;
 }
 
+.fm-team-nudges[data-side="right"] {
+  margin-left: 26px;
+}
+
+.fm-team-nudges[data-side="left"] {
+  margin-left: calc(-112px - 26px);
+}
+
+.fm-team-nudges::before {
+  content: "";
+  position: absolute;
+  top: 55px;
+  width: 18px;
+  height: 0;
+  border-top: 2px dashed rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+.fm-team-nudges[data-side="right"]::before {
+  right: 100%;
+}
+
+.fm-team-nudges[data-side="left"]::before {
+  left: 100%;
+}
+
 .fm-team-nudge {
   position: absolute;
   width: 38px;

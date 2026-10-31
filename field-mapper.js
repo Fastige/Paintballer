@@ -3720,8 +3720,9 @@
       const controls = document.createElement("div");
       controls.className = "fm-team-nudges";
       controls.dataset.team = team;
+      controls.dataset.side = state.spawn.x <= 50 ? "right" : "left";
       controls.style.left = `${state.spawn.x}%`;
-      controls.style.top = `${state.spawn.y}%`;
+      controls.style.top = `clamp(60px, ${state.spawn.y}%, calc(100% - 60px))`;
 
       [
         ["up", "▲"],
