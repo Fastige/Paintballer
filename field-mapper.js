@@ -3786,6 +3786,7 @@
   const AUTO_DARK_MAX = 80;
   const AUTO_MAX_COLORS = 8;
   const AUTO_SEED_MIN_CHROMA = 40;
+  const AUTO_TINT_MIN = 12;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3876,19 +3877,32 @@
     off.width = w;
     off.height = h;
     const octx = off.getContext("2d", { willReadFrequently: true });
-    octx.putImageData(new ImageData(new Uint8ClampedArray(base.data), w, h), 0, 0);
-    paintAutoWhiteout(octx, autoWhiteout, w, h, "#ffffff");
-    autoScanCache = { base, strokes: autoWhiteout, w, h, data: octx.getImageData(0, 0, w, h).data };
+    paintAutoWhiteout(octx, autoWhiteout, w, h, "#000000");
+    const cover = octx.getImageData(0, 0, w, h).data;
+    const data = new Uint8ClampedArray(base.data);
+    for (let i = 0; i < data.length; i += 4) {
+      if (!cover[i + 3]) continue;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = 255;
+    }
+    autoScanCache = { base, strokes: autoWhiteout, w, h, data };
     return autoScanCache;
+  }
+
+  function isAutoNeutralDark(r, g, b) {
+    const max = Math.max(r, g, b);
+    return max < AUTO_DARK_MAX && max - Math.min(r, g, b) < Math.max(AUTO_TINT_MIN, max * 0.4);
   }
 
   function isAutoDark(data, p) {
     const i = p * 4;
-    return data[i + 3] >= 80 && Math.max(data[i], data[i + 1], data[i + 2]) < AUTO_DARK_MAX;
+    return data[i + 3] >= 80 && isAutoNeutralDark(data[i], data[i + 1], data[i + 2]);
   }
 
   function isAutoDarkColor(rgb) {
-    return Math.max(rgb[0], rgb[1], rgb[2]) < AUTO_DARK_MAX;
+    return isAutoNeutralDark(rgb[0], rgb[1], rgb[2]);
   }
 
   function pruneAutoMask(mask, w, h, region, minCount) {
@@ -3916,6 +3930,7 @@
     const mask = new Uint8Array(w * h);
     const [r, g, b] = rgb;
     const cc = r * r + g * g + b * b || 1;
+    const targetBlack = isAutoDarkColor(rgb);
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
         const p = y * w + x;
@@ -3924,13 +3939,15 @@
         const pr = data[i];
         const pg = data[i + 1];
         const pb = data[i + 2];
+        const neutralDark = isAutoNeutralDark(pr, pg, pb);
+        if (neutralDark && !targetBlack) continue;
         if (autoColorDistance(pr, pg, pb, r, g, b) <= tolerance) {
           mask[p] = 1;
           continue;
         }
         if (!shades) continue;
         const k = (pr * r + pg * g + pb * b) / cc;
-        if (k < 0.18 || k >= 1) continue;
+        if (k < 0.06 || k >= 1) continue;
         if (autoColorDistance(pr, pg, pb, k * r, k * g, k * b) <= tolerance * 0.8 * Math.max(k, 0.3)) mask[p] = 1;
       }
     }
@@ -4595,10 +4612,12 @@
   function isAutoSeedPixel(data, p) {
     if (isAutoBackground(data, p) || isAutoDark(data, p)) return false;
     const i = p * 4;
-    return Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]) >= AUTO_SEED_MIN_CHROMA;
+    const max = Math.max(data[i], data[i + 1], data[i + 2]);
+    const chroma = max - Math.min(data[i], data[i + 1], data[i + 2]);
+    return chroma >= Math.min(AUTO_SEED_MIN_CHROMA, Math.max(AUTO_TINT_MIN, max * 0.4));
   }
 
-  function findAutoSeedColor(data, w, region, used, hist) {
+  function findAutoSeedColor(data, w, region, used, hist, minCount) {
     hist.fill(0);
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
@@ -4627,8 +4646,10 @@
           }
         }
       }
-      if (score > bestScore) {
-        bestScore = score;
+      if (score < minCount) continue;
+      const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) * 16 + 8;
+      if (score * chroma > bestScore) {
+        bestScore = score * chroma;
         bestBin = bin;
       }
     }
@@ -4653,7 +4674,7 @@
       }
     }
     const median = (arr) => arr.sort((a, b) => a - b)[arr.length >> 1];
-    return { rgb: [median(rs), median(gs), median(bs)], seeds, score: bestScore };
+    return { rgb: [median(rs), median(gs), median(bs)], seeds };
   }
 
   function detectAllAutoColors() {
@@ -4670,8 +4691,8 @@
     const picks = [];
     let bunkers = 0;
     for (let round = 0; round < AUTO_MAX_COLORS; round++) {
-      const seed = findAutoSeedColor(data, w, region, used, hist);
-      if (!seed || seed.score < minPixels) break;
+      const seed = findAutoSeedColor(data, w, region, used, hist, minPixels);
+      if (!seed) break;
       const result = scanAutoColor(data, w, h, region, seed.rgb, -1);
       const consumed = morphAutoMask(morphAutoMask(result.matched, w, h, true), w, h, true);
       for (let p = 0; p < consumed.length; p++) if (consumed[p]) used[p] = 1;
