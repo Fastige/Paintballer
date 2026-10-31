@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
   <link rel="stylesheet" href="field-mapper.css?v=53" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
@@ -40,6 +40,7 @@
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" /></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" /></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v12H4z" /><circle cx="12" cy="13.5" r="3.5" /></symbol>
@@ -48,15 +49,15 @@
   <div class="splatter splatter-2" aria-hidden="true"></div>
 
   <header class="site-header">
-    <a class="logo" href="index.html">Paint<span>baller</span></a>
+    <a class="logo" href="index.html"><i class="logo-mark" aria-hidden="true"></i><span class="logo-text">Paint<span>baller</span></span></a>
     <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
     <nav class="site-nav">
-      <a href="index.html#map">Map</a>
-      <a href="index.html#tools">Tools</a>
-      <a href="index.html#shoot">Shoot scenes</a>
-      <a href="field-mapper.html" class="is-active">Field Mapper</a>
+      <a href="index.html#map" style="--nav-color: #3bd5ff"><svg class="fm-ico" aria-hidden="true"><use href="#i-layers" /></svg><span>Map</span></a>
+      <a href="index.html#tools" style="--nav-color: #7cfc3b"><svg class="fm-ico" aria-hidden="true"><use href="#i-move" /></svg><span>Tools</span></a>
+      <a href="index.html#shoot" style="--nav-color: #ff3b3b"><svg class="fm-ico" aria-hidden="true"><use href="#i-shoot" /></svg><span>Shoot scenes</span></a>
+      <a href="field-mapper.html" class="nav-cta is-active" aria-current="page"><span>Field Mapper</span><svg class="fm-ico" aria-hidden="true"><use href="#i-arrow" /></svg></a>
     </nav>
   </header>
 
