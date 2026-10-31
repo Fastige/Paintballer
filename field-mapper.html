@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=17" />
-  <link rel="stylesheet" href="field-mapper.css?v=58" />
+  <link rel="stylesheet" href="field-mapper.css?v=59" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -207,6 +207,7 @@
             <canvas id="fm-vision-canvas" class="fm-canvas fm-canvas-vision" hidden></canvas>
             <canvas id="fm-shoot-canvas" class="fm-canvas fm-canvas-shoot" hidden></canvas>
             <div id="fm-players" class="fm-players" hidden></div>
+            <canvas id="fm-auto-canvas" class="fm-canvas fm-canvas-auto" hidden></canvas>
             <canvas id="fm-mirror-canvas" class="fm-canvas fm-canvas-mirror" hidden></canvas>
             <div class="fm-mirror-prompt" id="fm-mirror-prompt" hidden aria-live="polite">
               <p class="fm-mirror-prompt-text" id="fm-mirror-prompt-text"></p>
@@ -335,30 +336,43 @@
               </div>
             </div>
           </div>
-          <p class="fm-kit-hint">Finds colored bunkers on a light map and covers each one with Rectangle, Circle, and Triangle pieces.</p>
+          <ol class="fm-auto-steps">
+            <li class="fm-auto-step is-current" id="auto-step-box">
+              <span class="fm-auto-step-num" aria-hidden="true">1</span>
+              <div class="fm-auto-step-body">
+                <p class="fm-auto-step-title">Draw a box</p>
+                <p class="fm-auto-step-text">Drag on the map around the part you want to scan.</p>
+              </div>
+              <button type="button" class="fm-auto-step-btn" id="auto-clear-box" disabled>Clear box</button>
+            </li>
+            <li class="fm-auto-step" id="auto-step-colors">
+              <span class="fm-auto-step-num" aria-hidden="true">2</span>
+              <div class="fm-auto-step-body">
+                <p class="fm-auto-step-title">Tap bunker colors</p>
+                <p class="fm-auto-step-text">Each tap finds every bunker of that color in the box. Keep tapping to add more colors.</p>
+              </div>
+            </li>
+          </ol>
           <section class="fm-kit-card">
-            <p class="fm-kit-label">Colors to find</p>
-            <div class="fm-auto-colors" role="group" aria-label="Colors to find">
-              <button type="button" class="fm-auto-color is-active" data-auto-color="red" aria-pressed="true" style="--c: #ff3b3b">Red</button>
-              <button type="button" class="fm-auto-color is-active" data-auto-color="blue" aria-pressed="true" style="--c: #3b7bff">Blue</button>
-              <button type="button" class="fm-auto-color" data-auto-color="green" aria-pressed="false" style="--c: #22c55e">Green</button>
-              <button type="button" class="fm-auto-color" data-auto-color="any" aria-pressed="false" style="--c: conic-gradient(#ff3b3b, #ffd43b, #22c55e, #3b7bff, #ff4fc8, #ff3b3b)">Any color</button>
-            </div>
+            <p class="fm-kit-label">Picked colors</p>
+            <div class="fm-auto-picks" id="auto-pick-list"></div>
           </section>
+          <div class="fm-auto-undo-row">
+            <button type="button" class="fm-kit-btn" id="auto-undo" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>Undo</button>
+            <button type="button" class="fm-kit-btn is-quiet" id="auto-undo-all" disabled>Undo all</button>
+          </div>
+          <p class="fm-kit-note" id="auto-status" aria-live="polite">Drag a box on the map around the area you want to scan.</p>
           <section class="fm-kit-card">
             <div class="fm-throttle">
               <div class="fm-throttle-head">
-                <label for="auto-sensitivity">Sensitivity</label>
+                <label for="auto-sensitivity">Color match</label>
                 <output class="fm-throttle-value" id="auto-sensitivity-value" for="auto-sensitivity">50</output>
               </div>
               <input type="range" class="fm-throttle-range" id="auto-sensitivity" min="1" max="100" value="50" />
             </div>
             <label class="fm-shoot-toggle"><input type="checkbox" id="auto-split" checked /><span>Split odd shapes into several pieces</span></label>
-            <label class="fm-shoot-toggle"><input type="checkbox" id="auto-replace" checked /><span>Replace current structures</span></label>
+            <label class="fm-shoot-toggle"><input type="checkbox" id="auto-replace" checked /><span>Replace structures already in the box</span></label>
           </section>
-          <button type="button" class="fm-kit-btn is-full is-primary" id="auto-detect" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-auto" /></svg>Detect structures</button>
-          <p class="fm-kit-note" id="auto-status" aria-live="polite">Pick the colors your bunkers use, then tap <strong>Detect structures</strong>. Or tap one bunker on the map to fit just that one.</p>
-          <button type="button" class="fm-kit-btn is-full is-quiet" id="auto-undo" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>Undo auto structure</button>
         </div>
 
         <aside class="fm-sizer-panel fm-map-tool-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
@@ -784,6 +798,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=75"></script>
+  <script src="field-mapper.js?v=76"></script>
 </body>
 </html>

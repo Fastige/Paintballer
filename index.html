@@ -168,7 +168,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-upload" /></svg></span>
             <div><span class="feature-kicker">Map</span><h3>Upload map image</h3></div>
           </div>
-          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically. For red and blue layouts on a white background, use <strong>Auto</strong>.</p>
+          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically. For other layouts, like red and blue bunkers on white, use <strong>Auto</strong>.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ffd43b">
           <div class="feature-head">
@@ -258,15 +258,15 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Auto</h3></div>
           </div>
-          <p class="tool-lead">Turn a printed field layout into structures in one tap.</p>
+          <p class="tool-lead">Turn a printed field layout into structures by tapping its colors.</p>
           <ul class="tool-steps">
-            <li>Pick the colors your bunkers use: <strong>Red</strong>, <strong>Blue</strong>, <strong>Green</strong>, or <strong>Any color</strong>. Red and blue are on by default.</li>
-            <li>Tap <strong>Detect structures</strong>. Each bunker gets the best-fitting Rectangle, Circle, or Triangle.</li>
+            <li>Drag a box on the map around the part you want to scan.</li>
+            <li>Tap a bunker to pick its color. Every bunker of that color in the box gets the best-fitting Rectangle, Circle, or Triangle.</li>
+            <li>Keep tapping to add more colors. Each one shows under <strong>Picked colors</strong>, and its × removes that color's bunkers.</li>
+            <li><strong>Undo</strong> steps back one tap at a time, and <strong>Undo all</strong> puts the map back how it was.</li>
             <li>Odd shapes like L-walls and diagonal snakes are built from several pieces, so lanes stay blocked.</li>
-            <li>Tap a single bunker on the map to fit just that one, or tap <strong>Undo auto structure</strong> to go back.</li>
-            <li>Raise <strong>Sensitivity</strong> for faded colors. Turn off <strong>Replace current structures</strong> to only add what's missing.</li>
           </ul>
-          <p class="tool-tip"><strong>Tip</strong>Works best on a light background. Black lines, text, and the field border are ignored, and maps with no green bunkers open on Auto.</p>
+          <p class="tool-tip"><strong>Tip</strong>Raise <strong>Color match</strong> for faded or shaded bunkers. Maps with no green bunkers open on Auto.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff4fc8">
           <div class="feature-head">

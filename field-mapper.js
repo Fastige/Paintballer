@@ -77,13 +77,17 @@
   const brushColorInput = document.getElementById("brush-color");
   const structurePanel = document.getElementById("fm-structure-panel");
   const autoPanel = document.getElementById("fm-auto-panel");
-  const autoColorBtns = document.querySelectorAll(".fm-auto-color[data-auto-color]");
+  const autoCanvas = document.getElementById("fm-auto-canvas");
   const autoSensitivityInput = document.getElementById("auto-sensitivity");
   const autoSensitivityValue = document.getElementById("auto-sensitivity-value");
   const autoSplitInput = document.getElementById("auto-split");
   const autoReplaceInput = document.getElementById("auto-replace");
-  const autoDetectBtn = document.getElementById("auto-detect");
+  const autoStepBox = document.getElementById("auto-step-box");
+  const autoStepColors = document.getElementById("auto-step-colors");
+  const autoClearBoxBtn = document.getElementById("auto-clear-box");
+  const autoPickList = document.getElementById("auto-pick-list");
   const autoUndoBtn = document.getElementById("auto-undo");
+  const autoUndoAllBtn = document.getElementById("auto-undo-all");
   const autoStatus = document.getElementById("auto-status");
   const brushPanel = document.getElementById("fm-brush-panel");
   const toolBtns = document.querySelectorAll(".fm-tool-btn[data-tool]");
@@ -345,8 +349,13 @@
   /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
   let structurePointer = null;
   let structureDrag = null;
-  /** @type {object[]|null} */
-  let autoUndoSnapshot = null;
+  /** @type {{ left: number, top: number, width: number, height: number }|null} */
+  let autoBox = null;
+  /** @type {{ id: string, rgb: number[], x: number, y: number, ids: string[], bunkers: number }[]} */
+  let autoPicks = [];
+  /** @type {{ structures: object[], box: object|null, picks: object[] }[]} */
+  let autoHistory = [];
+  let autoPointer = null;
   /** @type {{ src: string, w: number, h: number, data: Uint8ClampedArray }|null} */
   let autoImageCache = null;
   let fieldIntelReport = { name: "", bio: "" };
@@ -525,7 +534,7 @@
       players: "Teams — choose Team 1 count, tap spawn, nudge with ghost arrows, then lock.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
-      auto: "Auto — tap Detect structures, or tap one bunker to fit it.",
+      auto: "Auto — drag a box, then tap bunkers to pick their colors.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
       shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
       sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
@@ -552,8 +561,9 @@
     if (mirrorLayoutMobileBtn) mirrorLayoutMobileBtn.disabled = !hasMap || !hasStructures;
     if (designMapBtn) designMapBtn.disabled = !hasMap;
     if (designMapMobileBtn) designMapMobileBtn.disabled = !hasMap;
-    if (autoDetectBtn) autoDetectBtn.disabled = !hasMap || !getAutoColors().length;
-    if (autoUndoBtn) autoUndoBtn.disabled = !hasMap || !autoUndoSnapshot;
+    if (autoUndoBtn) autoUndoBtn.disabled = !hasMap || !autoHistory.length;
+    if (autoUndoAllBtn) autoUndoAllBtn.disabled = !hasMap || !autoHistory.length;
+    if (autoClearBoxBtn) autoClearBoxBtn.disabled = !hasMap || !autoBox;
     updateTeamPlacementPanel();
     updateShootPanel();
   }
@@ -615,6 +625,8 @@
     syncBrushPanel();
     designPanelOpen = false;
     syncToolPanels();
+    if (activeTool === "auto") renderAutoPanel();
+    redrawAutoOverlay();
 
     if (activeTool === "sizer" && structures.length && !selectedStructureId) {
       selectedStructureId = structures[structures.length - 1].id;
@@ -643,7 +655,7 @@
         structure:
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
         auto:
-          "<strong>Auto</strong> — detect every colored bunker at once · click one bunker on the map to fit just that one",
+          "<strong>Auto</strong> — drag a box around the area to scan · then click bunkers to pick their colors",
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
@@ -3627,11 +3639,12 @@
     const newW = Math.floor(w * dpr);
     const newH = Math.floor(h * dpr);
 
-    [canvas, structureCanvas, visionCanvas, shootCanvas, mirrorCanvas, designCanvas].filter(Boolean).forEach((c) => {
+    [canvas, structureCanvas, visionCanvas, shootCanvas, mirrorCanvas, designCanvas, autoCanvas].filter(Boolean).forEach((c) => {
       const isVisionLayer = c === visionCanvas;
       let snapshot = null;
       const cctx = c.getContext("2d");
-      const shouldSnapshot = !isVisionLayer && c !== shootCanvas && c !== mirrorCanvas && c !== designCanvas;
+      const shouldSnapshot =
+        !isVisionLayer && c !== shootCanvas && c !== mirrorCanvas && c !== designCanvas && c !== autoCanvas;
       if (shouldSnapshot && c.width > 0 && c.height > 0) {
         snapshot = document.createElement("canvas");
         snapshot.width = c.width;
@@ -3658,6 +3671,7 @@
     redrawVisionLines();
     redrawShootOverlay();
     redrawMirrorOverlay();
+    redrawAutoOverlay();
   }
 
   function classifyComponent(minX, maxX, minY, maxY) {
@@ -3743,18 +3757,11 @@
     return found;
   }
 
-  const AUTO_HUES = {
-    red: [
-      [335, 360],
-      [0, 22],
-    ],
-    blue: [[188, 262]],
-    green: [[78, 172]],
-  };
+  const AUTO_COLOR = "#6c8cff";
   const AUTO_MAX_DIM = 900;
   const AUTO_FIT_MIN_IOU = 0.8;
   const AUTO_MAX_PIECES = 12;
-  const AUTO_TAP_HUE_SPREAD = 26;
+  const AUTO_HISTORY_LIMIT = 60;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3762,15 +3769,25 @@
     ["triangle", true],
   ];
 
-  function getAutoColors() {
-    return Array.from(autoColorBtns)
-      .filter((btn) => btn.classList.contains("is-active"))
-      .map((btn) => btn.dataset.autoColor);
+  function getAutoTolerance() {
+    const match = Number(autoSensitivityInput?.value) || 50;
+    return 30 + match * 1.5;
   }
 
-  function getAutoMinChroma() {
-    const sensitivity = Number(autoSensitivityInput?.value) || 50;
-    return Math.round(125 - sensitivity * 1.1);
+  function autoColorDistance(r1, g1, b1, r2, g2, b2) {
+    const rm = (r1 + r2) / 2;
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  }
+
+  function isAutoBackground(data, p) {
+    const i = p * 4;
+    if (data[i + 3] < 80) return true;
+    const min = Math.min(data[i], data[i + 1], data[i + 2]);
+    const max = Math.max(data[i], data[i + 1], data[i + 2]);
+    return min > 215 && max - min < 25;
   }
 
   function setAutoStatus(html) {
@@ -3800,34 +3817,42 @@
     return autoImageCache;
   }
 
-  function rgbHue(r, g, b, max, chroma) {
-    let hue;
-    if (max === r) hue = ((g - b) / chroma) % 6;
-    else if (max === g) hue = (b - r) / chroma + 2;
-    else hue = (r - g) / chroma + 4;
-    hue *= 60;
-    return hue < 0 ? hue + 360 : hue;
-  }
-
-  function autoPixelInfo(data, p) {
-    const i = p * 4;
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const max = Math.max(r, g, b);
-    const chroma = max - Math.min(r, g, b);
-    return { alpha: data[i + 3], max, chroma, hue: chroma ? rgbHue(r, g, b, max, chroma) : 0 };
-  }
-
-  function buildAutoMask(data, w, h, ranges, minChroma) {
+  function buildAutoColorMask(data, w, h, region, rgb, tolerance) {
     const mask = new Uint8Array(w * h);
-    for (let p = 0; p < w * h; p++) {
-      const { alpha, max, chroma, hue } = autoPixelInfo(data, p);
-      if (alpha < 80 || max < 60 || chroma < minChroma) continue;
-      if (ranges && !ranges.some(([lo, hi]) => hue >= lo && hue <= hi)) continue;
-      mask[p] = 1;
+    const [r, g, b] = rgb;
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        const i = p * 4;
+        if (data[i + 3] < 80) continue;
+        if (autoColorDistance(data[i], data[i + 1], data[i + 2], r, g, b) <= tolerance) mask[p] = 1;
+      }
     }
     return mask;
+  }
+
+  function sampleAutoColor(data, w, h, cx, cy) {
+    const ci = (cy * w + cx) * 4;
+    const base = [data[ci], data[ci + 1], data[ci + 2]];
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let n = 0;
+    for (let dy = -2; dy <= 2; dy++) {
+      const y = cy + dy;
+      if (y < 0 || y >= h) continue;
+      for (let dx = -2; dx <= 2; dx++) {
+        const x = cx + dx;
+        if (x < 0 || x >= w) continue;
+        const i = (y * w + x) * 4;
+        if (autoColorDistance(data[i], data[i + 1], data[i + 2], base[0], base[1], base[2]) > 60) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        n++;
+      }
+    }
+    return n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : base;
   }
 
   function morphAutoMask(mask, w, h, dilate) {
@@ -4111,11 +4136,13 @@
     return shape;
   }
 
-  function autoStructuresForComponent(labels, w, h, comp, split, strict) {
+  function autoStructuresForComponent(labels, w, h, comp, split, strict, region) {
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
     if (strict) {
-      const isFrame = bw > w * 0.6 && bh > h * 0.6 && comp.count < bw * bh * 0.35;
+      const rw = region.x1 - region.x0;
+      const rh = region.y1 - region.y0;
+      const isFrame = bw > rw * 0.6 && bh > rh * 0.6 && comp.count < bw * bh * 0.35;
       const isLine = comp.count / Math.max(bw, bh) < 2.5 && Math.max(bw, bh) > 24;
       if (isFrame || isLine) return null;
     }
@@ -4138,189 +4165,383 @@
     };
   }
 
-  function commitAutoStructures(next, message) {
-    autoUndoSnapshot = structures.map((s) => ({ ...s }));
-    structures = next;
+  function plural(n, word) {
+    return `${n} ${word}${n === 1 ? "" : "s"}`;
+  }
+
+  function autoSwatchHtml(rgb) {
+    return `<span class="fm-auto-inline-swatch" style="--c: rgb(${rgb.join(",")})"></span>`;
+  }
+
+  function snapshotAuto() {
+    return {
+      structures: structures.map((s) => ({ ...s })),
+      box: autoBox ? { ...autoBox } : null,
+      picks: autoPicks.map((p) => ({ ...p, rgb: [...p.rgb], ids: [...p.ids] })),
+    };
+  }
+
+  function pushAutoHistory() {
+    autoHistory.push(snapshotAuto());
+    if (autoHistory.length > AUTO_HISTORY_LIMIT) autoHistory.shift();
+  }
+
+  function refreshAfterAutoChange() {
     if (selectedStructureId && !structures.some((s) => s.id === selectedStructureId)) {
       selectedStructureId = null;
     }
-    mergeIntelFromSavedState();
     persistFieldState();
     updateSizerPanel();
     updateIntelReport();
     redrawStructures();
     redrawShootOverlay();
-    setAutoStatus(message);
+    renderAutoPanel();
+    redrawAutoOverlay();
   }
 
-  function describeAutoResult(shapeCount, pieceCount, splitCount) {
-    const bunkers = `${shapeCount} bunker${shapeCount === 1 ? "" : "s"}`;
-    const pieces = `${pieceCount} piece${pieceCount === 1 ? "" : "s"}`;
-    const splitNote = splitCount ? ` ${splitCount} odd shape${splitCount === 1 ? " was" : "s were"} split into rectangles.` : "";
-    return `Found <strong>${bunkers}</strong> and placed <strong>${pieces}</strong>.${splitNote} Fine-tune with <strong>Sizer</strong>.`;
+  function restoreAuto(snap) {
+    structures = snap.structures;
+    autoBox = snap.box;
+    autoPicks = snap.picks;
+    refreshAfterAutoChange();
   }
 
-  function runAutoDetect() {
-    if (!hasMap || !image.naturalWidth) return;
-    const colors = getAutoColors();
-    if (!colors.length) return;
-    const ranges = colors.includes("any") ? null : colors.flatMap((c) => AUTO_HUES[c] || []);
+  function resetAutoSession() {
+    autoBox = null;
+    autoPicks = [];
+    autoHistory = [];
+    autoPointer = null;
+    autoImageCache = null;
+    renderAutoPanel();
+    redrawAutoOverlay();
+    setAutoStatus("Drag a box on the map around the area you want to scan.");
+  }
+
+  function renderAutoPanel() {
+    autoStepBox?.classList.toggle("is-current", !autoBox);
+    autoStepBox?.classList.toggle("is-done", Boolean(autoBox));
+    autoStepColors?.classList.toggle("is-current", Boolean(autoBox));
+    autoStepColors?.classList.toggle("is-done", autoPicks.length > 0);
+    if (autoPickList) {
+      autoPickList.innerHTML = "";
+      if (!autoPicks.length) {
+        const empty = document.createElement("p");
+        empty.className = "fm-auto-empty";
+        empty.textContent = autoBox ? "Tap a bunker inside the box to pick its color." : "Draw a box first.";
+        autoPickList.append(empty);
+      }
+      autoPicks.forEach((pick) => {
+        const chip = document.createElement("div");
+        chip.className = "fm-auto-pick";
+        chip.style.setProperty("--c", `rgb(${pick.rgb.join(",")})`);
+        const swatch = document.createElement("span");
+        swatch.className = "fm-auto-pick-swatch";
+        swatch.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.className = "fm-auto-pick-label";
+        label.textContent = plural(pick.bunkers, "bunker");
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "fm-auto-pick-remove";
+        remove.setAttribute("aria-label", "Remove this color and its bunkers");
+        remove.textContent = "×";
+        remove.addEventListener("click", () => removeAutoPick(pick.id));
+        chip.append(swatch, label, remove);
+        autoPickList.append(chip);
+      });
+    }
+    updateControlStates();
+  }
+
+  function getAutoBoxRegion(w, h) {
+    const b = autoBox;
+    return {
+      x0: Math.max(0, Math.floor(b.left * w)),
+      y0: Math.max(0, Math.floor(b.top * h)),
+      x1: Math.min(w, Math.ceil((b.left + b.width) * w)),
+      y1: Math.min(h, Math.ceil((b.top + b.height) * h)),
+    };
+  }
+
+  function isInAutoBox(shape) {
+    if (!autoBox) return false;
+    const b = getStructureBounds(shape);
+    const mx = b.left + b.width / 2;
+    const my = b.top + b.height / 2;
+    return (
+      mx >= autoBox.left && mx <= autoBox.left + autoBox.width && my >= autoBox.top && my <= autoBox.top + autoBox.height
+    );
+  }
+
+  function findAutoStart(data, w, h, cx, cy) {
+    if (!isAutoBackground(data, cy * w + cx)) return cy * w + cx;
+    const reach = Math.round(Math.max(w, h) * (IS_COARSE ? 0.016 : 0.008)) + 2;
+    let start = -1;
+    let best = Infinity;
+    for (let dy = -reach; dy <= reach; dy++) {
+      const y = cy + dy;
+      if (y < 0 || y >= h) continue;
+      for (let dx = -reach; dx <= reach; dx++) {
+        const x = cx + dx;
+        if (x < 0 || x >= w) continue;
+        const dist = dx * dx + dy * dy;
+        if (dist >= best || dist > reach * reach) continue;
+        if (!isAutoBackground(data, y * w + x)) {
+          start = y * w + x;
+          best = dist;
+        }
+      }
+    }
+    return start;
+  }
+
+  function pickAutoColorAt(point) {
+    if (!autoBox) {
+      setAutoStatus("Drag a box around the area first, then tap bunker colors.");
+      return;
+    }
+    if (!image.naturalWidth) return;
     const { w, h, data } = getAutoImageData();
-    const mask = closeAutoMask(buildAutoMask(data, w, h, ranges, getAutoMinChroma()), w, h);
+    const cx = Math.max(0, Math.min(w - 1, Math.floor(point.x * w)));
+    const cy = Math.max(0, Math.min(h - 1, Math.floor(point.y * h)));
+    const region = getAutoBoxRegion(w, h);
+    const start = findAutoStart(data, w, h, cx, cy);
+    if (start < 0) {
+      setAutoStatus("That spot is background. Tap right on a bunker.");
+      return;
+    }
+    const sx = start % w;
+    const sy = (start - sx) / w;
+    if (sx < region.x0 || sx >= region.x1 || sy < region.y0 || sy >= region.y1) {
+      setAutoStatus("Tap a bunker inside the box, or drag a new box.");
+      return;
+    }
+
+    const rgb = sampleAutoColor(data, w, h, sx, sy);
+    const mask = closeAutoMask(buildAutoColorMask(data, w, h, region, rgb, getAutoTolerance()), w, h);
     const labels = new Int32Array(w * h);
     const stack = new Int32Array(w * h);
     const minPixels = Math.max(12, Math.round(w * h * 0.00004));
     const split = autoSplitInput?.checked !== false;
     const found = [];
-    let shapeCount = 0;
-    let splitCount = 0;
+    let bunkers = 0;
     let nextId = 1;
-    for (let p = 0; p < w * h; p++) {
-      if (!mask[p] || labels[p]) continue;
-      const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
-      if (comp.count < minPixels) continue;
-      const result = autoStructuresForComponent(labels, w, h, comp, split, true);
-      if (!result) continue;
-      shapeCount++;
-      if (result.split) splitCount++;
-      found.push(...result.pieces);
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (!mask[p] || labels[p]) continue;
+        const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
+        const tapped = labels[start] === comp.id;
+        if (!tapped && comp.count < minPixels) continue;
+        const result = autoStructuresForComponent(labels, w, h, comp, split, !tapped, region);
+        if (!result) continue;
+        bunkers++;
+        found.push(...result.pieces);
+      }
     }
 
     if (!found.length) {
-      setAutoStatus("No bunkers found in those colors. Try raising <strong>Sensitivity</strong> or picking <strong>Any color</strong>.");
+      setAutoStatus(`No bunkers matched ${autoSwatchHtml(rgb)} in the box. Try raising <strong>Color match</strong>.`);
       return;
     }
 
-    let next = found;
-    if (autoReplaceInput && !autoReplaceInput.checked) {
-      const fresh = found.filter((f) => {
-        const fb = getStructureBounds(f);
-        return !structures.some((s) => boundsIoU(getStructureBounds(s), fb) > 0.3);
-      });
-      next = structures.concat(fresh);
+    let base = structures;
+    let replaced = 0;
+    if (autoReplaceInput?.checked && !autoPicks.length) {
+      replaced = base.filter(isInAutoBox).length;
+      base = base.filter((s) => !isInAutoBox(s));
     }
-    commitAutoStructures(next, describeAutoResult(shapeCount, found.length, splitCount));
-  }
-
-  function autoHueRanges(hue) {
-    const lo = hue - AUTO_TAP_HUE_SPREAD;
-    const hi = hue + AUTO_TAP_HUE_SPREAD;
-    if (lo < 0) return [[lo + 360, 360], [0, hi]];
-    if (hi > 360) return [[lo, 360], [0, hi - 360]];
-    return [[lo, hi]];
-  }
-
-  function autoFitAtEvent(e) {
-    if (!image.naturalWidth) return;
-    const { x, y } = getLayerPoint(e, structureCanvas);
-    const size = getCanvasSize();
-    if (!size.w || !size.h) return;
-    const { w, h, data } = getAutoImageData();
-    const cx = Math.max(0, Math.min(w - 1, Math.floor((x / size.w) * w)));
-    const cy = Math.max(0, Math.min(h - 1, Math.floor((y / size.h) * h)));
-    const minChroma = getAutoMinChroma();
-    const reach = Math.round(Math.max(w, h) * (IS_COARSE ? 0.018 : 0.01)) + 2;
-
-    let start = -1;
-    let bestDist = Infinity;
-    for (let dy = -reach; dy <= reach; dy++) {
-      const yy = cy + dy;
-      if (yy < 0 || yy >= h) continue;
-      for (let dx = -reach; dx <= reach; dx++) {
-        const xx = cx + dx;
-        if (xx < 0 || xx >= w) continue;
-        const dist = dx * dx + dy * dy;
-        if (dist >= bestDist || dist > reach * reach) continue;
-        const info = autoPixelInfo(data, yy * w + xx);
-        if (info.alpha >= 80 && info.max >= 60 && info.chroma >= minChroma) {
-          start = yy * w + xx;
-          bestDist = dist;
-        }
-      }
-    }
-    if (start < 0) {
-      setAutoStatus("No colored bunker there. Tap right on one, or raise <strong>Sensitivity</strong>.");
+    const fresh = found.filter((f) => {
+      const fb = getStructureBounds(f);
+      return !base.some((s) => boundsIoU(getStructureBounds(s), fb) > 0.3);
+    });
+    if (!fresh.length && !replaced) {
+      setAutoStatus(`Every ${autoSwatchHtml(rgb)} bunker in the box is already mapped.`);
       return;
     }
 
-    const ranges = autoHueRanges(autoPixelInfo(data, start).hue);
-    const mask = closeAutoMask(buildAutoMask(data, w, h, ranges, minChroma), w, h);
-    if (!mask[start]) return;
-    const labels = new Int32Array(w * h);
-    const comp = floodAutoComponent(mask, w, h, start, labels, 1, new Int32Array(w * h));
-    const result = autoStructuresForComponent(labels, w, h, comp, autoSplitInput?.checked !== false, false);
-    if (!result) return;
+    pushAutoHistory();
+    autoPicks.push({ id: crypto.randomUUID(), rgb, x: point.x, y: point.y, ids: fresh.map((f) => f.id), bunkers });
+    structures = base.concat(fresh);
+    mergeIntelFromSavedState();
+    refreshAfterAutoChange();
 
-    const area = {
-      left: comp.minX / w,
-      top: comp.minY / h,
-      width: (comp.maxX - comp.minX + 1) / w,
-      height: (comp.maxY - comp.minY + 1) / h,
-    };
-    const inArea = (s) => {
-      const b = getStructureBounds(s);
-      const mx = b.left + b.width / 2;
-      const my = b.top + b.height / 2;
-      return (
-        boundsIoU(b, area) > 0.3 ||
-        (mx >= area.left && mx <= area.left + area.width && my >= area.top && my <= area.top + area.height)
-      );
-    };
-    const replaced = structures.filter(inArea).length;
-    const next = structures.filter((s) => !inArea(s)).concat(result.pieces);
-    const count = result.pieces.length;
-    const what = count === 1 ? `a ${result.pieces[0].type}` : `${count} pieces`;
-    commitAutoStructures(
-      next,
-      `Fit ${what} to that bunker${replaced ? `, replacing ${replaced} old piece${replaced === 1 ? "" : "s"}` : ""}.`
+    const notes = [];
+    if (replaced) notes.push(`replaced ${plural(replaced, "old piece")}`);
+    if (found.length > fresh.length) notes.push(`skipped ${found.length - fresh.length} already mapped`);
+    setAutoStatus(
+      `${autoSwatchHtml(rgb)} Found <strong>${plural(bunkers, "bunker")}</strong> and placed <strong>${plural(fresh.length, "piece")}</strong>${
+        notes.length ? ` (${notes.join(", ")})` : ""
+      }. Tap another color, or <strong>Undo</strong>.`
     );
   }
 
-  function undoAutoStructures() {
-    if (!autoUndoSnapshot) return;
-    structures = autoUndoSnapshot;
-    autoUndoSnapshot = null;
-    if (selectedStructureId && !structures.some((s) => s.id === selectedStructureId)) {
-      selectedStructureId = null;
-    }
-    persistFieldState();
-    updateSizerPanel();
-    updateIntelReport();
-    redrawStructures();
-    redrawShootOverlay();
-    setAutoStatus("Structures restored to how they were before the last auto structure.");
+  function removeAutoPick(id) {
+    const pick = autoPicks.find((p) => p.id === id);
+    if (!pick) return;
+    pushAutoHistory();
+    const ids = new Set(pick.ids);
+    structures = structures.filter((s) => !ids.has(s.id));
+    autoPicks = autoPicks.filter((p) => p.id !== id);
+    refreshAfterAutoChange();
+    setAutoStatus(`Removed ${autoSwatchHtml(pick.rgb)} and its ${plural(pick.ids.length, "piece")}.`);
   }
 
-  autoColorBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const isAny = btn.dataset.autoColor === "any";
-      const on = !btn.classList.contains("is-active");
-      autoColorBtns.forEach((other) => {
-        if (other === btn) return;
-        if (on && (isAny || other.dataset.autoColor === "any")) {
-          other.classList.remove("is-active");
-          other.setAttribute("aria-pressed", "false");
-        }
+  function setAutoBox(box) {
+    pushAutoHistory();
+    autoBox = box;
+    autoPicks = [];
+    refreshAfterAutoChange();
+    setAutoStatus(
+      box
+        ? "Box set. Now tap a bunker inside it to pick that color."
+        : "Box cleared. Drag a new box on the map around the area you want to scan."
+    );
+  }
+
+  function undoAuto() {
+    const snap = autoHistory.pop();
+    if (!snap) return;
+    restoreAuto(snap);
+    setAutoStatus("Undid the last step.");
+  }
+
+  function undoAllAuto() {
+    if (!autoHistory.length) return;
+    const snap = autoHistory[0];
+    autoHistory = [];
+    restoreAuto(snap);
+    setAutoStatus("Back to how the map was before Auto. Drag a box to start again.");
+  }
+
+  function getAutoPoint(e) {
+    const { w, h } = getCanvasSize();
+    const p = getLayerPoint(e, structureCanvas);
+    return {
+      x: Math.max(0, Math.min(1, p.x / (w || 1))),
+      y: Math.max(0, Math.min(1, p.y / (h || 1))),
+    };
+  }
+
+  function autoBoxFromPoints(a, b) {
+    return {
+      left: Math.min(a.x, b.x),
+      top: Math.min(a.y, b.y),
+      width: Math.abs(b.x - a.x),
+      height: Math.abs(b.y - a.y),
+    };
+  }
+
+  function startAutoPointer(e) {
+    const point = getAutoPoint(e);
+    autoPointer = { pid: e.pointerId, cx: e.clientX, cy: e.clientY, start: point, current: point, moved: false };
+    setInteractionLock(true);
+    structureCanvas.setPointerCapture(e.pointerId);
+  }
+
+  function moveAutoPointer(e) {
+    if (!autoPointer || autoPointer.pid !== e.pointerId) return false;
+    e.preventDefault();
+    autoPointer.current = getAutoPoint(e);
+    const dx = e.clientX - autoPointer.cx;
+    const dy = e.clientY - autoPointer.cy;
+    if (!autoPointer.moved && dx * dx + dy * dy > 64) autoPointer.moved = true;
+    if (autoPointer.moved) redrawAutoOverlay();
+    return true;
+  }
+
+  function endAutoPointer(e, cancelled) {
+    if (!autoPointer || autoPointer.pid !== e.pointerId) return;
+    const { start, current, moved } = autoPointer;
+    autoPointer = null;
+    setInteractionLock(false);
+    if (structureCanvas.hasPointerCapture(e.pointerId)) structureCanvas.releasePointerCapture(e.pointerId);
+    if (cancelled) {
+      redrawAutoOverlay();
+      return;
+    }
+    if (!moved) {
+      pickAutoColorAt(start);
+      return;
+    }
+    const box = autoBoxFromPoints(start, current);
+    const { w, h } = getCanvasSize();
+    if (box.width * w < 12 || box.height * h < 12) {
+      redrawAutoOverlay();
+      setAutoStatus("That box is too small. Drag a bigger box around the bunkers.");
+      return;
+    }
+    setAutoBox(box);
+  }
+
+  function redrawAutoOverlay() {
+    if (!autoCanvas) return;
+    const actx = autoCanvas.getContext("2d");
+    actx.save();
+    actx.setTransform(1, 0, 0, 1, 0, 0);
+    actx.clearRect(0, 0, autoCanvas.width, autoCanvas.height);
+    actx.restore();
+    const show = hasMap && activeTool === "auto";
+    autoCanvas.hidden = !show;
+    if (!show) return;
+    const { w, h } = getCanvasSize();
+    if (!w || !h) return;
+
+    const dragging = autoPointer?.moved;
+    const box = dragging ? autoBoxFromPoints(autoPointer.start, autoPointer.current) : autoBox;
+    if (!box) return;
+    const left = box.left * w;
+    const top = box.top * h;
+    const width = box.width * w;
+    const height = box.height * h;
+
+    actx.save();
+    actx.fillStyle = "rgba(8, 10, 9, 0.45)";
+    actx.beginPath();
+    actx.rect(0, 0, w, h);
+    actx.rect(left, top, width, height);
+    actx.fill("evenodd");
+    actx.strokeStyle = AUTO_COLOR;
+    actx.lineWidth = 2;
+    actx.setLineDash([8, 5]);
+    actx.strokeRect(left, top, width, height);
+    actx.setLineDash([]);
+    actx.fillStyle = AUTO_COLOR;
+    [
+      [left, top],
+      [left + width, top],
+      [left, top + height],
+      [left + width, top + height],
+    ].forEach(([x, y]) => actx.fillRect(x - 3.5, y - 3.5, 7, 7));
+
+    if (!dragging) {
+      autoPicks.forEach((pick) => {
+        const x = pick.x * w;
+        const y = pick.y * h;
+        actx.beginPath();
+        actx.arc(x, y, 7, 0, Math.PI * 2);
+        actx.fillStyle = `rgb(${pick.rgb.join(",")})`;
+        actx.fill();
+        actx.lineWidth = 2;
+        actx.strokeStyle = "#ffffff";
+        actx.stroke();
+        actx.beginPath();
+        actx.arc(x, y, 8.5, 0, Math.PI * 2);
+        actx.lineWidth = 1;
+        actx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+        actx.stroke();
       });
-      btn.classList.toggle("is-active", on);
-      btn.setAttribute("aria-pressed", String(on));
-      updateControlStates();
-    });
-  });
+    }
+    actx.restore();
+  }
+
   autoSensitivityInput?.addEventListener("input", syncAutoSensitivityUi);
   syncAutoSensitivityUi();
-  autoDetectBtn?.addEventListener("click", () => {
-    autoDetectBtn.disabled = true;
-    setAutoStatus("Scanning the map…");
-    setTimeout(() => {
-      try {
-        runAutoDetect();
-      } finally {
-        updateControlStates();
-      }
-    }, 30);
+  autoClearBoxBtn?.addEventListener("click", () => {
+    if (autoBox) setAutoBox(null);
   });
-  autoUndoBtn?.addEventListener("click", undoAutoStructures);
+  autoUndoBtn?.addEventListener("click", undoAuto);
+  autoUndoAllBtn?.addEventListener("click", undoAllAuto);
 
   function clearTeamControls() {
     playersLayer.querySelectorAll(".fm-team-nudges").forEach((el) => el.remove());
@@ -4751,7 +4972,7 @@
 
     if (activeTool === "auto") {
       e.preventDefault();
-      autoFitAtEvent(e);
+      startAutoPointer(e);
       return;
     }
 
@@ -4916,13 +5137,18 @@
   }
 
   structureCanvas.addEventListener("pointerdown", startStructurePlace);
-  structureCanvas.addEventListener("pointermove", moveStructurePlace);
+  structureCanvas.addEventListener("pointermove", (e) => {
+    if (moveAutoPointer(e)) return;
+    moveStructurePlace(e);
+  });
   structureCanvas.addEventListener("pointerup", (e) => {
+    endAutoPointer(e, false);
     endStructureDrag(e);
     endStructurePlace(e);
     endStructurePointer(e);
   });
   structureCanvas.addEventListener("pointercancel", (e) => {
+    endAutoPointer(e, true);
     endStructureDrag(e);
     endStructurePlace(e);
     endStructurePointer(e);
@@ -4936,8 +5162,7 @@
   function showMapUI() {
     hasMap = true;
     clearSizerUndo();
-    autoUndoSnapshot = null;
-    autoImageCache = null;
+    resetAutoSession();
     clearShootPlan();
     const packToApply = pendingPackState;
     const fromPack = pendingPackLoad;
@@ -5013,8 +5238,7 @@
     placePreview = null;
     selectedStructureId = null;
     clearSizerUndo();
-    autoUndoSnapshot = null;
-    autoImageCache = null;
+    resetAutoSession();
     clearVisionLines();
     clearShootPlan();
     shootSceneSetups = [];
@@ -5759,7 +5983,7 @@
   document.addEventListener(
     "touchmove",
     (e) => {
-      if (isDrawing || isPlacingStructure || draggedPlayer || mirrorDragStart || structureDrag) {
+      if (isDrawing || isPlacingStructure || draggedPlayer || mirrorDragStart || structureDrag || autoPointer) {
         e.preventDefault();
       }
     },
