@@ -88,23 +88,50 @@
 
   const drawField = (ctx, theme = FIELD) => G.drawField(ctx, theme, S);
 
-  /** Live breakout under the tool action, same field as the hero. */
-  function drawLiveGame(ctx, game, opts = {}) {
-    const { alpha = 0.62, hide = {}, field = false, bunkers = false, extra = {}, overlay = 0.32 } = opts;
-    if (!game?.scene) return;
-    ctx.save();
-    ctx.globalAlpha *= alpha;
-    if (field) G.drawField(ctx, FIELD, S);
-    if (bunkers) G.drawBunkers(ctx, ALL, GREEN, { scale: S });
-    if (overlay) {
-      ctx.save();
-      ctx.globalAlpha *= overlay === true ? 0.32 : overlay;
-      G.drawGameOverlay(ctx, game.scene, game.t, { mutedAlpha: 0.55, scale: S });
-      G.drawGameDots(ctx, game.scene, game.t);
-      ctx.restore();
+  function drawStaticTeams(ctx, hide = {}) {
+    for (let i = 0; i < 5; i += 1) {
+      if (!hide[`a${i + 1}`]) {
+        const p = stackPos("a", i);
+        drawPlayer(ctx, p.x, p.y, "a", String(i + 1));
+      }
+      if (!hide[`b${i + 1}`]) {
+        const p = stackPos("b", i);
+        drawPlayer(ctx, p.x, p.y, "b", String(i + 1));
+      }
     }
-    G.drawGamePlayers(ctx, game.scene, game.t, { hide, extra, scale: S, r: PR });
-    ctx.restore();
+  }
+
+  let vegasImg = null;
+  let vegasBunkers = [];
+  const vegasReady = [];
+  const notifyVegas = () => vegasReady.forEach((fn) => fn());
+  const vegasPhoto = new Image();
+  vegasPhoto.onload = () => {
+    vegasImg = vegasPhoto;
+    notifyVegas();
+  };
+  vegasPhoto.src = "presets/las-vegas-major-2024/print.webp";
+  fetch("presets/las-vegas-major-2024/intel.json")
+    .then((res) => res.json())
+    .then((data) => {
+      vegasBunkers = (data.structures || []).map((s) => ({
+        type: s.type === "circle" ? "circle" : s.type === "triangle" ? "tri" : "rect",
+        x: ((s.x1 + s.x2) / 2) * W,
+        y: ((s.y1 + s.y2) / 2) * H,
+        w: Math.max(2, Math.abs(s.x2 - s.x1) * W),
+        h: Math.max(2, Math.abs(s.y2 - s.y1) * H),
+        rot: s.rotation || 0,
+      }));
+      notifyVegas();
+    })
+    .catch(() => {});
+
+  function drawVegasSheet(ctx) {
+    if (vegasImg) {
+      ctx.drawImage(vegasImg, 0, 0, W, H);
+      return;
+    }
+    drawPrintedField(ctx);
   }
 
   function drawPrintedField(ctx) {
@@ -346,14 +373,14 @@
       color: "#7cfc3b",
       dur: 6400,
       captions: [[0, "Drag a player into position"], [3000, "Tap a bunker to see its intel"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
         const from = stackPos("a", 1);
         const to = { x: 52, y: 72 };
         const k = ease(prog(t, 900, 2300));
         const sel = find(118, 60);
-        drawLiveGame(ctx, game, { hide: { a2: true } });
+        drawStaticTeams(ctx, { a2: true });
         if (t > 3500) drawSelection(ctx, sel, this.color, t);
         drawPlayer(ctx, lerp(from.x, to.x, k), lerp(from.y, to.y, k), "a", "2", { lift: t > 750 && t < 2450 ? 1 : 0 });
         drawCard(ctx, sel, "Top rect", "Watch the dorito side", this.color, prog(t, 3500, 3800), prog(t, 3600, 4800));
@@ -381,10 +408,9 @@
       color: "#ff7a1a",
       dur: 6800,
       captions: [[0, "Tap a spawn point"], [1000, "Nudge the stack, then lock it"], [2700, "Place Team 2 the same way"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
-        drawLiveGame(ctx, game, { alpha: 0.28 });
         const color = this.color;
         const team = (side, spawn, appearAt, nudgeAt, lockAt) => {
           if (t < appearAt) return;
@@ -459,10 +485,9 @@
       color: "#ffd43b",
       dur: 6600,
       captions: [[0, "Drag to sketch a route"], [2300, "Switch colors for each call"], [4200, "Circle the bunker that matters"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
-        drawLiveGame(ctx, game);
         const strokes = [
           { color: "#ffd43b", a: 400, b: 1900, pts: [[24, 98], [40, 90], [62, 84], [86, 82], [110, 86], [132, 90]] },
           { color: "#ff7a1a", a: 2500, b: 3900, pts: [[24, 124], [34, 150], [50, 178], [76, 196], [104, 200]], arrow: true },
@@ -523,7 +548,7 @@
       color: "#00ff9d",
       dur: 6800,
       captions: [[0, "Pick a shape"], [600, "Drag on the map to draw it to size"], [5000, "Add whatever the map missed"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         const placed = [
           { b: { type: "rect", x: 160, y: 112, w: 24, h: 24 }, a: 600, z: 1500, icon: 0 },
@@ -532,7 +557,6 @@
         ];
         const skip = new Set(["160,112", "228,166", "224,70"]);
         drawBunkers(ctx, ALL.filter((b) => !skip.has(`${b.x},${b.y}`)));
-        drawLiveGame(ctx, game);
         let shape = 0;
         placed.forEach((p) => {
           if (t >= p.a - 500) shape = p.icon;
@@ -577,45 +601,43 @@
       color: "#6c8cff",
       dur: 7200,
       captions: [[0, "Drag a box around the area to scan"], [1700, "White out text and logos"], [2900, "Every bunker color turns into a structure"]],
-      draw(ctx, t, game) {
-        drawPrintedField(ctx);
-        drawLiveGame(ctx, game, { alpha: 0.18 });
-        ctx.save();
-        ctx.fillStyle = "#8d968c";
-        ctx.font = `700 9px "Outfit", sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("PRO SERIES  ·  FIELD 07", 160, 19);
-        ctx.restore();
-        const printed = (b) => (b.x < 160 ? "#e0393e" : b.x > 160 ? "#2f6fe0" : "#2b2f2b");
-        const scanX = lerp(10, 310, prog(t, 2900, 4300));
-        ALL.forEach((b) => {
-          if (t > 2900 && b.x < scanX) drawBunker(ctx, b, GREEN, { alpha: prog(scanX - b.x, 0, 12) });
-          else drawBunker(ctx, b, GREEN, { printed: b.border ? "rgba(43, 47, 43, 0.35)" : printed(b) });
-        });
-        const white = [[104, 19], [216, 19]];
-        const wk = prog(t, 1800, 2600);
-        if (wk > 0) {
+      draw(ctx, t) {
+        drawVegasSheet(ctx);
+        const found = vegasBunkers.length ? vegasBunkers : ALL;
+        const scanX = lerp(8, 312, prog(t, 2900, 4300));
+        if (t > 2900) {
+          found.forEach((b) => {
+            if (b.x < scanX) drawBunker(ctx, b, GREEN, { alpha: prog(scanX - b.x, 0, 16), rot: b.rot || 0 });
+          });
+        }
+        const whites = [
+          { a: 1800, b: 2300, pts: [[16, 16], [304, 16]], width: 24 },
+          { a: 2140, b: 2500, pts: [[308, 48], [308, 176]], width: 16 },
+          { a: 2360, b: 2600, pts: [[276, 204], [312, 204]], width: 14 },
+        ];
+        whites.forEach((s) => {
+          const k = prog(t, s.a, s.b);
+          if (k <= 0) return;
           ctx.save();
           ctx.lineCap = "round";
-          strokePath(ctx, pathSlice(white, wk));
+          strokePath(ctx, pathSlice(s.pts, k));
           ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 12;
+          ctx.lineWidth = s.width;
           ctx.stroke();
           ctx.restore();
-        }
+        });
         const bk = ease(prog(t, 300, 1400));
         if (t > 300) {
           ctx.save();
-          const x2 = lerp(14, 306, bk);
-          const y2 = lerp(10, 210, bk);
+          const x2 = lerp(10, 310, bk);
+          const y2 = lerp(8, 212, bk);
           ctx.fillStyle = rgba(this.color, t > 4300 ? 0.04 : 0.1);
-          ctx.fillRect(14, 10, x2 - 14, y2 - 10);
+          ctx.fillRect(10, 8, x2 - 10, y2 - 8);
           ctx.setLineDash([4, 3]);
           ctx.lineDashOffset = -t / 50;
           ctx.strokeStyle = this.color;
           ctx.lineWidth = 1.2;
-          ctx.strokeRect(14, 10, x2 - 14, y2 - 10);
+          ctx.strokeRect(10, 8, x2 - 10, y2 - 8);
           ctx.restore();
         }
         if (t > 2900 && t < 4400) {
@@ -624,31 +646,30 @@
           g.addColorStop(0, rgba(this.color, 0));
           g.addColorStop(1, rgba(this.color, 0.35));
           ctx.fillStyle = g;
-          ctx.fillRect(scanX - 18, 10, 18, 200);
+          ctx.fillRect(scanX - 18, 8, 18, 204);
           ctx.fillStyle = this.color;
           ctx.shadowColor = this.color;
           ctx.shadowBlur = 8 * S;
-          ctx.fillRect(scanX - 0.8, 10, 1.6, 200);
+          ctx.fillRect(scanX - 0.8, 8, 1.6, 204);
           ctx.restore();
         }
         if (t > 4400) {
-          const a = prog(t, 4400, 4700);
-          drawPill(ctx, 20, 186, "Red", "#e0393e", { alpha: a });
+          drawPill(ctx, 20, 186, "Red", "#e0393e", { alpha: prog(t, 4400, 4700) });
           drawPill(ctx, 56, 186, "Blue", "#2f6fe0", { alpha: prog(t, 4550, 4850) });
           drawPill(ctx, 95, 186, "Black", "#8d968c", { alpha: prog(t, 4700, 5000) });
         }
-        const live = t >= 1800 && t <= 2600;
+        const live = whites.find((s) => t >= s.a && t <= s.b);
         drawCursor(
           ctx,
           live
-            ? { ...pathTip(white, wk), down: true }
+            ? { ...pathTip(live.pts, prog(t, live.a, live.b)), down: true }
             : track(
                 [
                   { t: 0, x: 160, y: 120 },
-                  { t: 300, x: 14, y: 10, down: true },
-                  { t: 1400, x: 306, y: 210 },
-                  { t: 1800, x: 104, y: 19 },
-                  { t: 2600, x: 216, y: 19 },
+                  { t: 300, x: 10, y: 8, down: true },
+                  { t: 1400, x: 310, y: 212 },
+                  { t: 1800, x: 16, y: 16 },
+                  { t: 2600, x: 312, y: 204 },
                   { t: 3200, x: 250, y: 120 },
                 ],
                 t
@@ -662,10 +683,10 @@
       color: "#ff3b3b",
       dur: 7000,
       captions: [[0, "Tap a player, then draw the run"], [1700, "Set the shoot point"], [2500, "Play the scene"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
-        drawLiveGame(ctx, game, { hide: { a3: true, b4: true }, alpha: 0.4 });
+        drawStaticTeams(ctx, { a3: true, b4: true });
         const start = stackPos("a", 2);
         const route = [[start.x, start.y], [40, 98], [68, 90], [96, 82]];
         const target = { x: 196, y: 44 };
@@ -741,7 +762,7 @@
       color: "#ff4fc8",
       dur: 7400,
       captions: [[0, "Tap a player"], [1300, "Sight stops at every bunker"], [4000, "Pick any color"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         const palette = ["#ff4fc8", "#3bd5ff", "#7cfc3b", "#ffd43b"];
         const active = t >= 4400 ? 1 : 0;
@@ -750,7 +771,7 @@
         const pos = pathTip(path, ease(prog(t, 1500, 3400)));
         drawVision(ctx, pos.x, pos.y, palette[active], prog(t, 650, 950));
         drawBunkers(ctx, ALL);
-        drawLiveGame(ctx, game, { hide: { a2: true } });
+        drawStaticTeams(ctx, { a2: true });
         drawPlayer(ctx, pos.x, pos.y, "a", "2", { ring: t > 650 ? palette[active] : null });
         drawSwatches(ctx, palette, active, 22, 22);
         drawCursor(
@@ -777,11 +798,10 @@
       color: "#3bd5ff",
       dur: 7400,
       captions: [[0, "Select a bunker"], [900, "Set the exact size"], [2400, "Spin it to any angle"], [4100, "Nudge it into place"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         const base = find(82, 98);
         drawBunkers(ctx, ALL.filter((b) => b !== base));
-        drawLiveGame(ctx, game);
         const w = lerp(10, 26, ease(prog(t, 1100, 2100)));
         const rot = Math.round(lerp(0, 30, ease(prog(t, 2700, 3800))));
         const steps = [4400, 4700, 5000, 5300].reduce((n, at) => n + ease(prog(t, at, at + 160)), 0);
@@ -872,11 +892,10 @@
       color: "#b18cff",
       dur: 7200,
       captions: [[0, "Box the half you mapped"], [1600, "Click two points on the 50"], [2700, "Bunkers copy across the line"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         const color = this.color;
         drawBunkers(ctx, ALL.filter((b) => !b.mirrored));
-        drawLiveGame(ctx, game, { alpha: 0.28 });
         ALL.filter((b) => b.mirrored).forEach((b, i) => {
           const s = 2800 + i * 70;
           const k = ease(prog(t, s, s + 520));
@@ -937,7 +956,7 @@
       color: "#2ee6c8",
       dur: 7800,
       captions: [[0, "Flip the photo to a design map"], [2400, "Pick one of 15 field themes"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         const swaps = [900, 2500, 4000, 5500];
         let current = 0;
         swaps.forEach((at, i) => {
@@ -960,7 +979,6 @@
           ctx.fillRect(x - 1, 0, 2, H);
           ctx.restore();
         }
-        drawLiveGame(ctx, game, { alpha: 0.5 });
         const shown = wiping >= 0 && prog(t, swaps[wiping], swaps[wiping] + 500) > 0.5 ? wiping + 1 : current;
         drawPill(ctx, 18, 16, DESIGN_THEMES[shown].name, DESIGN_THEMES[shown].fill || "#22d678");
       },
@@ -970,10 +988,9 @@
       color: "#ff5c00",
       dur: 7200,
       captions: [[0, "Tap a bunker"], [800, "Name it and add notes"], [3500, "Every bunker gets its callout"]],
-      draw(ctx, t, game) {
+      draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
-        drawLiveGame(ctx, game);
         const first = find(160, 112);
         const second = find(160, 192);
         const onSecond = t >= 3700;
@@ -1010,7 +1027,6 @@
     if (!demo || !canvas) return;
     const ctx = canvas.getContext("2d");
     const captionEl = root.querySelector("[data-demo-caption]");
-    const loop = G.createLoop(index + 4);
     let scale = 1;
     let startedAt = performance.now() - index * 650;
     let frame = 0;
@@ -1034,7 +1050,7 @@
       ctx.clearRect(0, 0, W, H);
       ctx.save();
       try {
-        demo.draw(ctx, t, { scene: loop.scene, t: loop.time(now), scale });
+        demo.draw(ctx, t);
       } catch (err) {
         console.error("tool demo draw", root.dataset.toolDemo, err);
       }
@@ -1083,6 +1099,7 @@
     document.addEventListener("visibilitychange", schedule);
     reduceMotion.addEventListener?.("change", refresh);
     document.fonts?.ready.then(refresh);
+    vegasReady.push(refresh);
     refresh();
   }
 
