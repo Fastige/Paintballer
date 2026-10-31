@@ -11,10 +11,30 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=8" />
-  <link rel="stylesheet" href="field-mapper.css?v=42" />
+  <link rel="stylesheet" href="field-mapper.css?v=43" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
+  <svg class="fm-icon-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M5 3l14 7.2-6.2 1.9L10.9 18z" /><path d="M13 12.5l5 5" /></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4" /><path d="M5 4h12l-2.5 4.5L17 13H5" /></symbol>
+    <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z" /><path d="M12.5 6.5l5 5" /></symbol>
+    <symbol id="i-structure" viewBox="0 0 24 24"><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /><rect x="8" y="3" width="8" height="8" rx="1.5" /></symbol>
+    <symbol id="i-vision" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></symbol>
+    <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle cx="12" cy="12" r="1" /></symbol>
+    <symbol id="i-sizer" viewBox="0 0 24 24"><path d="M14 3h7v7M10 21H3v-7M21 3l-7 7M3 21l7-7" /></symbol>
+    <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9.5v5M12 18.5V21" /><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></symbol>
+    <symbol id="i-intel" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.8h6V4M9 10h6M9 14h6M9 18h3" /></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M4 15v5h16v-5" /></symbol>
+    <symbol id="i-pack" viewBox="0 0 24 24"><path d="M21 7.5l-9-5-9 5 9 5z" /><path d="M3 7.5v9l9 5 9-5v-9M12 12.5v9" /></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z" /><path d="M3 12.5l9 5 9-5M3 16.5l9 5 9-5" /></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M4 20h16" /></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></symbol>
+    <symbol id="i-teams" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 13.6c2.8.2 5 2.6 5 5.4" /></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" /><path d="M3 4v5h5" /></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v12H4z" /><circle cx="12" cy="13.5" r="3.5" /></symbol>
+  </svg>
   <div class="splatter splatter-1" aria-hidden="true"></div>
   <div class="splatter splatter-2" aria-hidden="true"></div>
 
@@ -41,64 +61,97 @@
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Map</h2>
-        <label class="btn btn-primary fm-upload-btn">
-          Upload map image
+        <label class="fm-upload-btn">
+          <span class="fm-upload-btn-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-upload" /></svg></span>
+          <span class="fm-upload-btn-text">
+            <span class="fm-upload-btn-title">Upload map image</span>
+            <span class="fm-upload-btn-sub">PNG or JPG field image</span>
+          </span>
           <input type="file" id="map-upload" accept="image/*" hidden />
         </label>
-        <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack">Upload map pack</button>
-        <button type="button" class="btn btn-primary fm-btn-full" id="preset-map-pack">Preset map packs</button>
+        <div class="fm-action-grid">
+          <button type="button" class="fm-action-tile" id="upload-map-pack">
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-pack" /></svg>
+            <span>Upload map pack</span>
+          </button>
+          <button type="button" class="fm-action-tile" id="preset-map-pack">
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-layers" /></svg>
+            <span>Preset map packs</span>
+          </button>
+        </div>
         <input type="file" id="map-pack-zip" accept=".zip,application/zip" hidden />
         <input type="file" id="map-pack-folder" webkitdirectory directory multiple hidden />
-        <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack" disabled>Save map pack</button>
-        <p class="fm-save-hint">Downloads a folder as a .zip with map.png and intel.json for re-upload.</p>
-        <button type="button" class="btn btn-ghost fm-btn-full" id="clear-map" disabled>Remove map</button>
+        <div class="fm-action-grid">
+          <button type="button" class="fm-action-chip" id="save-map-pack" title="Save map pack" aria-label="Save map pack" disabled>
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-save" /></svg>
+            <span>Save pack</span>
+          </button>
+          <button type="button" class="fm-action-chip fm-action-danger" id="clear-map" disabled>
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-trash" /></svg>
+            <span>Remove map</span>
+          </button>
+        </div>
+        <p class="fm-save-hint">Save downloads a .zip with map.png and intel.json for re-upload.</p>
       </div>
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Tools</h2>
-        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="Map tools">
-          <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players">
-            <span aria-hidden="true">↖</span> Move
+        <div class="fm-tool-palette" role="group" aria-label="Map tools">
+          <button type="button" class="fm-tool-btn is-active" data-tool="select" title="Move players" style="--tool-color: #7cfc3b">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
+            <span class="fm-tool-name">Move</span>
           </button>
-          <button type="button" class="fm-tool-btn" data-tool="players" title="Place teams">
-            <span aria-hidden="true">⚑</span> Players
+          <button type="button" class="fm-tool-btn" data-tool="players" title="Place teams" style="--tool-color: #ff7a1a">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-flag" /></svg></span>
+            <span class="fm-tool-name">Players</span>
           </button>
-          <button type="button" class="fm-tool-btn" data-tool="brush" title="Draw on map">
-            <span aria-hidden="true">🖌</span> Brush
+          <button type="button" class="fm-tool-btn" data-tool="brush" title="Draw on map" style="--tool-color: #ffd43b">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-brush" /></svg></span>
+            <span class="fm-tool-name">Brush</span>
           </button>
-        </div>
-        <div class="fm-tool-row fm-tool-row-3" role="group" aria-label="More map tools">
-          <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers">
-            <span aria-hidden="true">▣</span> Structure
+          <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers" style="--tool-color: #00ff9d">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
+            <span class="fm-tool-name">Structure</span>
           </button>
-          <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player">
-            <span aria-hidden="true">◎</span> Vision
+          <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player" style="--tool-color: #ff4fc8">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
+            <span class="fm-tool-name">Vision</span>
           </button>
-          <button type="button" class="fm-tool-btn" data-tool="shoot" title="Shoot and run timing">
-            <span aria-hidden="true">⌖</span> Shoot
+          <button type="button" class="fm-tool-btn" data-tool="shoot" title="Shoot and run timing" style="--tool-color: #ff3b3b">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
+            <span class="fm-tool-name">Shoot</span>
           </button>
-        </div>
-        <div class="fm-tool-row fm-tool-row-2" role="group" aria-label="Size and mirror tools">
-          <button type="button" class="fm-tool-btn" data-tool="sizer" title="Resize structures">
-            <span aria-hidden="true">⇲</span> Sizer
+          <button type="button" class="fm-tool-btn" data-tool="sizer" title="Resize structures" style="--tool-color: #3bd5ff">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
+            <span class="fm-tool-name">Sizer</span>
           </button>
-          <button type="button" class="fm-tool-btn" id="mirror-layout" title="Mirror structures across the 50 line" disabled>
-            <span aria-hidden="true">⇋</span> 50 Mirror
+          <button type="button" class="fm-tool-btn" id="mirror-layout" title="Mirror structures across the 50 line" disabled style="--tool-color: #b18cff">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
+            <span class="fm-tool-name">50 Mirror</span>
           </button>
         </div>
         <div class="fm-brush-panel" id="fm-brush-panel">
-        <label class="fm-range-label" for="brush-size">Brush size</label>
-        <input type="range" id="brush-size" min="2" max="40" value="8" />
-        <label class="fm-range-label" for="brush-color">Brush color</label>
-        <input type="color" id="brush-color" value="#7cfc3b" class="fm-color-input" />
-        <button type="button" class="btn btn-ghost fm-btn-full" id="clear-drawings" disabled>Clear drawings</button>
+          <label class="fm-range-label" for="brush-size">Brush size</label>
+          <input type="range" id="brush-size" min="2" max="40" value="8" />
+          <label class="fm-range-label" for="brush-color">Brush color</label>
+          <input type="color" id="brush-color" value="#7cfc3b" class="fm-color-input" />
+          <button type="button" class="fm-action-chip fm-action-danger fm-btn-full" id="clear-drawings" disabled>
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-trash" /></svg>
+            <span>Clear drawings</span>
+          </button>
         </div>
       </div>
 
       <div class="fm-tool-group">
         <h2 class="fm-tool-label">Teams</h2>
-        <button type="button" class="btn btn-primary fm-btn-full" id="place-players" disabled>Place teams</button>
-        <button type="button" class="btn btn-ghost fm-btn-full" id="reset-players" disabled>Reset team placement</button>
+        <button type="button" class="fm-action-hero" id="place-players" disabled>
+          <svg class="fm-ico" aria-hidden="true"><use href="#i-teams" /></svg>
+          <span>Place teams</span>
+        </button>
+        <button type="button" class="fm-action-chip fm-btn-full" id="reset-players" disabled>
+          <svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>
+          <span>Reset team placement</span>
+        </button>
         <ul class="fm-legend">
           <li><span class="fm-legend-dot team-a"></span> Team 1 / Alpha — choose 1–10 players</li>
           <li><span class="fm-legend-dot team-b"></span> Team 2 / Bravo — available after Team 1 is locked</li>
@@ -350,55 +403,66 @@
             <p class="fm-mobile-tip" id="fm-mobile-tip" aria-live="polite"></p>
           </div>
           <div class="fm-tools-grid" id="fm-mobile-bar" role="group" aria-label="Map tool buttons">
-            <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true">
-              <span class="fm-mobile-icon" aria-hidden="true">↖</span>
+            <button type="button" class="fm-mobile-btn is-active" data-tool="select" aria-pressed="true" style="--tool-color: #7cfc3b">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
               <span>Move</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="players" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">⚑</span>
+            <button type="button" class="fm-mobile-btn" data-tool="players" aria-pressed="false" style="--tool-color: #ff7a1a">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-flag" /></svg></span>
               <span>Teams</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">🖌</span>
+            <button type="button" class="fm-mobile-btn" data-tool="brush" aria-pressed="false" style="--tool-color: #ffd43b">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-brush" /></svg></span>
               <span>Brush</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">▣</span>
+            <button type="button" class="fm-mobile-btn" data-tool="structure" aria-pressed="false" style="--tool-color: #00ff9d">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
               <span>Struct</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">◎</span>
+            <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false" style="--tool-color: #ff4fc8">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
               <span>Vision</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="shoot" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">⌖</span>
+            <button type="button" class="fm-mobile-btn" data-tool="shoot" aria-pressed="false" style="--tool-color: #ff3b3b">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
               <span>Shoot</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">⇲</span>
+            <button type="button" class="fm-mobile-btn" data-tool="sizer" aria-pressed="false" style="--tool-color: #3bd5ff">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
               <span>Sizer</span>
             </button>
-            <button type="button" class="fm-mobile-btn" data-tool="intel" aria-pressed="false">
-              <span class="fm-mobile-icon" aria-hidden="true">📋</span>
+            <button type="button" class="fm-mobile-btn" data-tool="intel" aria-pressed="false" style="--tool-color: #4f8cff">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-intel" /></svg></span>
               <span>Intel</span>
             </button>
-            <button type="button" class="fm-mobile-btn" id="mirror-layout-mobile" disabled>
-              <span class="fm-mobile-icon" aria-hidden="true">⇋</span>
+            <button type="button" class="fm-mobile-btn" id="mirror-layout-mobile" disabled style="--tool-color: #b18cff">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
               <span>50 Mirror</span>
             </button>
             <label class="fm-mobile-btn fm-mobile-upload">
-              <span class="fm-mobile-icon" aria-hidden="true">📷</span>
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-camera" /></svg></span>
               <span>Upload</span>
               <input type="file" id="map-upload-mobile" accept="image/*" hidden />
             </label>
             <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
-              <span class="fm-mobile-icon" aria-hidden="true">☰</span>
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-menu" /></svg></span>
               <span>More</span>
             </button>
           </div>
-          <button type="button" class="btn btn-primary fm-btn-full" id="upload-map-pack-mobile">Upload map pack</button>
-          <button type="button" class="btn btn-primary fm-btn-full" id="preset-map-pack-mobile">Preset map packs</button>
-          <button type="button" class="btn btn-ghost fm-btn-full" id="save-map-pack-mobile" disabled>Save map pack</button>
+          <div class="fm-action-grid">
+            <button type="button" class="fm-action-tile" id="upload-map-pack-mobile">
+              <svg class="fm-ico" aria-hidden="true"><use href="#i-pack" /></svg>
+              <span>Upload map pack</span>
+            </button>
+            <button type="button" class="fm-action-tile" id="preset-map-pack-mobile">
+              <svg class="fm-ico" aria-hidden="true"><use href="#i-layers" /></svg>
+              <span>Preset map packs</span>
+            </button>
+          </div>
+          <button type="button" class="fm-action-chip fm-btn-full" id="save-map-pack-mobile" disabled>
+            <svg class="fm-ico" aria-hidden="true"><use href="#i-save" /></svg>
+            <span>Save map pack</span>
+          </button>
           <p class="fm-save-hint fm-save-hint-mobile">.zip folder with map.png and intel.json, or pick the unpacked folder.</p>
         </section>
 
