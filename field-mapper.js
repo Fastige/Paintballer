@@ -66,7 +66,10 @@
   const presetList = document.getElementById("fm-preset-list");
   const presetCancelBtn = document.getElementById("preset-cancel");
 
-  const MAP_PRESETS = [{ name: "MID-ATLANTIC 2026", folder: "presets/mid-atlantic-2026" }];
+  const MAP_PRESETS = [
+    { name: "MID-ATLANTIC 2026", folder: "presets/mid-atlantic-2026" },
+    { name: "LAS VEGAS MAJOR 2024", folder: "presets/las-vegas-major-2024" },
+  ];
   const clearMapBtn = document.getElementById("clear-map");
   const clearDrawingsBtn = document.getElementById("clear-drawings");
   const undoStructureBtn = document.getElementById("undo-structure");
