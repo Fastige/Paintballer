@@ -81,7 +81,8 @@
   const mobileToolBtns = document.querySelectorAll(".fm-mobile-btn[data-tool]");
   const shapeBtns = document.querySelectorAll(".fm-shape-btn[data-shape]");
   const structureStyleBtns = document.querySelectorAll(".fm-style-btn[data-structure-style]");
-  const toggleToolsBtn = document.getElementById("toggle-tools");
+  const mobileBrushSlot = document.getElementById("fm-mobile-brush-slot");
+  const mobileActionsSlot = document.getElementById("fm-mobile-actions-slot");
   const sidebar = document.getElementById("fm-sidebar");
   const workspace = document.getElementById("fm-workspace");
   const sizerPanel = document.getElementById("fm-sizer-panel");
@@ -589,7 +590,7 @@
     workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
 
-    if (brushPanel) brushPanel.hidden = activeTool === "structure" || activeTool === "players" || activeTool === "sizer" || activeTool === "shoot";
+    syncBrushPanel();
     designPanelOpen = false;
     syncToolPanels();
 
@@ -636,14 +637,38 @@
   function closeToolsPanel() {
     sidebar?.classList.remove("is-open");
     body.classList.remove("fm-tools-open");
-    if (toggleToolsBtn) toggleToolsBtn.setAttribute("aria-expanded", "false");
   }
 
-  function openToolsPanel() {
-    sidebar?.classList.add("is-open");
-    body.classList.add("fm-tools-open");
-    if (toggleToolsBtn) toggleToolsBtn.setAttribute("aria-expanded", "true");
+  function syncBrushPanel() {
+    if (!brushPanel) return;
+    brushPanel.hidden = isMobileLayout()
+      ? activeTool !== "brush"
+      : activeTool === "structure" || activeTool === "players" || activeTool === "sizer" || activeTool === "shoot";
   }
+
+  const mobileMoves = [
+    [brushPanel, mobileBrushSlot],
+    [clearMapBtn, mobileActionsSlot],
+    [resetPlayersBtn, mobileActionsSlot],
+  ]
+    .filter(([el, slot]) => el && slot)
+    .map(([el, slot]) => {
+      const home = document.createComment("");
+      el.before(home);
+      return { el, slot, home };
+    });
+
+  function placeMobileControls() {
+    const mobile = isMobileLayout();
+    mobileMoves.forEach(({ el, slot, home }) => {
+      if (mobile) slot.append(el);
+      else home.after(el);
+    });
+    syncBrushPanel();
+  }
+
+  window.matchMedia("(max-width: 900px)").addEventListener("change", placeMobileControls);
+  placeMobileControls();
 
   toolBtns.forEach((btn) => {
     btn.addEventListener("click", () => setTool(btn.dataset.tool || "select"));
@@ -735,11 +760,6 @@
     shootOver = Boolean(shootOverInput.checked);
     updateShootPanel();
     redrawShootOverlay();
-  });
-
-  toggleToolsBtn?.addEventListener("click", () => {
-    if (sidebar?.classList.contains("is-open")) closeToolsPanel();
-    else openToolsPanel();
   });
 
   function getCanvasSize() {

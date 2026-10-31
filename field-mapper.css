@@ -3706,8 +3706,19 @@
     cursor: pointer;
   }
 
-  #toggle-tools {
-    --tool-color: var(--text-muted);
+  .fm-sidebar {
+    display: none;
+  }
+
+  .fm-mobile-slot:empty {
+    display: none;
+  }
+
+  #fm-mobile-brush-slot .fm-brush-panel {
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--tool-color) 35%, var(--border));
+    background: color-mix(in srgb, var(--tool-color) 6%, var(--bg));
   }
 
   .fm-tools-section .fm-action-tile,

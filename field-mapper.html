@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=17" />
-  <link rel="stylesheet" href="field-mapper.css?v=53" />
+  <link rel="stylesheet" href="field-mapper.css?v=54" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -567,11 +567,8 @@
               <span>Upload</span>
               <input type="file" id="map-upload-mobile" accept="image/*" hidden />
             </label>
-            <button type="button" class="fm-mobile-btn" id="toggle-tools" aria-expanded="false" aria-controls="fm-sidebar">
-              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-menu" /></svg></span>
-              <span>More</span>
-            </button>
           </div>
+          <div class="fm-mobile-slot" id="fm-mobile-brush-slot"></div>
           <div class="fm-action-grid">
             <button type="button" class="fm-action-tile" id="upload-map-pack-mobile">
               <svg class="fm-ico" aria-hidden="true"><use href="#i-pack" /></svg>
@@ -586,6 +583,7 @@
             <svg class="fm-ico" aria-hidden="true"><use href="#i-save" /></svg>
             <span>Save map pack</span>
           </button>
+          <div class="fm-action-grid fm-mobile-slot" id="fm-mobile-actions-slot"></div>
           <p class="fm-save-hint fm-save-hint-mobile">.zip folder with map.png and intel.json, or pick the unpacked folder.</p>
         </section>
 
@@ -732,6 +730,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=67"></script>
+  <script src="field-mapper.js?v=68"></script>
 </body>
 </html>
