@@ -376,6 +376,8 @@
   let autoImageCache = null;
   /** @type {{ base: object, strokes: object[], w: number, h: number, data: Uint8ClampedArray }|null} */
   let autoScanCache = null;
+  /** @type {{ data: Uint8ClampedArray, key: string, mask: Uint8Array }|null} */
+  let autoThickDarkCache = null;
   let fieldIntelReport = { name: "", bio: "" };
   let intelModalOpen = false;
   /** @type {ReturnType<typeof serializeFieldState>|null} */
@@ -3781,6 +3783,8 @@
   const AUTO_COLOR = "#6c8cff";
   const AUTO_MAX_DIM = 900;
   const AUTO_FIT_MIN_IOU = 0.8;
+  /** Below this, an unsplittable outline isn't a bunker. */
+  const AUTO_FIT_REJECT_IOU = 0.4;
   const AUTO_MAX_PIECES = 12;
   const AUTO_HISTORY_LIMIT = 60;
   const AUTO_DARK_MAX = 80;
@@ -3794,6 +3798,8 @@
   const AUTO_PALE_MIN = 170;
   const AUTO_PALE_CHROMA = 75;
   const AUTO_WHITEOUT_PAD = 2;
+  /** A thick black area joins a bunker only if it's at most this many times the bunker's colored area. */
+  const AUTO_THICK_DARK_RATIO = 1.5;
   const AUTO_CANDIDATES = [
     ["rectangle", false],
     ["circle", false],
@@ -3991,7 +3997,106 @@
     return mask;
   }
 
-  function bridgeAutoDark(mask, data, w, region, steps) {
+  function getAutoThickDark(data, w, h, region, radius) {
+    const key = `${region.x0},${region.y0},${region.x1},${region.y1},${radius}`;
+    if (autoThickDarkCache && autoThickDarkCache.data === data && autoThickDarkCache.key === key) return autoThickDarkCache.mask;
+    let mask = new Uint8Array(w * h);
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (isAutoDark(data, p)) mask[p] = 1;
+      }
+    }
+    mask = openAutoMask(mask, w, h, radius);
+    for (let p = 0; p < mask.length; p++) if (mask[p] && !isAutoDark(data, p)) mask[p] = 0;
+    autoThickDarkCache = { data, key, mask };
+    return mask;
+  }
+
+  function selectAutoThickDark(colorMask, thick, w, region, reach) {
+    const size = colorMask.length;
+    const labels = new Int32Array(size);
+    const areas = [0];
+    const queue = new Int32Array(size);
+    const neighbors = (p) => {
+      const x = p % w;
+      const y = (p - x) / w;
+      return [
+        x > region.x0 ? p - 1 : -1,
+        x < region.x1 - 1 ? p + 1 : -1,
+        y > region.y0 ? p - w : -1,
+        y < region.y1 - 1 ? p + w : -1,
+      ];
+    };
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const s = y * w + x;
+        if (!colorMask[s] || labels[s]) continue;
+        const id = areas.length;
+        let head = 0;
+        let tail = 0;
+        labels[s] = id;
+        queue[tail++] = s;
+        while (head < tail) {
+          for (const q of neighbors(queue[head++])) {
+            if (q < 0 || labels[q] || !colorMask[q]) continue;
+            labels[q] = id;
+            queue[tail++] = q;
+          }
+        }
+        areas.push(tail);
+      }
+    }
+    const near = labels.slice();
+    const dist = new Uint8Array(size);
+    let head = 0;
+    let tail = 0;
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const p = y * w + x;
+        if (near[p]) queue[tail++] = p;
+      }
+    }
+    while (head < tail) {
+      const p = queue[head++];
+      if (dist[p] >= reach) continue;
+      for (const q of neighbors(p)) {
+        if (q < 0 || near[q]) continue;
+        near[q] = near[p];
+        dist[q] = dist[p] + 1;
+        queue[tail++] = q;
+      }
+    }
+    const out = new Uint8Array(size);
+    const seen = new Uint8Array(size);
+    for (let y = region.y0; y < region.y1; y++) {
+      for (let x = region.x0; x < region.x1; x++) {
+        const s = y * w + x;
+        if (!thick[s] || seen[s]) continue;
+        const touched = new Set();
+        head = 0;
+        tail = 0;
+        seen[s] = 1;
+        queue[tail++] = s;
+        while (head < tail) {
+          const p = queue[head++];
+          if (near[p]) touched.add(near[p]);
+          for (const q of neighbors(p)) {
+            if (q < 0 || seen[q] || !thick[q]) continue;
+            seen[q] = 1;
+            queue[tail++] = q;
+          }
+        }
+        let colored = 0;
+        for (const id of touched) colored += areas[id];
+        if (!colored || tail > colored * AUTO_THICK_DARK_RATIO) continue;
+        for (let i = 0; i < tail; i++) out[queue[i]] = 1;
+      }
+    }
+    return out;
+  }
+
+  function bridgeAutoDark(mask, data, w, region, steps, thick) {
     const seen = new Uint8Array(mask.length);
     const dist = new Uint8Array(mask.length);
     const queue = new Int32Array(mask.length);
@@ -4019,7 +4124,7 @@
       for (const q of next) {
         if (q < 0 || seen[q] || !isAutoDark(data, q)) continue;
         seen[q] = 1;
-        dist[q] = dist[p] + 1;
+        dist[q] = thick && thick[q] ? 0 : dist[p] + 1;
         mask[q] = 1;
         queue[tail++] = q;
       }
@@ -4080,6 +4185,13 @@
 
   function closeAutoMask(mask, w, h) {
     return morphAutoMask(morphAutoMask(mask, w, h, true), w, h, false);
+  }
+
+  function openAutoMask(mask, w, h, radius) {
+    let out = mask;
+    for (let i = 0; i < radius; i++) out = morphAutoMask(out, w, h, false);
+    for (let i = 0; i < radius; i++) out = morphAutoMask(out, w, h, true);
+    return out;
   }
 
   function floodAutoComponent(mask, w, h, start, labels, id, stack) {
@@ -4364,8 +4476,59 @@
     };
   }
 
+  function cropAutoComponentMask(mask, from, to) {
+    const bw = to.maxX - to.minX + 1;
+    const bh = to.maxY - to.minY + 1;
+    const local = new Uint8Array(bw * bh);
+    let area = 0;
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        if (!mask.local[(y + to.minY - from.minY) * mask.bw + x + to.minX - from.minX]) continue;
+        local[y * bw + x] = 1;
+        area++;
+      }
+    }
+    return { local, bw, bh, area, raw: Math.min(mask.raw, area) };
+  }
+
+  function trimAutoStubs(labels, w, comp, margin) {
+    const bw = comp.maxX - comp.minX + 1;
+    const bh = comp.maxY - comp.minY + 1;
+    const rows = new Int32Array(bh);
+    const cols = new Int32Array(bw);
+    let total = 0;
+    for (let y = 0; y < bh; y++) {
+      const row = (comp.minY + y) * w + comp.minX;
+      for (let x = 0; x < bw; x++) {
+        if (labels[row + x] !== comp.id) continue;
+        rows[y]++;
+        cols[x]++;
+        total++;
+      }
+    }
+    if (total < bw * bh * 0.45) return comp;
+    const cut = (counts, fromEnd) => {
+      const n = counts.length;
+      let max = 0;
+      for (let i = 0; i < n; i++) max = Math.max(max, counts[i]);
+      const stub = Math.max(6, max * 0.25);
+      const at = (i) => counts[fromEnd ? n - 1 - i : i];
+      let k = 0;
+      while (k <= margin && k < n - 1 && at(k) <= stub) k++;
+      return k && k <= margin && at(k) >= max * 0.5 ? k : 0;
+    };
+    return {
+      ...comp,
+      minX: comp.minX + cut(cols, false),
+      maxX: comp.maxX - cut(cols, true),
+      minY: comp.minY + cut(rows, false),
+      maxY: comp.maxY - cut(rows, true),
+    };
+  }
+
   function autoStructuresForComponent(labels, w, h, fullComp, split, strict, region, colorMask, margin, openRadius) {
-    const comp = colorMask ? clipAutoComponentToColor(labels, w, h, fullComp, colorMask, margin) : fullComp;
+    const clipped = colorMask ? clipAutoComponentToColor(labels, w, h, fullComp, colorMask, margin) : fullComp;
+    const comp = colorMask ? trimAutoStubs(labels, w, clipped, margin) : clipped;
     const bw = comp.maxX - comp.minX + 1;
     const bh = comp.maxY - comp.minY + 1;
     if (strict) {
@@ -4375,7 +4538,7 @@
       const isLine = comp.count / Math.max(bw, bh) < 2.5 && Math.max(bw, bh) > 24;
       if (isFrame || isLine) return null;
     }
-    const { local, area, raw } = autoComponentMask(labels, w, comp);
+    const { local, area, raw } = cropAutoComponentMask(autoComponentMask(labels, w, clipped), clipped, comp);
     if (strict && raw < area * AUTO_MIN_SOLIDITY) return null;
     if (strict && autoCoreCount(local, bw, bh) < Math.max(3, area * 0.12)) return null;
 
@@ -4404,6 +4567,7 @@
         };
       }
     }
+    if (strict && fit.iou < AUTO_FIT_REJECT_IOU) return null;
     return {
       split: false,
       pieces: [makeAutoStructure(comp.minX, comp.minY, bw, bh, w, h, fit.type, fit.flip)],
@@ -4685,7 +4849,10 @@
     if (withDark) {
       mask = pruneAutoMask(mask, w, h, region, Math.max(8, minPixels >> 1));
       colorMask = closeAutoMask(mask, w, h);
-      mask = bridgeAutoDark(mask, data, w, region, bridgeSteps);
+      const thickRadius = Math.max(2, Math.round(Math.max(w, h) * 0.0025));
+      const thick = selectAutoThickDark(colorMask, getAutoThickDark(data, w, h, region, thickRadius), w, region, bridgeSteps);
+      mask = bridgeAutoDark(mask, data, w, region, bridgeSteps, thick);
+      for (let p = 0; p < mask.length; p++) if (mask[p] && thick[p]) colorMask[p] = 1;
     }
     mask = closeAutoMask(mask, w, h);
     const labels = new Int32Array(w * h);
@@ -4693,6 +4860,7 @@
     const split = autoSplitInput?.checked !== false;
     const found = [];
     const groups = [];
+    const extents = [];
     let nextId = 1;
     for (let y = region.y0; y < region.y1; y++) {
       for (let x = region.x0; x < region.x1; x++) {
@@ -4705,9 +4873,10 @@
         if (!result) continue;
         groups.push(result.pieces);
         found.push(...result.pieces);
+        if (!result.split) extents.push(colorMask ? clipAutoComponentToColor(labels, w, h, comp, colorMask, outlineMargin) : comp);
       }
     }
-    return { found, groups, matched };
+    return { found, groups, matched, extents };
   }
 
   function freshAutoGroups(groups, ...existing) {
@@ -4814,6 +4983,13 @@
         const y0 = Math.max(region.y0, Math.floor(fb.top * h) - AUTO_WHITEOUT_PAD);
         const x1 = Math.min(region.x1, Math.ceil((fb.left + fb.width) * w) + AUTO_WHITEOUT_PAD);
         const y1 = Math.min(region.y1, Math.ceil((fb.top + fb.height) * h) + AUTO_WHITEOUT_PAD);
+        for (let y = y0; y < y1; y++) used.fill(1, y * w + x0, y * w + x1);
+      });
+      result.extents.forEach((e) => {
+        const x0 = Math.max(region.x0, e.minX - AUTO_WHITEOUT_PAD);
+        const y0 = Math.max(region.y0, e.minY - AUTO_WHITEOUT_PAD);
+        const x1 = Math.min(region.x1, e.maxX + 1 + AUTO_WHITEOUT_PAD);
+        const y1 = Math.min(region.y1, e.maxY + 1 + AUTO_WHITEOUT_PAD);
         for (let y = y0; y < y1; y++) used.fill(1, y * w + x0, y * w + x1);
       });
       const freshGroups = freshAutoGroups(result.groups, base, placed);
