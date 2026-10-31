@@ -640,55 +640,8 @@ main {
 .hero-map {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   aspect-ratio: 32 / 22;
-}
-
-.hero-vision path {
-  stroke: rgba(255, 79, 200, 0.45);
-  stroke-width: 1.2;
-  fill: none;
-}
-
-.hero-bunkers > * {
-  fill: #00ff9d;
-  fill-opacity: 0.85;
-  stroke: #0f1210;
-  stroke-width: 1.5;
-}
-
-.hero-run {
-  fill: none;
-  stroke: rgba(232, 239, 228, 0.7);
-  stroke-width: 1.6;
-  stroke-dasharray: 4 4;
-}
-
-.hero-shot {
-  fill: none;
-  stroke: #ffd43b;
-  stroke-width: 2;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 3px rgba(255, 212, 59, 0.6));
-}
-
-.hero-paint circle {
-  fill: #7cfc3b;
-  stroke: #0f1210;
-  stroke-width: 0.8;
-}
-
-.hero-player circle {
-  stroke: #0f1210;
-  stroke-width: 1.5;
-}
-
-.hero-player.team-a circle {
-  fill: #ff5c00;
-}
-
-.hero-player.team-b circle {
-  fill: #3b9eff;
 }
 
 .hero-app-timeline {
@@ -760,12 +713,6 @@ main {
   border-radius: 2px;
   background: #fff;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-  animation: hero-playhead 4s linear infinite;
-}
-
-@keyframes hero-playhead {
-  from { left: 0; }
-  to { left: 100%; }
 }
 
 @keyframes hero-blink {
