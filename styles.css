@@ -693,6 +693,17 @@ main {
   gap: 1.1rem;
 }
 
+.feature-card p a {
+  color: var(--tool-color);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.feature-card p a:hover {
+  color: var(--text);
+}
+
 .feature-card {
   --tool-color: var(--lime);
   position: relative;

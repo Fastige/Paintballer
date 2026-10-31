@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body>
@@ -23,6 +23,7 @@
     <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle cx="12" cy="12" r="1" /></symbol>
     <symbol id="i-sizer" viewBox="0 0 24 24"><path d="M14 3h7v7M10 21H3v-7M21 3l-7 7M3 21l7-7" /></symbol>
     <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9.5v5M12 18.5V21" /><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></symbol>
+    <symbol id="i-design" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2" /><path d="M12 4.5v3M12 10.5v3M12 16.5v3" /><rect x="5.5" y="8" width="3.5" height="3" rx="0.6" /><rect x="15" y="13" width="3.5" height="3" rx="0.6" /></symbol>
     <symbol id="i-intel" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.8h6V4M9 10h6M9 14h6M9 18h3" /></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M4 15v5h16v-5" /></symbol>
     <symbol id="i-pack" viewBox="0 0 24 24"><path d="M21 7.5l-9-5-9 5 9 5z" /><path d="M3 7.5v9l9 5 9-5v-9M12 12.5v9" /></symbol>
@@ -68,7 +69,7 @@
           <a class="btn btn-ghost" href="#start">How to start</a>
         </div>
         <ul class="hero-chips">
-          <li style="--tool-color: #7cfc3b">8 map tools</li>
+          <li style="--tool-color: #7cfc3b">9 map tools</li>
           <li style="--tool-color: #ff3b3b">Shoot &amp; run scenes</li>
           <li style="--tool-color: #3bd5ff">GIF export</li>
         </ul>
@@ -90,6 +91,8 @@
             <span class="hero-tool is-active" style="--tool-color: #ff3b3b"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
             <span class="hero-tool" style="--tool-color: #3bd5ff"><svg class="fm-ico"><use href="#i-sizer" /></svg></span>
             <span class="hero-tool" style="--tool-color: #b18cff"><svg class="fm-ico"><use href="#i-mirror" /></svg></span>
+            <span class="hero-tool" style="--tool-color: #2ee6c8"><svg class="fm-ico"><use href="#i-design" /></svg></span>
+            <span class="hero-tool" style="--tool-color: #ff5c00"><svg class="fm-ico"><use href="#i-intel" /></svg></span>
           </div>
           <div class="hero-app-map">
             <svg class="hero-map" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid slice">
@@ -243,7 +246,10 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-move" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Move</h3></div>
           </div>
-          <p>Drag any player to a new spot to fine-tune your setup. In Move you can also tap a green bunker to open its intel.</p>
+          <p>
+            Your everyday pointer. Drag any placed player to fine-tune the setup. Tap a bunker to select it: its intel opens
+            under the map, and in Design you can recolor it.
+          </p>
         </article>
         <article class="feature-card" style="--tool-color: #ff7a1a">
           <div class="feature-head">
@@ -251,9 +257,9 @@
             <div><span class="feature-kicker">Tool</span><h3>Players</h3></div>
           </div>
           <p>
-            Place a whole team at once. Pick 1–10 players with the + and − buttons, then tap where they spawn.
-            A ghost preview shows where they'll go. Nudge it with the arrows, then tap ✓ to lock. Do Team 1 first, then Team 2.
-            Once locked, players can be dragged one at a time with Move.
+            Drop a whole team at once. Pick 1–10 players, tap the spawn, and a ghost stack shows where they'll line up.
+            Nudge it with the arrows, then tap ✓ to lock. Team 1 goes first, then Team 2.
+            <strong>Reset team placement</strong> clears both teams to start over.
           </p>
         </article>
         <article class="feature-card" style="--tool-color: #ffd43b">
@@ -261,7 +267,10 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-brush" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Brush</h3></div>
           </div>
-          <p>Draw routes, lanes, and notes right on the map. Pick a brush size and color, and use <strong>Clear drawings</strong> to start fresh.</p>
+          <p>
+            Sketch routes, lanes, and callouts right on the map. Slide the brush size, tap one of six quick colors or pick
+            your own, and hit <strong>Clear drawings</strong> to wipe the board.
+          </p>
         </article>
         <article class="feature-card" style="--tool-color: #00ff9d">
           <div class="feature-head">
@@ -269,9 +278,9 @@
             <div><span class="feature-kicker">Tool</span><h3>Structure</h3></div>
           </div>
           <p>
-            Drag on the map to add a bunker: rectangle, circle, or triangle. Pick a wall style: <strong>Filled</strong>,
-            <strong>Border only</strong>, or <strong>Transparent wall</strong>. All three still block vision and shoot lines.
-            Press on an existing bunker to drag it, and use <strong>Undo</strong> to remove the last one you placed.
+            Add bunkers the map missed. Choose a rectangle, circle, or triangle and drag it out on the field. Wall styles are
+            <strong>Filled</strong>, <strong>Border only</strong>, or <strong>Transparent wall</strong>, and all three block vision and shots.
+            Drag an existing bunker to move it, or tap <strong>Undo</strong> to remove the last one.
           </p>
         </article>
         <article class="feature-card" style="--tool-color: #ff4fc8">
@@ -279,7 +288,20 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
             <div><span class="feature-kicker">Tool</span><h3>Vision</h3></div>
           </div>
-          <p>Tap a player to see pink sight lines in every direction. Lines stop where a bunker blocks the view, so you can spot open lanes and blind spots. The lines stay on when you switch tools.</p>
+          <p>
+            Tap a player to cast pink sight lines in every direction. Lines stop at bunkers, so open lanes and blind spots
+            jump out. The lines stay up while you switch tools.
+          </p>
+        </article>
+        <article class="feature-card" style="--tool-color: #ff3b3b">
+          <div class="feature-head">
+            <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-shoot" /></svg></span>
+            <div><span class="feature-kicker">Tool</span><h3>Shoot</h3></div>
+          </div>
+          <p>
+            Plan each player's move. Tap a player, set where they run and what they shoot at, then save it to a scene you can play
+            back. <a href="#shoot">See how scenes work</a>.
+          </p>
         </article>
         <article class="feature-card" style="--tool-color: #3bd5ff">
           <div class="feature-head">
@@ -287,8 +309,9 @@
             <div><span class="feature-kicker">Tool</span><h3>Sizer</h3></div>
           </div>
           <p>
-            Tap a bunker to edit it. Set its exact width and height, change its wall style, and move it by dragging or with the arrow pad.
-            <strong>Duplicate</strong> makes an exact copy, <strong>Delete</strong> removes it, and <strong>Undo Sizer change</strong> reverses your last edit.
+            Tap a bunker to fine-tune it. Set its exact width and height, swap its wall style, and drag it or nudge it with the
+            arrow pad. The <strong>Move step</strong> slider sets how far each nudge goes. <strong>Duplicate</strong> copies it,
+            <strong>Delete</strong> removes it, and <strong>Undo Sizer change</strong> reverses your last edit.
           </p>
         </article>
         <article class="feature-card" style="--tool-color: #b18cff">
@@ -301,12 +324,26 @@
             The bunkers on the busier side are mirrored across it, and triangles flip to face the right way.
           </p>
         </article>
-        <article class="feature-card" style="--tool-color: #4f8cff">
+        <article class="feature-card" style="--tool-color: #2ee6c8">
+          <div class="feature-head">
+            <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-design" /></svg></span>
+            <div><span class="feature-kicker">Tool</span><h3>Design</h3></div>
+          </div>
+          <p>
+            Swap the photo for a clean field drawn from your bunkers, and flip between the two with the <strong>Design map</strong> switch.
+            Choose from 15 field themes and 15 bunker color combos, set every color yourself, or give one bunker its own fill.
+            Map packs open in Design automatically.
+          </p>
+        </article>
+        <article class="feature-card" style="--tool-color: #ff5c00">
           <div class="feature-head">
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-intel" /></svg></span>
-            <div><span class="feature-kicker">Tool</span><h3>Intel</h3></div>
+            <div><span class="feature-kicker">Panel</span><h3>Field intel</h3></div>
           </div>
-          <p>Tap a green bunker to give it a name and notes, like "Snake 1, watch the wire". Fill in a field report for the whole map, and open the full intel view to see every bunker at once.</p>
+          <p>
+            Shows under the map in Move, Brush, and Vision (it's the Intel button on mobile). Tap a green bunker to give it a name
+            and notes, like "Snake 1, watch the wire". Open the <strong>Full report</strong> to see every bunker at once.
+          </p>
         </article>
       </div>
     </section>
