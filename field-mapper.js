@@ -114,6 +114,8 @@
   const sizerWidthNum = document.getElementById("sizer-width-num");
   const sizerHeight = document.getElementById("sizer-height");
   const sizerHeightNum = document.getElementById("sizer-height-num");
+  const sizerRotateWheel = document.getElementById("sizer-rotate-wheel");
+  const sizerRotateNum = document.getElementById("sizer-rotate-num");
   const undoSizerBtn = document.getElementById("undo-sizer");
   const sizerStepInput = document.getElementById("sizer-step");
   const sizerStepValue = document.getElementById("sizer-step-value");
@@ -1229,6 +1231,16 @@
   }
 
   function rayStructureHitT(ox, oy, dx, dy, shape, w, h) {
+    const deg = getStructureRotation(shape);
+    if (deg) {
+      const o = toStructureFrame(shape, ox, oy, w, h);
+      const rad = (-deg * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      [dx, dy] = [dx * cos - dy * sin, dx * sin + dy * cos];
+      ox = o.x;
+      oy = o.y;
+    }
     const b = getStructureBounds(shape);
     const left = b.left * w;
     const top = b.top * h;
@@ -2436,6 +2448,7 @@
       y1: shape.y1,
       x2: shape.x2,
       y2: shape.y2,
+      rotation: getStructureRotation(shape),
     };
   }
 
@@ -2476,6 +2489,7 @@
     shape.y1 = sizerUndoState.y1;
     shape.x2 = sizerUndoState.x2;
     shape.y2 = sizerUndoState.y2;
+    setStructureRotation(shape, sizerUndoState.rotation);
     selectedStructureId = shape.id;
     clearSizerUndo();
     updateSizerPanel();
@@ -2504,6 +2518,7 @@
       type: shape.type,
       fill: normalizeStructureFill(shape.fill),
       flip: Boolean(shape.flip),
+      ...(getStructureRotation(shape) ? { rotation: getStructureRotation(shape) } : {}),
       ...(shape.color ? { color: shape.color } : {}),
       x1: left,
       y1: top,
@@ -2548,6 +2563,50 @@
       width: Math.abs(shape.x2 - shape.x1),
       height: Math.abs(shape.y2 - shape.y1),
     };
+  }
+
+  function normalizeRotation(deg) {
+    const n = Number(deg);
+    if (!Number.isFinite(n)) return 0;
+    const r = Math.round((((n % 360) + 360) % 360) * 10) / 10;
+    return r >= 360 ? 0 : r;
+  }
+
+  function getStructureRotation(shape) {
+    return normalizeRotation(shape?.rotation);
+  }
+
+  function setStructureRotation(shape, deg) {
+    const r = normalizeRotation(deg);
+    if (r) shape.rotation = r;
+    else delete shape.rotation;
+  }
+
+  function getStructureCenterPx(shape, w, h) {
+    const b = getStructureBounds(shape);
+    return { cx: (b.left + b.width / 2) * w, cy: (b.top + b.height / 2) * h };
+  }
+
+  /** Rotation turns the shape around its box center in screen pixels, so it keeps its proportions on any canvas. */
+  function toStructureFrame(shape, px, py, w, h) {
+    const deg = getStructureRotation(shape);
+    if (!deg) return { x: px, y: py };
+    const { cx, cy } = getStructureCenterPx(shape, w, h);
+    const rad = (-deg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = px - cx;
+    const dy = py - cy;
+    return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+  }
+
+  function applyStructureRotation(context, shape, w, h) {
+    const deg = getStructureRotation(shape);
+    if (!deg) return;
+    const { cx, cy } = getStructureCenterPx(shape, w, h);
+    context.translate(cx, cy);
+    context.rotate((deg * Math.PI) / 180);
+    context.translate(-cx, -cy);
   }
 
   function clampPct(n) {
@@ -2652,6 +2711,7 @@
     [sizerHeight, sizerHeightNum].forEach((el) => {
       if (el) el.value = String(heightPct);
     });
+    syncSizerRotateUi(getStructureRotation(shape));
     sizerSyncing = false;
     if (duplicateStructureBtn) duplicateStructureBtn.disabled = !hasMap || !hasSelection;
     if (deleteStructureBtn) deleteStructureBtn.disabled = !hasMap || !hasSelection;
@@ -2680,7 +2740,107 @@
     redrawShootOverlay();
   }
 
+  function syncSizerRotateUi(deg) {
+    const shown = Math.round(deg);
+    sizerRotateWheel?.style.setProperty("--rot", `${deg}deg`);
+    sizerRotateWheel?.setAttribute("aria-valuenow", String(shown));
+    sizerRotateWheel?.setAttribute("aria-valuetext", `${shown} degrees`);
+    if (sizerRotateNum && document.activeElement !== sizerRotateNum) sizerRotateNum.value = String(shown);
+  }
+
+  function rotateSelectedStructure(deg, editKey) {
+    const shape = getSelectedStructure();
+    if (!shape) return;
+    const next = normalizeRotation(deg);
+    if (next === getStructureRotation(shape)) {
+      syncSizerRotateUi(next);
+      return;
+    }
+    if (editKey) beginSizerEdit(shape, editKey);
+    else {
+      rememberSizerUndo(shape);
+      endSizerEdit();
+    }
+    setStructureRotation(shape, next);
+    syncSizerRotateUi(next);
+    redrawStructures();
+  }
+
+  function wheelAngleFromEvent(e, snap) {
+    const rect = sizerRotateWheel.getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    let deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+    if (snap) return Math.round(deg / 15) * 15;
+    deg = Math.round(deg);
+    const nearestRight = Math.round(deg / 90) * 90;
+    return Math.abs(deg - nearestRight) <= 3 ? nearestRight : deg;
+  }
+
+  function bindSizerRotate() {
+    if (!sizerRotateWheel) return;
+    let dragPid = null;
+
+    sizerRotateWheel.addEventListener("pointerdown", (e) => {
+      if (!getSelectedStructure()) return;
+      e.preventDefault();
+      dragPid = e.pointerId;
+      sizerRotateWheel.setPointerCapture(e.pointerId);
+      sizerRotateWheel.classList.add("is-dragging");
+      sizerRotateWheel.focus({ preventScroll: true });
+      rotateSelectedStructure(wheelAngleFromEvent(e, e.shiftKey), "rotate");
+    });
+    sizerRotateWheel.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== dragPid) return;
+      rotateSelectedStructure(wheelAngleFromEvent(e, e.shiftKey), "rotate");
+    });
+    const endDrag = (e) => {
+      if (e.pointerId !== dragPid) return;
+      dragPid = null;
+      sizerRotateWheel.classList.remove("is-dragging");
+      endSizerEdit();
+    };
+    sizerRotateWheel.addEventListener("pointerup", endDrag);
+    sizerRotateWheel.addEventListener("pointercancel", endDrag);
+
+    sizerRotateWheel.addEventListener("keydown", (e) => {
+      const shape = getSelectedStructure();
+      if (!shape) return;
+      const step = e.shiftKey ? 15 : 1;
+      const current = getStructureRotation(shape);
+      let next = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowUp") next = current + step;
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = current - step;
+      if (e.key === "Home") next = 0;
+      if (next === null) return;
+      e.preventDefault();
+      rotateSelectedStructure(next, "rotate-key");
+    });
+    sizerRotateWheel.addEventListener("blur", endSizerEdit);
+
+    sizerRotateNum?.addEventListener("input", () => {
+      if (sizerRotateNum.value.trim() === "") return;
+      rotateSelectedStructure(Number(sizerRotateNum.value), "rotate-num");
+    });
+    sizerRotateNum?.addEventListener("change", () => {
+      endSizerEdit();
+      syncSizerRotateUi(getStructureRotation(getSelectedStructure()));
+    });
+
+    document.querySelectorAll("[data-rotate-by]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const shape = getSelectedStructure();
+        if (!shape) return;
+        rotateSelectedStructure(getStructureRotation(shape) + Number(btn.dataset.rotateBy));
+      });
+    });
+    document.querySelectorAll("[data-rotate-to]").forEach((btn) => {
+      btn.addEventListener("click", () => rotateSelectedStructure(Number(btn.dataset.rotateTo)));
+    });
+  }
+
   function bindSizerInputs() {
+    bindSizerRotate();
     const bindPair = (rangeEl, numEl, axis) => {
       rangeEl?.addEventListener("input", () => onSizerAxisInput(axis, rangeEl.value));
       rangeEl?.addEventListener("change", endSizerEdit);
@@ -2884,11 +3044,12 @@
   function hitTestStructure(px, py) {
     const { w, h } = getCanvasSize();
     if (!w || !h) return null;
-    const nx = px / w;
-    const ny = py / h;
 
     for (let i = structures.length - 1; i >= 0; i--) {
       const s = structures[i];
+      const local = toStructureFrame(s, px, py, w, h);
+      const nx = local.x / w;
+      const ny = local.y / h;
       const b = getStructureBounds(s);
       const left = b.left;
       const top = b.top;
@@ -2938,11 +3099,12 @@
     for (let i = structures.length - 1; i >= 0; i--) {
       const s = structures[i];
       const b = getStructureBounds(s);
+      const p = toStructureFrame(s, px, py, w, h);
       const left = b.left * w - padPx;
       const top = b.top * h - padPx;
       const right = (b.left + b.width) * w + padPx;
       const bottom = (b.top + b.height) * h + padPx;
-      if (px >= left && px <= right && py >= top && py <= bottom) return s;
+      if (p.x >= left && p.x <= right && p.y >= top && p.y <= bottom) return s;
     }
     return null;
   }
@@ -3154,6 +3316,7 @@
     const height = b.height * h;
 
     context.save();
+    applyStructureRotation(context, shape, w, h);
     context.strokeStyle = "#ffffff";
     context.lineWidth = 2;
     context.setLineDash([6, 4]);
@@ -3196,6 +3359,7 @@
     const isTransparentWall = style === "transparent";
 
     context.save();
+    applyStructureRotation(context, shape, w, h);
     if (bake) {
       context.fillStyle = isTransparentWall ? "rgba(0, 0, 0, 0)" : STRUCTURE_GREEN;
       context.strokeStyle = STRUCTURE_GREEN;
@@ -3267,6 +3431,7 @@
         y2: s.y2,
         fill: normalizeStructureFill(s.fill),
         flip: Boolean(s.flip),
+        ...(getStructureRotation(s) ? { rotation: getStructureRotation(s) } : {}),
         name: s.name || "",
         bio: s.bio || "",
         ...(s.color ? { color: s.color } : {}),
@@ -3492,6 +3657,7 @@
         bio: s.bio || "",
         fill: normalizeStructureFill(s.fill),
         flip: Boolean(s.flip),
+        ...(normalizeRotation(s.rotation) ? { rotation: normalizeRotation(s.rotation) } : {}),
         detected: true,
         ...(isDesignHex(s.color) ? { color: s.color.toLowerCase() } : {}),
       }));
@@ -6641,8 +6807,9 @@
     source.forEach(({ s, b, cx, cy }) => {
       const hw = (b.width * w) / 2;
       const hh = (b.height * h) / 2;
-      const newHw = Math.abs(r00) * hw + Math.abs(r01) * hh;
-      const newHh = Math.abs(r01) * hw + Math.abs(r11) * hh;
+      const rotation = getStructureRotation(s);
+      const newHw = rotation ? hw : Math.abs(r00) * hw + Math.abs(r01) * hh;
+      const newHh = rotation ? hh : Math.abs(r01) * hw + Math.abs(r11) * hh;
       const c = reflect(cx, cy);
 
       let ncx = c.x;
@@ -6674,6 +6841,7 @@
         type: s.type,
         fill: normalizeStructureFill(s.fill),
         flip: s.type === "triangle" && flipsVertically ? !s.flip : Boolean(s.flip),
+        ...(rotation ? { rotation: normalizeRotation(-rotation) } : {}),
         x1: copyBounds.left,
         y1: copyBounds.top,
         x2: copyBounds.left + copyBounds.width,

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=60" />
+  <link rel="stylesheet" href="field-mapper.css?v=61" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -447,6 +447,28 @@
                 </div>
               </div>
             </section>
+            <section class="fm-sizer-card" aria-label="Structure rotation">
+              <p class="fm-sizer-card-label">Rotate</p>
+              <div class="fm-rotate">
+                <div class="fm-rotate-wheel" id="sizer-rotate-wheel" role="slider" tabindex="0" aria-label="Rotation" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" aria-valuetext="0 degrees">
+                  <span class="fm-rotate-arm" aria-hidden="true"><span class="fm-rotate-knob"></span></span>
+                  <span class="fm-rotate-hub" aria-hidden="true"></span>
+                </div>
+                <div class="fm-rotate-side">
+                  <div class="fm-sizer-axis-row">
+                    <input type="number" id="sizer-rotate-num" min="0" max="359" step="1" value="0" aria-label="Rotation degrees" />
+                    <span class="fm-sizer-unit">°</span>
+                  </div>
+                  <div class="fm-rotate-steps">
+                    <button type="button" class="fm-rotate-step" data-rotate-by="-15" aria-label="Rotate 15 degrees counterclockwise">−15°</button>
+                    <button type="button" class="fm-rotate-step" data-rotate-by="15" aria-label="Rotate 15 degrees clockwise">+15°</button>
+                    <button type="button" class="fm-rotate-step" data-rotate-by="90" aria-label="Rotate 90 degrees clockwise">+90°</button>
+                    <button type="button" class="fm-rotate-step" data-rotate-to="0" aria-label="Reset rotation">Reset</button>
+                  </div>
+                </div>
+              </div>
+              <p class="fm-rotate-hint">Drag the wheel to spin it. Hold Shift to snap to 15°.</p>
+            </section>
             <section class="fm-sizer-card" aria-label="Wall style">
               <p class="fm-sizer-card-label">Wall style</p>
               <div class="fm-style-row" role="group" aria-label="Selected structure wall style">
@@ -820,6 +842,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=83"></script>
+  <script src="field-mapper.js?v=84"></script>
 </body>
 </html>
