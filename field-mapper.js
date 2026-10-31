@@ -76,6 +76,15 @@
   const brushSizeInput = document.getElementById("brush-size");
   const brushColorInput = document.getElementById("brush-color");
   const structurePanel = document.getElementById("fm-structure-panel");
+  const autoPanel = document.getElementById("fm-auto-panel");
+  const autoColorBtns = document.querySelectorAll(".fm-auto-color[data-auto-color]");
+  const autoSensitivityInput = document.getElementById("auto-sensitivity");
+  const autoSensitivityValue = document.getElementById("auto-sensitivity-value");
+  const autoSplitInput = document.getElementById("auto-split");
+  const autoReplaceInput = document.getElementById("auto-replace");
+  const autoDetectBtn = document.getElementById("auto-detect");
+  const autoUndoBtn = document.getElementById("auto-undo");
+  const autoStatus = document.getElementById("auto-status");
   const brushPanel = document.getElementById("fm-brush-panel");
   const toolBtns = document.querySelectorAll(".fm-tool-btn[data-tool]");
   const mobileToolBtns = document.querySelectorAll(".fm-mobile-btn[data-tool]");
@@ -336,6 +345,10 @@
   /** @type {{x:number,y:number,pid:number,handled:boolean}|null} */
   let structurePointer = null;
   let structureDrag = null;
+  /** @type {object[]|null} */
+  let autoUndoSnapshot = null;
+  /** @type {{ src: string, w: number, h: number, data: Uint8ClampedArray }|null} */
+  let autoImageCache = null;
   let fieldIntelReport = { name: "", bio: "" };
   let intelModalOpen = false;
   /** @type {ReturnType<typeof serializeFieldState>|null} */
@@ -512,6 +525,7 @@
       players: "Teams — choose Team 1 count, tap spawn, nudge with ghost arrows, then lock.",
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
+      auto: "Auto — tap Detect structures, or tap one bunker to fit it.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
       shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
       sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
@@ -538,6 +552,8 @@
     if (mirrorLayoutMobileBtn) mirrorLayoutMobileBtn.disabled = !hasMap || !hasStructures;
     if (designMapBtn) designMapBtn.disabled = !hasMap;
     if (designMapMobileBtn) designMapMobileBtn.disabled = !hasMap;
+    if (autoDetectBtn) autoDetectBtn.disabled = !hasMap || !getAutoColors().length;
+    if (autoUndoBtn) autoUndoBtn.disabled = !hasMap || !autoUndoSnapshot;
     updateTeamPlacementPanel();
     updateShootPanel();
   }
@@ -553,6 +569,7 @@
   function syncToolPanels() {
     const design = isDesignPanelShown();
     if (structurePanel) structurePanel.hidden = design || activeTool !== "structure";
+    if (autoPanel) autoPanel.hidden = design || activeTool !== "auto";
     if (sizerPanel) sizerPanel.hidden = design || activeTool !== "sizer";
     if (teamPanel) teamPanel.hidden = design || activeTool !== "players";
     if (shootPanel) shootPanel.hidden = design || activeTool !== "shoot";
@@ -582,6 +599,7 @@
 
     stage.classList.toggle("tool-brush", activeTool === "brush");
     stage.classList.toggle("tool-structure", activeTool === "structure");
+    stage.classList.toggle("tool-auto", activeTool === "auto");
     stage.classList.toggle("tool-players", activeTool === "players");
     stage.classList.toggle("tool-vision", activeTool === "vision");
     stage.classList.toggle("tool-shoot", activeTool === "shoot");
@@ -589,6 +607,7 @@
     stage.classList.toggle("tool-intel", tool === "intel");
     workspace?.classList.toggle("tool-sizer-active", activeTool === "sizer");
     workspace?.classList.toggle("tool-structure-active", activeTool === "structure");
+    workspace?.classList.toggle("tool-auto-active", activeTool === "auto");
     workspace?.classList.toggle("tool-players-active", activeTool === "players");
     workspace?.classList.toggle("tool-shoot-active", activeTool === "shoot");
     workspace?.classList.toggle("tool-intel-active", tool === "intel");
@@ -609,6 +628,7 @@
     if (tool === "intel") scrollMobilePanel(intelSection);
     if (activeTool === "sizer") scrollMobilePanel(sizerPanel);
     if (activeTool === "structure") scrollMobilePanel(structurePanel);
+    if (activeTool === "auto") scrollMobilePanel(autoPanel);
     if (activeTool === "players") scrollMobilePanel(teamPanel);
     if (activeTool === "shoot") scrollMobilePanel(shootPanel);
 
@@ -622,6 +642,8 @@
         brush: "<strong>Brush</strong> — draw tactics on the map · click structures for intel",
         structure:
           "<strong>Structure</strong> — drag to place · click existing for <span style=\"color:#00ff9d\">intel</span>",
+        auto:
+          "<strong>Auto</strong> — detect every colored bunker at once · click one bunker on the map to fit just that one",
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
@@ -646,7 +668,7 @@
     if (!brushPanel) return;
     brushPanel.hidden = isMobileLayout()
       ? activeTool !== "brush"
-      : activeTool === "structure" || activeTool === "players" || activeTool === "sizer" || activeTool === "shoot";
+      : ["structure", "auto", "players", "sizer", "shoot"].includes(activeTool);
   }
 
   const mobileMoves = [
@@ -3721,6 +3743,585 @@
     return found;
   }
 
+  const AUTO_HUES = {
+    red: [
+      [335, 360],
+      [0, 22],
+    ],
+    blue: [[188, 262]],
+    green: [[78, 172]],
+  };
+  const AUTO_MAX_DIM = 900;
+  const AUTO_FIT_MIN_IOU = 0.8;
+  const AUTO_MAX_PIECES = 12;
+  const AUTO_TAP_HUE_SPREAD = 26;
+  const AUTO_CANDIDATES = [
+    ["rectangle", false],
+    ["circle", false],
+    ["triangle", false],
+    ["triangle", true],
+  ];
+
+  function getAutoColors() {
+    return Array.from(autoColorBtns)
+      .filter((btn) => btn.classList.contains("is-active"))
+      .map((btn) => btn.dataset.autoColor);
+  }
+
+  function getAutoMinChroma() {
+    const sensitivity = Number(autoSensitivityInput?.value) || 50;
+    return Math.round(125 - sensitivity * 1.1);
+  }
+
+  function setAutoStatus(html) {
+    if (autoStatus) autoStatus.innerHTML = html;
+  }
+
+  function syncAutoSensitivityUi() {
+    if (!autoSensitivityInput) return;
+    const min = Number(autoSensitivityInput.min) || 0;
+    const max = Number(autoSensitivityInput.max) || 100;
+    const value = Number(autoSensitivityInput.value) || min;
+    autoSensitivityInput.closest(".fm-throttle")?.style.setProperty("--fill", `${((value - min) / (max - min)) * 100}%`);
+    if (autoSensitivityValue) autoSensitivityValue.textContent = String(value);
+  }
+
+  function getAutoImageData() {
+    if (autoImageCache && autoImageCache.src === image.currentSrc) return autoImageCache;
+    const scale = Math.min(1, AUTO_MAX_DIM / Math.max(image.naturalWidth, image.naturalHeight, 1));
+    const w = Math.max(1, Math.round(image.naturalWidth * scale));
+    const h = Math.max(1, Math.round(image.naturalHeight * scale));
+    const off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext("2d", { willReadFrequently: true });
+    octx.drawImage(image, 0, 0, w, h);
+    autoImageCache = { src: image.currentSrc, w, h, data: octx.getImageData(0, 0, w, h).data };
+    return autoImageCache;
+  }
+
+  function rgbHue(r, g, b, max, chroma) {
+    let hue;
+    if (max === r) hue = ((g - b) / chroma) % 6;
+    else if (max === g) hue = (b - r) / chroma + 2;
+    else hue = (r - g) / chroma + 4;
+    hue *= 60;
+    return hue < 0 ? hue + 360 : hue;
+  }
+
+  function autoPixelInfo(data, p) {
+    const i = p * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const max = Math.max(r, g, b);
+    const chroma = max - Math.min(r, g, b);
+    return { alpha: data[i + 3], max, chroma, hue: chroma ? rgbHue(r, g, b, max, chroma) : 0 };
+  }
+
+  function buildAutoMask(data, w, h, ranges, minChroma) {
+    const mask = new Uint8Array(w * h);
+    for (let p = 0; p < w * h; p++) {
+      const { alpha, max, chroma, hue } = autoPixelInfo(data, p);
+      if (alpha < 80 || max < 60 || chroma < minChroma) continue;
+      if (ranges && !ranges.some(([lo, hi]) => hue >= lo && hue <= hi)) continue;
+      mask[p] = 1;
+    }
+    return mask;
+  }
+
+  function morphAutoMask(mask, w, h, dilate) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = dilate ? 0 : 1;
+        for (let dy = -1; dy <= 1 && v === (dilate ? 0 : 1); dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            const m = mask[yy * w + xx];
+            if (dilate ? m : !m) {
+              v = dilate ? 1 : 0;
+              break;
+            }
+          }
+        }
+        out[y * w + x] = v;
+      }
+    }
+    return out;
+  }
+
+  function closeAutoMask(mask, w, h) {
+    return morphAutoMask(morphAutoMask(mask, w, h, true), w, h, false);
+  }
+
+  function floodAutoComponent(mask, w, h, start, labels, id, stack) {
+    let sp = 0;
+    stack[sp++] = start;
+    labels[start] = id;
+    let minX = w;
+    let minY = h;
+    let maxX = -1;
+    let maxY = -1;
+    let count = 0;
+    while (sp) {
+      const p = stack[--sp];
+      const x = p % w;
+      const y = (p - x) / w;
+      count++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          const q = ny * w + nx;
+          if (mask[q] && !labels[q]) {
+            labels[q] = id;
+            stack[sp++] = q;
+          }
+        }
+      }
+    }
+    return { id, minX, minY, maxX, maxY, count };
+  }
+
+  function autoComponentMask(labels, w, comp) {
+    const bw = comp.maxX - comp.minX + 1;
+    const bh = comp.maxY - comp.minY + 1;
+    const local = new Uint8Array(bw * bh);
+    for (let y = 0; y < bh; y++) {
+      const row = (comp.minY + y) * w + comp.minX;
+      for (let x = 0; x < bw; x++) {
+        if (labels[row + x] === comp.id) local[y * bw + x] = 1;
+      }
+    }
+    const outside = new Uint8Array(bw * bh);
+    const stack = new Int32Array(bw * bh);
+    let sp = 0;
+    const seed = (x, y) => {
+      const p = y * bw + x;
+      if (!local[p] && !outside[p]) {
+        outside[p] = 1;
+        stack[sp++] = p;
+      }
+    };
+    for (let x = 0; x < bw; x++) {
+      seed(x, 0);
+      seed(x, bh - 1);
+    }
+    for (let y = 0; y < bh; y++) {
+      seed(0, y);
+      seed(bw - 1, y);
+    }
+    while (sp) {
+      const p = stack[--sp];
+      const x = p % bw;
+      const y = (p - x) / bw;
+      if (x > 0) seed(x - 1, y);
+      if (x < bw - 1) seed(x + 1, y);
+      if (y > 0) seed(x, y - 1);
+      if (y < bh - 1) seed(x, y + 1);
+    }
+    let area = 0;
+    for (let p = 0; p < bw * bh; p++) {
+      if (!outside[p]) {
+        local[p] = 1;
+        area++;
+      }
+    }
+    return { local, bw, bh, area };
+  }
+
+  function autoCoreCount(local, bw, bh) {
+    let core = 0;
+    for (let y = 1; y < bh - 1; y++) {
+      for (let x = 1; x < bw - 1; x++) {
+        let solid = true;
+        for (let dy = -1; dy <= 1 && solid; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (!local[(y + dy) * bw + x + dx]) {
+              solid = false;
+              break;
+            }
+          }
+        }
+        if (solid) core++;
+      }
+    }
+    return core;
+  }
+
+  function autoShapeContains(type, flip, x, y, bw, bh) {
+    if (type === "rectangle") return true;
+    const u = (x + 0.5) / bw;
+    const v = (y + 0.5) / bh;
+    if (type === "circle") {
+      const dx = u - 0.5;
+      const dy = v - 0.5;
+      return dx * dx + dy * dy <= 0.25;
+    }
+    const t = flip ? 1 - v : v;
+    return Math.abs(u - 0.5) <= t / 2;
+  }
+
+  function fitAutoShape(local, bw, bh, area) {
+    let best = { type: "rectangle", flip: false, iou: 0 };
+    AUTO_CANDIDATES.forEach(([type, flip]) => {
+      let inter = 0;
+      let shapeArea = 0;
+      for (let y = 0; y < bh; y++) {
+        for (let x = 0; x < bw; x++) {
+          if (!autoShapeContains(type, flip, x, y, bw, bh)) continue;
+          shapeArea++;
+          if (local[y * bw + x]) inter++;
+        }
+      }
+      const union = area + shapeArea - inter;
+      const iou = union ? inter / union : 0;
+      if (iou > best.iou) best = { type, flip, iou };
+    });
+    return best;
+  }
+
+  function largestAutoRect(mask, bw, bh) {
+    const heights = new Int32Array(bw);
+    const stack = new Int32Array(bw + 1);
+    let best = { area: 0, x: 0, y: 0, w: 0, h: 0 };
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) heights[x] = mask[y * bw + x] ? heights[x] + 1 : 0;
+      let sp = 0;
+      for (let x = 0; x <= bw; x++) {
+        const current = x < bw ? heights[x] : 0;
+        while (sp && heights[stack[sp - 1]] >= current) {
+          const height = heights[stack[--sp]];
+          const left = sp ? stack[sp - 1] + 1 : 0;
+          const area = height * (x - left);
+          if (area > best.area) best = { area, x: left, y: y - height + 1, w: x - left, h: height };
+        }
+        stack[sp++] = x;
+      }
+    }
+    return best;
+  }
+
+  function splitAutoComponent(local, bw, bh, area) {
+    const remaining = local.slice();
+    const pieces = [];
+    const minPiece = Math.max(8, area * 0.025);
+    let covered = 0;
+    while (pieces.length < AUTO_MAX_PIECES && covered < area * 0.92) {
+      const r = largestAutoRect(remaining, bw, bh);
+      if (r.area < minPiece || Math.min(r.w, r.h) < 2) break;
+      pieces.push(r);
+      covered += r.area;
+      for (let y = r.y; y < r.y + r.h; y++) remaining.fill(0, y * bw + r.x, y * bw + r.x + r.w);
+    }
+    return pieces;
+  }
+
+  function autoMoments(local, bw, bh) {
+    let n = 0;
+    let sx = 0;
+    let sy = 0;
+    let sxx = 0;
+    let syy = 0;
+    let sxy = 0;
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        if (!local[y * bw + x]) continue;
+        n++;
+        sx += x;
+        sy += y;
+        sxx += x * x;
+        syy += y * y;
+        sxy += x * y;
+      }
+    }
+    if (!n) return { angle: 0, elongation: 1, thickness: 1 };
+    const mx = sx / n;
+    const my = sy / n;
+    const cxx = sxx / n - mx * mx;
+    const cyy = syy / n - my * my;
+    const cxy = sxy / n - mx * my;
+    const half = (cxx + cyy) / 2;
+    const disc = Math.sqrt(Math.max(0, half * half - (cxx * cyy - cxy * cxy)));
+    const major = half + disc;
+    const minor = Math.max(1e-6, half - disc);
+    return {
+      angle: 0.5 * Math.atan2(2 * cxy, cxx - cyy),
+      elongation: Math.sqrt(major / minor),
+      thickness: Math.sqrt(12 * minor),
+    };
+  }
+
+  function sliceAutoComponent(local, bw, bh, alongX, count) {
+    const span = alongX ? bw : bh;
+    const rects = [];
+    for (let i = 0; i < count; i++) {
+      const a = Math.round((i * span) / count);
+      const b = Math.round(((i + 1) * span) / count);
+      let minX = bw;
+      let minY = bh;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = alongX ? 0 : a; y < (alongX ? bh : b); y++) {
+        for (let x = alongX ? a : 0; x < (alongX ? b : bw); x++) {
+          if (!local[y * bw + x]) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (maxX >= 0) rects.push({ x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 });
+    }
+    return rects;
+  }
+
+  function splitAutoDiagonal(local, bw, bh) {
+    const m = autoMoments(local, bw, bh);
+    const deg = Math.abs((m.angle * 180) / Math.PI) % 90;
+    if (m.elongation < 3 || deg < 12 || deg > 78) return null;
+    const alongX = Math.abs(Math.cos(m.angle)) >= Math.abs(Math.sin(m.angle));
+    const span = alongX ? bw : bh;
+    const count = Math.max(3, Math.min(AUTO_MAX_PIECES, Math.round(span / Math.max(2, m.thickness * 0.9))));
+    return sliceAutoComponent(local, bw, bh, alongX, count);
+  }
+
+  function makeAutoStructure(x, y, pw, ph, w, h, type, flip) {
+    const shape = {
+      id: crypto.randomUUID(),
+      type,
+      x1: x / w,
+      y1: y / h,
+      x2: (x + pw) / w,
+      y2: (y + ph) / h,
+      fill: "filled",
+      detected: true,
+    };
+    if (type === "triangle" && flip) shape.flip = true;
+    return shape;
+  }
+
+  function autoStructuresForComponent(labels, w, h, comp, split, strict) {
+    const bw = comp.maxX - comp.minX + 1;
+    const bh = comp.maxY - comp.minY + 1;
+    if (strict) {
+      const isFrame = bw > w * 0.6 && bh > h * 0.6 && comp.count < bw * bh * 0.35;
+      const isLine = comp.count / Math.max(bw, bh) < 2.5 && Math.max(bw, bh) > 24;
+      if (isFrame || isLine) return null;
+    }
+    const { local, area } = autoComponentMask(labels, w, comp);
+    if (strict && autoCoreCount(local, bw, bh) < Math.max(3, area * 0.12)) return null;
+
+    const fit = fitAutoShape(local, bw, bh, area);
+    if (fit.iou < AUTO_FIT_MIN_IOU && split) {
+      const rects = splitAutoDiagonal(local, bw, bh) || splitAutoComponent(local, bw, bh, area);
+      if (rects.length > 1) {
+        return {
+          split: true,
+          pieces: rects.map((r) => makeAutoStructure(comp.minX + r.x, comp.minY + r.y, r.w, r.h, w, h, "rectangle", false)),
+        };
+      }
+    }
+    return {
+      split: false,
+      pieces: [makeAutoStructure(comp.minX, comp.minY, bw, bh, w, h, fit.type, fit.flip)],
+    };
+  }
+
+  function commitAutoStructures(next, message) {
+    autoUndoSnapshot = structures.map((s) => ({ ...s }));
+    structures = next;
+    if (selectedStructureId && !structures.some((s) => s.id === selectedStructureId)) {
+      selectedStructureId = null;
+    }
+    mergeIntelFromSavedState();
+    persistFieldState();
+    updateSizerPanel();
+    updateIntelReport();
+    redrawStructures();
+    redrawShootOverlay();
+    setAutoStatus(message);
+  }
+
+  function describeAutoResult(shapeCount, pieceCount, splitCount) {
+    const bunkers = `${shapeCount} bunker${shapeCount === 1 ? "" : "s"}`;
+    const pieces = `${pieceCount} piece${pieceCount === 1 ? "" : "s"}`;
+    const splitNote = splitCount ? ` ${splitCount} odd shape${splitCount === 1 ? " was" : "s were"} split into rectangles.` : "";
+    return `Found <strong>${bunkers}</strong> and placed <strong>${pieces}</strong>.${splitNote} Fine-tune with <strong>Sizer</strong>.`;
+  }
+
+  function runAutoDetect() {
+    if (!hasMap || !image.naturalWidth) return;
+    const colors = getAutoColors();
+    if (!colors.length) return;
+    const ranges = colors.includes("any") ? null : colors.flatMap((c) => AUTO_HUES[c] || []);
+    const { w, h, data } = getAutoImageData();
+    const mask = closeAutoMask(buildAutoMask(data, w, h, ranges, getAutoMinChroma()), w, h);
+    const labels = new Int32Array(w * h);
+    const stack = new Int32Array(w * h);
+    const minPixels = Math.max(12, Math.round(w * h * 0.00004));
+    const split = autoSplitInput?.checked !== false;
+    const found = [];
+    let shapeCount = 0;
+    let splitCount = 0;
+    let nextId = 1;
+    for (let p = 0; p < w * h; p++) {
+      if (!mask[p] || labels[p]) continue;
+      const comp = floodAutoComponent(mask, w, h, p, labels, nextId++, stack);
+      if (comp.count < minPixels) continue;
+      const result = autoStructuresForComponent(labels, w, h, comp, split, true);
+      if (!result) continue;
+      shapeCount++;
+      if (result.split) splitCount++;
+      found.push(...result.pieces);
+    }
+
+    if (!found.length) {
+      setAutoStatus("No bunkers found in those colors. Try raising <strong>Sensitivity</strong> or picking <strong>Any color</strong>.");
+      return;
+    }
+
+    let next = found;
+    if (autoReplaceInput && !autoReplaceInput.checked) {
+      const fresh = found.filter((f) => {
+        const fb = getStructureBounds(f);
+        return !structures.some((s) => boundsIoU(getStructureBounds(s), fb) > 0.3);
+      });
+      next = structures.concat(fresh);
+    }
+    commitAutoStructures(next, describeAutoResult(shapeCount, found.length, splitCount));
+  }
+
+  function autoHueRanges(hue) {
+    const lo = hue - AUTO_TAP_HUE_SPREAD;
+    const hi = hue + AUTO_TAP_HUE_SPREAD;
+    if (lo < 0) return [[lo + 360, 360], [0, hi]];
+    if (hi > 360) return [[lo, 360], [0, hi - 360]];
+    return [[lo, hi]];
+  }
+
+  function autoFitAtEvent(e) {
+    if (!image.naturalWidth) return;
+    const { x, y } = getLayerPoint(e, structureCanvas);
+    const size = getCanvasSize();
+    if (!size.w || !size.h) return;
+    const { w, h, data } = getAutoImageData();
+    const cx = Math.max(0, Math.min(w - 1, Math.floor((x / size.w) * w)));
+    const cy = Math.max(0, Math.min(h - 1, Math.floor((y / size.h) * h)));
+    const minChroma = getAutoMinChroma();
+    const reach = Math.round(Math.max(w, h) * (IS_COARSE ? 0.018 : 0.01)) + 2;
+
+    let start = -1;
+    let bestDist = Infinity;
+    for (let dy = -reach; dy <= reach; dy++) {
+      const yy = cy + dy;
+      if (yy < 0 || yy >= h) continue;
+      for (let dx = -reach; dx <= reach; dx++) {
+        const xx = cx + dx;
+        if (xx < 0 || xx >= w) continue;
+        const dist = dx * dx + dy * dy;
+        if (dist >= bestDist || dist > reach * reach) continue;
+        const info = autoPixelInfo(data, yy * w + xx);
+        if (info.alpha >= 80 && info.max >= 60 && info.chroma >= minChroma) {
+          start = yy * w + xx;
+          bestDist = dist;
+        }
+      }
+    }
+    if (start < 0) {
+      setAutoStatus("No colored bunker there. Tap right on one, or raise <strong>Sensitivity</strong>.");
+      return;
+    }
+
+    const ranges = autoHueRanges(autoPixelInfo(data, start).hue);
+    const mask = closeAutoMask(buildAutoMask(data, w, h, ranges, minChroma), w, h);
+    if (!mask[start]) return;
+    const labels = new Int32Array(w * h);
+    const comp = floodAutoComponent(mask, w, h, start, labels, 1, new Int32Array(w * h));
+    const result = autoStructuresForComponent(labels, w, h, comp, autoSplitInput?.checked !== false, false);
+    if (!result) return;
+
+    const area = {
+      left: comp.minX / w,
+      top: comp.minY / h,
+      width: (comp.maxX - comp.minX + 1) / w,
+      height: (comp.maxY - comp.minY + 1) / h,
+    };
+    const inArea = (s) => {
+      const b = getStructureBounds(s);
+      const mx = b.left + b.width / 2;
+      const my = b.top + b.height / 2;
+      return (
+        boundsIoU(b, area) > 0.3 ||
+        (mx >= area.left && mx <= area.left + area.width && my >= area.top && my <= area.top + area.height)
+      );
+    };
+    const replaced = structures.filter(inArea).length;
+    const next = structures.filter((s) => !inArea(s)).concat(result.pieces);
+    const count = result.pieces.length;
+    const what = count === 1 ? `a ${result.pieces[0].type}` : `${count} pieces`;
+    commitAutoStructures(
+      next,
+      `Fit ${what} to that bunker${replaced ? `, replacing ${replaced} old piece${replaced === 1 ? "" : "s"}` : ""}.`
+    );
+  }
+
+  function undoAutoStructures() {
+    if (!autoUndoSnapshot) return;
+    structures = autoUndoSnapshot;
+    autoUndoSnapshot = null;
+    if (selectedStructureId && !structures.some((s) => s.id === selectedStructureId)) {
+      selectedStructureId = null;
+    }
+    persistFieldState();
+    updateSizerPanel();
+    updateIntelReport();
+    redrawStructures();
+    redrawShootOverlay();
+    setAutoStatus("Structures restored to how they were before the last auto structure.");
+  }
+
+  autoColorBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const isAny = btn.dataset.autoColor === "any";
+      const on = !btn.classList.contains("is-active");
+      autoColorBtns.forEach((other) => {
+        if (other === btn) return;
+        if (on && (isAny || other.dataset.autoColor === "any")) {
+          other.classList.remove("is-active");
+          other.setAttribute("aria-pressed", "false");
+        }
+      });
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+      updateControlStates();
+    });
+  });
+  autoSensitivityInput?.addEventListener("input", syncAutoSensitivityUi);
+  syncAutoSensitivityUi();
+  autoDetectBtn?.addEventListener("click", () => {
+    autoDetectBtn.disabled = true;
+    setAutoStatus("Scanning the map…");
+    setTimeout(() => {
+      try {
+        runAutoDetect();
+      } finally {
+        updateControlStates();
+      }
+    }, 30);
+  });
+  autoUndoBtn?.addEventListener("click", undoAutoStructures);
+
   function clearTeamControls() {
     playersLayer.querySelectorAll(".fm-team-nudges").forEach((el) => el.remove());
   }
@@ -4148,6 +4749,12 @@
       return;
     }
 
+    if (activeTool === "auto") {
+      e.preventDefault();
+      autoFitAtEvent(e);
+      return;
+    }
+
     const { x, y } = getLayerPoint(e, structureCanvas);
     const canDrag = activeTool === "sizer" || activeTool === "structure";
     const hit =
@@ -4329,6 +4936,8 @@
   function showMapUI() {
     hasMap = true;
     clearSizerUndo();
+    autoUndoSnapshot = null;
+    autoImageCache = null;
     clearShootPlan();
     const packToApply = pendingPackState;
     const fromPack = pendingPackLoad;
@@ -4382,7 +4991,7 @@
       }
       renderDesignMap();
       redrawStructures();
-      setTool("players");
+      setTool(structures.length ? "players" : "auto");
       updateControlStates();
       updateIntelReport();
       updateMobileTip(uiTool);
@@ -4404,6 +5013,8 @@
     placePreview = null;
     selectedStructureId = null;
     clearSizerUndo();
+    autoUndoSnapshot = null;
+    autoImageCache = null;
     clearVisionLines();
     clearShootPlan();
     shootSceneSetups = [];

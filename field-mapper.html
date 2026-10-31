@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=17" />
-  <link rel="stylesheet" href="field-mapper.css?v=57" />
+  <link rel="stylesheet" href="field-mapper.css?v=58" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -22,6 +22,7 @@
     <symbol id="i-structure" viewBox="0 0 24 24"><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /><rect x="8" y="3" width="8" height="8" rx="1.5" /></symbol>
     <symbol id="i-vision" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></symbol>
     <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle cx="12" cy="12" r="1" /></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><path d="M4 20L15 9M13 7l4 4" /><path d="M18 2.5v3.5M16.25 4.25h3.5M20.5 10v3M19 11.5h3M8.5 2.5v3M7 4h3" /></symbol>
     <symbol id="i-sizer" viewBox="0 0 24 24"><path d="M14 3h7v7M10 21H3v-7M21 3l-7 7M3 21l7-7" /></symbol>
     <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9.5v5M12 18.5V21" /><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></symbol>
     <symbol id="i-intel" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V2.8h6V4M9 10h6M9 14h6M9 18h3" /></symbol>
@@ -122,6 +123,10 @@
           <button type="button" class="fm-tool-btn" data-tool="structure" title="Place walls and bunkers" style="--tool-color: #00ff9d">
             <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
             <span class="fm-tool-name">Structure</span>
+          </button>
+          <button type="button" class="fm-tool-btn" data-tool="auto" title="Auto-detect colored bunkers on the map" style="--tool-color: #6c8cff">
+            <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
+            <span class="fm-tool-name">Auto</span>
           </button>
           <button type="button" class="fm-tool-btn" data-tool="vision" title="360° lines from player" style="--tool-color: #ff4fc8">
             <span class="fm-tool-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
@@ -318,6 +323,42 @@
             </p>
           </section>
           <button type="button" class="fm-kit-btn is-full is-quiet" id="undo-structure" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>Undo</button>
+        </div>
+
+        <div class="fm-auto-panel fm-map-tool-panel fm-kit" id="fm-auto-panel" hidden aria-label="Auto structure options" style="--tool-color: #6c8cff">
+          <div class="fm-kit-head">
+            <div class="fm-kit-head-title">
+              <span class="fm-kit-ico" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
+              <div>
+                <p class="eyebrow">Auto structure</p>
+                <h2 class="fm-kit-title">Detect bunkers</h2>
+              </div>
+            </div>
+          </div>
+          <p class="fm-kit-hint">Finds colored bunkers on a light map and covers each one with Rectangle, Circle, and Triangle pieces.</p>
+          <section class="fm-kit-card">
+            <p class="fm-kit-label">Colors to find</p>
+            <div class="fm-auto-colors" role="group" aria-label="Colors to find">
+              <button type="button" class="fm-auto-color is-active" data-auto-color="red" aria-pressed="true" style="--c: #ff3b3b">Red</button>
+              <button type="button" class="fm-auto-color is-active" data-auto-color="blue" aria-pressed="true" style="--c: #3b7bff">Blue</button>
+              <button type="button" class="fm-auto-color" data-auto-color="green" aria-pressed="false" style="--c: #22c55e">Green</button>
+              <button type="button" class="fm-auto-color" data-auto-color="any" aria-pressed="false" style="--c: conic-gradient(#ff3b3b, #ffd43b, #22c55e, #3b7bff, #ff4fc8, #ff3b3b)">Any color</button>
+            </div>
+          </section>
+          <section class="fm-kit-card">
+            <div class="fm-throttle">
+              <div class="fm-throttle-head">
+                <label for="auto-sensitivity">Sensitivity</label>
+                <output class="fm-throttle-value" id="auto-sensitivity-value" for="auto-sensitivity">50</output>
+              </div>
+              <input type="range" class="fm-throttle-range" id="auto-sensitivity" min="1" max="100" value="50" />
+            </div>
+            <label class="fm-shoot-toggle"><input type="checkbox" id="auto-split" checked /><span>Split odd shapes into several pieces</span></label>
+            <label class="fm-shoot-toggle"><input type="checkbox" id="auto-replace" checked /><span>Replace current structures</span></label>
+          </section>
+          <button type="button" class="fm-kit-btn is-full is-primary" id="auto-detect" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-auto" /></svg>Detect structures</button>
+          <p class="fm-kit-note" id="auto-status" aria-live="polite">Pick the colors your bunkers use, then tap <strong>Detect structures</strong>. Or tap one bunker on the map to fit just that one.</p>
+          <button type="button" class="fm-kit-btn is-full is-quiet" id="auto-undo" disabled><svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>Undo auto structure</button>
         </div>
 
         <aside class="fm-sizer-panel fm-map-tool-panel" id="fm-sizer-panel" hidden aria-label="Structure size controls" data-mobile-panel="sizer">
@@ -543,6 +584,10 @@
               <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-structure" /></svg></span>
               <span>Struct</span>
             </button>
+            <button type="button" class="fm-mobile-btn" data-tool="auto" aria-pressed="false" style="--tool-color: #6c8cff">
+              <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
+              <span>Auto</span>
+            </button>
             <button type="button" class="fm-mobile-btn" data-tool="vision" aria-pressed="false" style="--tool-color: #ff4fc8">
               <span class="fm-mobile-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-vision" /></svg></span>
               <span>Vision</span>
@@ -739,6 +784,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=74"></script>
+  <script src="field-mapper.js?v=75"></script>
 </body>
 </html>

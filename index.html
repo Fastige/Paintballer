@@ -21,6 +21,7 @@
     <symbol id="i-structure" viewBox="0 0 24 24"><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /><rect x="8" y="3" width="8" height="8" rx="1.5" /></symbol>
     <symbol id="i-vision" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></symbol>
     <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle cx="12" cy="12" r="1" /></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><path d="M4 20L15 9M13 7l4 4" /><path d="M18 2.5v3.5M16.25 4.25h3.5M20.5 10v3M19 11.5h3M8.5 2.5v3M7 4h3" /></symbol>
     <symbol id="i-sizer" viewBox="0 0 24 24"><path d="M14 3h7v7M10 21H3v-7M21 3l-7 7M3 21l7-7" /></symbol>
     <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v2.5M12 9.5v5M12 18.5V21" /><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></symbol>
     <symbol id="i-design" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2" /><path d="M12 4.5v3M12 10.5v3M12 16.5v3" /><rect x="5.5" y="8" width="3.5" height="3" rx="0.6" /><rect x="15" y="13" width="3.5" height="3" rx="0.6" /></symbol>
@@ -69,7 +70,7 @@
           <a class="btn btn-ghost" href="#start">How to start</a>
         </div>
         <ul class="hero-chips">
-          <li style="--tool-color: #7cfc3b">9 map tools</li>
+          <li style="--tool-color: #7cfc3b">10 map tools</li>
           <li style="--tool-color: #ff3b3b">Shoot &amp; run scenes</li>
           <li style="--tool-color: #3bd5ff">GIF export</li>
         </ul>
@@ -127,7 +128,7 @@
             <span class="step-num">02</span>
           </div>
           <strong>Check the bunkers</strong>
-          <p>Green bunkers are detected automatically. Add or fix any with Structure and Sizer.</p>
+          <p>Green bunkers are detected automatically. Use Auto for red and blue layouts, then fix any with Structure and Sizer.</p>
         </li>
         <li style="--tool-color: #ff7a1a">
           <div class="step-top">
@@ -167,7 +168,7 @@
             <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-upload" /></svg></span>
             <div><span class="feature-kicker">Map</span><h3>Upload map image</h3></div>
           </div>
-          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically.</p>
+          <p>Load a PNG or JPG of your field. Bright green bunkers on the image turn into structures automatically. For red and blue layouts on a white background, use <strong>Auto</strong>.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ffd43b">
           <div class="feature-head">
@@ -251,6 +252,21 @@
             <li>Drag an existing bunker to move it, or tap <strong>Undo</strong> to remove the last one you placed.</li>
           </ul>
           <p class="tool-tip"><strong>Tip</strong>Bright green bunkers on an uploaded image are detected for you, so you only add what's missing.</p>
+        </article>
+        <article class="feature-card" style="--tool-color: #6c8cff">
+          <div class="feature-head">
+            <span class="feature-icon" aria-hidden="true"><svg class="fm-ico"><use href="#i-auto" /></svg></span>
+            <div><span class="feature-kicker">Tool</span><h3>Auto</h3></div>
+          </div>
+          <p class="tool-lead">Turn a printed field layout into structures in one tap.</p>
+          <ul class="tool-steps">
+            <li>Pick the colors your bunkers use: <strong>Red</strong>, <strong>Blue</strong>, <strong>Green</strong>, or <strong>Any color</strong>. Red and blue are on by default.</li>
+            <li>Tap <strong>Detect structures</strong>. Each bunker gets the best-fitting Rectangle, Circle, or Triangle.</li>
+            <li>Odd shapes like L-walls and diagonal snakes are built from several pieces, so lanes stay blocked.</li>
+            <li>Tap a single bunker on the map to fit just that one, or tap <strong>Undo auto structure</strong> to go back.</li>
+            <li>Raise <strong>Sensitivity</strong> for faded colors. Turn off <strong>Replace current structures</strong> to only add what's missing.</li>
+          </ul>
+          <p class="tool-tip"><strong>Tip</strong>Works best on a light background. Black lines, text, and the field border are ignored, and maps with no green bunkers open on Auto.</p>
         </article>
         <article class="feature-card" style="--tool-color: #ff4fc8">
           <div class="feature-head">
