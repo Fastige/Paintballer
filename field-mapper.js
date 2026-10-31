@@ -297,6 +297,13 @@
   let shootMode = "run";
   let shootPoint = null;
   let runPoint = null;
+  let runPath = null;
+  /** @type {{pid:number,fromPlayer:boolean,prevPath:object[]|null,prevPoint:object|null,lastPx:{x:number,y:number}|null}|null} */
+  let shootRunDraw = null;
+  const RUN_PATH_MIN_STEP_PX = 4;
+  const RUN_PATH_MAX_POINTS = 400;
+  /** Route index each running player is heading toward, so the overlay only draws what's left. */
+  const runRouteProgress = new Map();
   let targetRunPoint = null;
   let runAnimationFrame = null;
   let lastRunStartPositions = null;
@@ -502,7 +509,7 @@
       brush: "Brush — draw on the map. Use Move or Intel to tag bunkers.",
       structure: "Struct — drag to place. Tap existing bunkers for Intel.",
       vision: "Vision — tap a player for lines (stay on when you switch tools).",
-      shoot: "Shoot — tap runner, set shoot/run points, or target an opposing player.",
+      shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
       sizer: "Sizer — drag a bunker to move it, or resize / use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -614,7 +621,7 @@
         vision:
           "<strong>Vision</strong> — click a player for <span style=\"color:#ff4fc8\">pink</span> lines · lines stay on when you switch tools",
         shoot:
-          "<strong>Shoot</strong> — click a runner, set shoot/run points, or target an opposing player",
+          "<strong>Shoot</strong> — click a runner, <strong>drag</strong> to draw the run route, then set a shoot point or target",
         sizer:
           "<strong>Sizer</strong> — resize structures · <strong>drag</strong> or arrows to move · intel below map",
         intel:
@@ -704,6 +711,7 @@
     shootStandStill = Boolean(shootStandStillInput.checked);
     if (shootStandStill) {
       runPoint = null;
+      runPath = null;
       shootNoShot = false;
       if (shootMode === "run") shootMode = "shoot";
     }
@@ -1218,6 +1226,19 @@
     return point ? { x: point.x, y: point.y } : null;
   }
 
+  function clonePath(path) {
+    if (!Array.isArray(path)) return null;
+    const points = path
+      .filter((p) => p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)))
+      .map((p) => ({ x: Math.round(Number(p.x) * 10000) / 10000, y: Math.round(Number(p.y) * 10000) / 10000 }));
+    return points.length ? points : null;
+  }
+
+  function getSetupRunRoute(setup) {
+    if (setup.standStill || !setup.runPoint) return null;
+    return setup.runPath?.length ? setup.runPath : [setup.runPoint];
+  }
+
   function getShootSetupComplete(setup) {
     if (!setup?.playerKey) return false;
     if (setup.noShoot) return Boolean(setup.runPoint);
@@ -1242,6 +1263,7 @@
       targetPlayerKey: shootUseTargetPlayer ? getPlayerKey(shootTargetPlayerEl) : "",
       shootPoint: shootUseTargetPlayer ? null : clonePoint(shootPoint),
       runPoint: shootStandStill ? null : clonePoint(runPoint),
+      runPath: shootStandStill || !runPoint ? null : clonePath(runPath),
       targetRunPoint: clonePoint(targetRunPoint),
     };
     if (!allowIncomplete && !getShootSetupComplete(setup)) return null;
@@ -1304,8 +1326,11 @@
     if (shootStandStillInput) shootStandStillInput.checked = false;
     shootPoint = null;
     runPoint = null;
+    runPath = null;
+    shootRunDraw = null;
     targetRunPoint = null;
     lastRunStartPositions = null;
+    runRouteProgress.clear();
     activeShootSetupId = null;
     updateShootPanel();
     redrawShootOverlay();
@@ -1327,7 +1352,7 @@
     if (shootTargetStatus) {
       shootTargetStatus.hidden = !shootNoShot && !shootUseTargetPlayer;
       if (shootNoShot) {
-        shootTargetStatus.textContent = "No shot — set a run point for this player.";
+        shootTargetStatus.textContent = "No shot — draw a run route for this player.";
       } else if (!shootUseTargetPlayer) {
         shootTargetStatus.textContent = "";
       } else if (shootTargetPlayerEl) {
@@ -1616,6 +1641,7 @@
 
     shootPoint = clonePoint(setup.shootPoint);
     runPoint = shootStandStill ? null : clonePoint(setup.runPoint);
+    runPath = runPoint ? clonePath(setup.runPath) : null;
     targetRunPoint = clonePoint(setup.targetRunPoint);
     if (shootTimeInput) shootTimeInput.value = String(setup.timeSec || 3);
     shootMode = shootStandStill ? "shoot" : "run";
@@ -1659,6 +1685,7 @@
     shootTargetPlayerEl = null;
     shootPoint = null;
     runPoint = null;
+    runPath = null;
     targetRunPoint = null;
     shootUseTargetPlayer = false;
     shootStandStill = false;
@@ -1752,6 +1779,23 @@
     context.lineWidth = width;
     context.moveTo(start.x, start.y);
     context.lineTo(end.x, end.y);
+    context.stroke();
+    context.restore();
+    context.beginPath();
+  }
+
+  function strokeShootPath(context, points, color, width, dash) {
+    if (points.length < 2) return;
+    context.save();
+    context.beginPath();
+    context.setLineDash(dash || []);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.miterLimit = 2;
+    context.strokeStyle = color;
+    context.lineWidth = width;
+    context.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) context.lineTo(points[i].x, points[i].y);
     context.stroke();
     context.restore();
     context.beginPath();
@@ -1921,9 +1965,16 @@
       }
     }
 
-    if (setup.runPoint) {
-      const run = denormalizePoint(setup.runPoint);
-      strokeShootLine(shootCtx, start, run, RUN_POINT_COLOR, muted ? 2 : 3, [8, 6]);
+    const runRoute = getSetupRunRoute(setup);
+    if (runRoute) {
+      const remaining = runRoute.slice(runRouteProgress.get(setup.playerKey) || 0);
+      strokeShootPath(
+        shootCtx,
+        [start, ...remaining.map(denormalizePoint)],
+        RUN_POINT_COLOR,
+        muted ? 2 : 3,
+        [8, 6]
+      );
     }
 
     if (setup.useTargetPlayer && setup.targetPlayerKey && setup.targetRunPoint) {
@@ -1964,13 +2015,88 @@
     if (!point) return;
     if (shootMode === "run") {
       if (shootStandStill) return;
-      runPoint = point;
-      shootStandStill = false;
-      if (shootStandStillInput) shootStandStillInput.checked = false;
-      if (!shootNoShot && !shootPoint && !shootTargetPlayerEl) shootMode = "shoot";
+      startRunDraw(e, false);
+      return;
     } else if (!shootUseTargetPlayer && !shootNoShot) {
       shootPoint = point;
     }
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
+  function startRunDraw(e, fromPlayer) {
+    if (shootRunDraw) return;
+    const px = getLayerPoint(e, shootCanvas);
+    shootRunDraw = {
+      pid: e.pointerId,
+      fromPlayer,
+      prevPath: runPath,
+      prevPoint: runPoint,
+      lastPx: fromPlayer ? null : px,
+    };
+    runRouteProgress.delete(getPlayerKey(shootPlayerEl));
+    if (fromPlayer) {
+      runPath = [];
+      runPoint = null;
+    } else {
+      const point = normalizeLayerPoint(px);
+      runPath = [point];
+      runPoint = point;
+    }
+    setInteractionLock(true);
+    try {
+      shootCanvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* pointer already released */
+    }
+    redrawShootOverlay();
+  }
+
+  function extendRunDraw(e) {
+    if (!shootRunDraw || shootRunDraw.pid !== e.pointerId) return;
+    e.preventDefault();
+    const px = getLayerPoint(e, shootCanvas);
+    const last = shootRunDraw.lastPx;
+    if (last && Math.hypot(px.x - last.x, px.y - last.y) < RUN_PATH_MIN_STEP_PX) return;
+    if (!last && shootPlayerEl) {
+      const player = getPlayerCenterPx(shootPlayerEl);
+      if (Math.hypot(px.x - player.x, px.y - player.y) < RUN_PATH_MIN_STEP_PX * 2) return;
+    }
+    const point = normalizeLayerPoint(px);
+    if (!point) return;
+    shootRunDraw.lastPx = px;
+    runPath.push(point);
+    runPoint = point;
+    redrawShootOverlay();
+  }
+
+  function simplifyRunPath(path) {
+    if (path.length <= RUN_PATH_MAX_POINTS) return path;
+    const stride = path.length / RUN_PATH_MAX_POINTS;
+    const out = [];
+    for (let i = 0; i < RUN_PATH_MAX_POINTS - 1; i++) out.push(path[Math.floor(i * stride)]);
+    out.push(path[path.length - 1]);
+    return out;
+  }
+
+  function endRunDraw(e) {
+    if (!shootRunDraw || shootRunDraw.pid !== e.pointerId) return;
+    const draw = shootRunDraw;
+    shootRunDraw = null;
+    setInteractionLock(false);
+    if (shootCanvas.hasPointerCapture?.(e.pointerId)) shootCanvas.releasePointerCapture(e.pointerId);
+
+    if (!runPath?.length) {
+      runPath = draw.prevPath;
+      runPoint = draw.prevPoint;
+      redrawShootOverlay();
+      return;
+    }
+    runPath = simplifyRunPath(runPath);
+    runPoint = runPath[runPath.length - 1];
+    shootStandStill = false;
+    if (shootStandStillInput) shootStandStillInput.checked = false;
+    if (!shootNoShot && !shootPoint && !shootTargetPlayerEl) shootMode = "shoot";
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -1983,14 +2109,15 @@
   }
 
   function getSetupRunners(setup) {
-    if (setup.standStill || !setup.runPoint) return [];
+    const route = getSetupRunRoute(setup);
+    if (!route) return [];
     const playerEl = getPlayerByKey(setup.playerKey);
     if (!playerEl) return [];
     const runners = [
       {
         key: setup.playerKey,
         el: playerEl,
-        point: setup.runPoint,
+        route,
         duration: Math.max(0.5, Math.min(30, Number(setup.timeSec) || 3)) * 1000,
       },
     ];
@@ -2000,12 +2127,42 @@
         runners.push({
           key: setup.targetPlayerKey,
           el: targetEl,
-          point: setup.targetRunPoint,
+          route: [setup.targetRunPoint],
           duration: Math.max(0.5, Math.min(30, Number(setup.timeSec) || 3)) * 1000,
         });
       }
     }
     return runners;
+  }
+
+  /** Polyline in stage percent, with cumulative pixel lengths so speed is even on wide maps. */
+  function buildRunnerTrack(start, route) {
+    const { w, h } = getCanvasSize();
+    const sx = w || 1;
+    const sy = h || 1;
+    const points = [{ x: start.x, y: start.y }, ...route.map((p) => ({ x: p.x * 100, y: p.y * 100 }))];
+    const lengths = [0];
+    for (let i = 1; i < points.length; i++) {
+      const dx = ((points[i].x - points[i - 1].x) / 100) * sx;
+      const dy = ((points[i].y - points[i - 1].y) / 100) * sy;
+      lengths.push(lengths[i - 1] + Math.hypot(dx, dy));
+    }
+    return { points, lengths, total: lengths[lengths.length - 1] };
+  }
+
+  function pointAlongTrack(track, fraction) {
+    const { points, lengths, total } = track;
+    if (total <= 0 || fraction >= 1) return { ...points[points.length - 1], segment: points.length - 1 };
+    const target = Math.max(0, fraction) * total;
+    let i = 1;
+    while (i < lengths.length - 1 && lengths[i] < target) i++;
+    const segLen = lengths[i] - lengths[i - 1] || 1;
+    const t = (target - lengths[i - 1]) / segLen;
+    return {
+      x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+      y: points[i - 1].y + (points[i].y - points[i - 1].y) * t,
+      segment: i - 1,
+    };
   }
 
   function getSetupDurationMs(setup) {
@@ -2036,6 +2193,11 @@
       if (!startByKey.has(key)) startByKey.set(key, { el, ...getPlayerPercentPosition(el) });
     });
     lastRunStartPositions = runners.length ? Array.from(startByKey.values()) : null;
+    runRouteProgress.clear();
+    runners.forEach((runner) => {
+      const start = startByKey.get(runner.key);
+      if (start) runner.track = buildRunnerTrack(start, runner.route);
+    });
     updateShootPanel();
 
     const step = (now) => {
@@ -2044,15 +2206,14 @@
       setTimelinePlayhead(now - startedAt);
 
       if (runners.length) {
-        runners.forEach(({ key, el, point, duration }) => {
-          const start = startByKey.get(key);
-          if (!start) return;
+        runners.forEach(({ key, el, track, duration }) => {
+          if (!track) return;
           const t = Math.min(1, (now - startedAt) / duration);
           if (t < 1) stillRunning = true;
           const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-          const endX = point.x * 100;
-          const endY = point.y * 100;
-          positionPlayer(el, start.x + (endX - start.x) * eased, start.y + (endY - start.y) * eased);
+          const pos = pointAlongTrack(track, eased);
+          positionPlayer(el, pos.x, pos.y);
+          runRouteProgress.set(key, pos.segment);
           if (visionPlayerEl === el) redrawVisionLines();
         });
       } else if (playDots && now - startedAt < holdMs) {
@@ -2122,6 +2283,7 @@
       if (visionPlayerEl === el) redrawVisionLines();
     });
     lastRunStartPositions = null;
+    runRouteProgress.clear();
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -2982,6 +3144,7 @@
         targetPlayerKey: setup.targetPlayerKey || "",
         shootPoint: clonePoint(setup.shootPoint),
         runPoint: setup.standStill ? null : clonePoint(setup.runPoint),
+        runPath: setup.standStill ? null : clonePath(setup.runPath),
         targetRunPoint: clonePoint(setup.targetRunPoint),
       })),
     };
@@ -3166,6 +3329,7 @@
             targetPlayerKey: setup.targetPlayerKey || "",
             shootPoint: clonePoint(setup.shootPoint),
             runPoint: standStill ? null : clonePoint(setup.runPoint),
+            runPath: standStill ? null : clonePath(setup.runPath),
             targetRunPoint: clonePoint(setup.targetRunPoint),
           };
         })
@@ -3752,6 +3916,8 @@
         e.stopPropagation();
         if (shootUseTargetPlayer && !shootNoShot && shootPlayerEl && el !== shootPlayerEl) {
           selectShootTargetPlayer(el);
+        } else if (el === shootPlayerEl && shootMode === "run" && !shootStandStill) {
+          startRunDraw(e, true);
         } else {
           selectShootPlayer(el);
         }
@@ -3839,6 +4005,9 @@
   canvas.addEventListener("pointercancel", endDraw);
 
   shootCanvas.addEventListener("pointerdown", setShootPointFromEvent);
+  shootCanvas.addEventListener("pointermove", extendRunDraw);
+  shootCanvas.addEventListener("pointerup", endRunDraw);
+  shootCanvas.addEventListener("pointercancel", endRunDraw);
   shootRunBtn?.addEventListener("click", runShootPlayer);
   shootResetRunBtn?.addEventListener("click", resetShootRun);
   shootClearBtn?.addEventListener("click", clearShootPlan);

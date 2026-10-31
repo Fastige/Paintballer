@@ -427,7 +427,7 @@
             </div>
             <span class="fm-editor-rec" aria-hidden="true">Editor</span>
           </div>
-          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then set a run point and a shoot point, or choose stand still.</p>
+          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then draw their run route and set a shoot point, or choose stand still.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
             <div class="fm-editor-topbar">
               <div class="fm-editor-clipinfo">
@@ -445,7 +445,7 @@
               <div class="fm-editor-tools">
                 <p class="fm-editor-section-label">Place on map</p>
                 <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
-                  <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="run">Set run</button>
+                  <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="run">Draw run</button>
                   <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="shoot">Set shoot</button>
                 </div>
                 <p class="fm-editor-status" id="fm-shoot-target-status" hidden></p>
@@ -484,7 +484,7 @@
             <details class="fm-editor-help">
               <summary>How shoot and run works</summary>
               <p>
-                Shoot lines stop when a structure blocks the lane. Run moves the selected player to the run point over the time above. Stand still lets a player shoot without setting a run location. No shot lets a player just run. Shoot over draws the line straight through structures.
+                Shoot lines stop when a structure blocks the lane. Drag on the map (or from the player) to draw the run route; the player follows it over the time above. Stand still lets a player shoot without setting a run location. No shot lets a player just run. Shoot over draws the line straight through structures.
               </p>
             </details>
           </div>
@@ -731,6 +731,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=62"></script>
+  <script src="field-mapper.js?v=63"></script>
 </body>
 </html>
