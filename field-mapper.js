@@ -6684,21 +6684,47 @@
       const x = ((parseFloat(el.style.left) || 0) / 100) * W;
       const y = ((parseFloat(el.style.top) || 0) / 100) * H;
       const r = Math.max(3, (el.offsetWidth / 2) * scale);
-      const style = getComputedStyle(el);
+      const rgb = hexToRgb(el.dataset.team === "b" ? TEAM_B : TEAM_A) || [255, 92, 0];
+      const tint = (t) => rgb.map((c) => Math.round(t >= 0 ? c + (255 - c) * t : c * (1 + t))).join(", ");
 
+      const edge = Math.max(1, r * 0.2);
+      context.save();
+      context.beginPath();
+      context.arc(x, y, r + edge / 2 + Math.max(1, scale), 0, Math.PI * 2);
+      context.fillStyle = "rgba(255, 255, 255, 0.88)";
+      context.shadowColor = `rgba(${tint(0)}, 0.65)`;
+      context.shadowBlur = r * 1.2;
+      context.fill();
+      context.restore();
+
+      const ball = context.createRadialGradient(x - r * 0.1, y - r * 0.24, r * 0.05, x, y, r);
+      ball.addColorStop(0, `rgb(${tint(0.28)})`);
+      ball.addColorStop(0.46, `rgb(${tint(0)})`);
+      ball.addColorStop(1, `rgb(${tint(-0.5)})`);
       context.beginPath();
       context.arc(x, y, r, 0, Math.PI * 2);
-      context.fillStyle = style.backgroundColor;
+      context.fillStyle = ball;
       context.fill();
-      context.lineWidth = Math.max(1, scale);
-      context.strokeStyle = "rgba(15, 18, 16, 0.85)";
+      context.lineWidth = edge;
+      context.strokeStyle = "#0b0d0c";
       context.stroke();
 
-      context.fillStyle = style.color;
-      context.font = `${Math.max(7, Math.round(r * 1.15))}px "Bebas Neue", sans-serif`;
+      const shine = context.createRadialGradient(x - r * 0.36, y - r * 0.48, 0, x - r * 0.36, y - r * 0.48, r * 0.6);
+      shine.addColorStop(0, "rgba(255, 255, 255, 0.85)");
+      shine.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.fillStyle = shine;
+      context.beginPath();
+      context.arc(x, y, r * 0.9, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = "#ffffff";
+      context.shadowColor = "rgba(0, 0, 0, 0.7)";
+      context.shadowBlur = Math.max(1, r * 0.2);
+      context.font = `${Math.max(7, Math.round(r * 1.5))}px "Bebas Neue", sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.fillText(el.dataset.num || "", x, y + r * 0.08);
+      context.fillText(el.dataset.num || "", x, y + r * 0.1);
+      context.shadowBlur = 0;
     });
     context.restore();
   }
