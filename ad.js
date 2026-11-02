@@ -6,7 +6,7 @@
   const replay = document.getElementById("ad-replay");
   const ctx = canvas.getContext("2d");
   const recording = new URLSearchParams(location.search).has("record");
-  const DURATION = 25000;
+  const DURATION = 60000;
   const FW = G.W;
   const FH = G.H;
   const W = 1920;
@@ -44,7 +44,7 @@
       steps: ["Drag a box around the area to scan.", "White out text, logos, and lines.", "Every bunker color becomes a structure."],
     },
     {
-      id: "shoot", name: "Shoot", color: "#ff3b3b", ms: 2400,
+      id: "shoot", name: "Shoot", color: "#ff3b3b", ms: 5600,
       lead: "Plan each player's move: where they run and what they shoot at.",
       steps: [
         "Tap a player, then draw the exact route they run.",
@@ -739,57 +739,131 @@
     c.restore();
   }
 
-  function leftCopy(c, alpha, kicker, title, sub, color, steps) {
-    c.save();
-    c.globalAlpha *= alpha;
-    c.textAlign = "left";
-    c.textBaseline = "alphabetic";
-    c.fillStyle = color || "#7cfc3b";
-    c.font = '700 16px "Outfit", sans-serif';
-    c.fillText(kicker.toUpperCase(), 96, 168);
-    c.fillStyle = "#e8efe4";
-    const lines = title.split("\n");
-    const big = lines.length > 1 ? 88 : 76;
-    c.font = `${big}px "Bebas Neue", sans-serif`;
-    lines.forEach((line, i) => c.fillText(line, 90, 258 + i * (big - 6)));
-    let y = 258 + lines.length * (big - 6) + 28;
-    if (sub) {
-      c.fillStyle = "#c9d4c4";
-      c.font = '600 20px "Outfit", sans-serif';
-      y = wrapText(c, sub, 96, y, 700, 30) + 36;
-    }
-    if (steps?.length) {
-      c.font = '600 19px "Outfit", sans-serif';
-      steps.forEach((step) => {
-        c.fillStyle = color || "#7cfc3b";
-        c.beginPath();
-        c.arc(108, y - 6, 4.5, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#e8efe4";
-        y = wrapText(c, step, 128, y, 660, 28) + 20;
-      });
-    }
-    c.restore();
-  }
-
-  function wrapText(c, text, x, y, maxW, lineH) {
-    const words = text.split(" ");
+  function wrapLines(c, text, maxW) {
+    const words = String(text || "").split(" ");
+    const lines = [];
     let line = "";
-    let yy = y;
     words.forEach((word) => {
       const test = line ? `${line} ${word}` : word;
       if (c.measureText(test).width > maxW && line) {
-        c.fillText(line, x, yy);
+        lines.push(line);
         line = word;
-        yy += lineH;
       } else line = test;
     });
-    if (line) c.fillText(line, x, yy);
-    return yy;
+    if (line) lines.push(line);
+    return lines;
   }
 
-  const TOOL_START = 6400;
-  const TOOL_EACH = 870;
+  function leftCopy(c, alpha, kicker, title, sub, color, steps) {
+    const accent = color || "#7cfc3b";
+    const boxTop = 120;
+    const boxBot = 960;
+    const boxH = boxBot - boxTop;
+    const x = 72;
+    const maxW = 740;
+    const titleLines = String(title).split("\n");
+    let titleSize = titleLines.length > 1 ? 100 : 124;
+    c.save();
+    c.font = `${titleSize}px "Bebas Neue", sans-serif`;
+    while (titleSize > 72 && titleLines.some((line) => c.measureText(line).width > maxW)) {
+      titleSize -= 2;
+      c.font = `${titleSize}px "Bebas Neue", sans-serif`;
+    }
+    const titleLH = titleSize - 2;
+    const kickerSize = 26;
+    const leadSize = 32;
+    const leadLH = 44;
+    const stepSize = 30;
+    const stepLH = 42;
+    const stepGap = 40;
+    c.font = `700 ${leadSize}px "Outfit", sans-serif`;
+    const leadLines = sub ? wrapLines(c, sub, maxW) : [];
+    c.font = `700 ${stepSize}px "Outfit", sans-serif`;
+    const stepBlocks = (steps || []).map((s) => wrapLines(c, s, maxW - 56));
+
+    let contentH = kickerSize + 18 + titleSize * 0.9;
+    contentH += Math.max(0, titleLines.length - 1) * titleLH + 58;
+    if (leadLines.length) contentH += 8 + leadLines.length * leadLH + 44;
+    stepBlocks.forEach((lines, i) => {
+      contentH += lines.length * stepLH;
+      if (i < stepBlocks.length - 1) contentH += stepGap;
+    });
+    const extra = Math.max(0, boxH * 0.52 - contentH);
+    const betweenSteps = stepBlocks.length > 1 ? extra / (stepBlocks.length - 1) : extra;
+    contentH += extra;
+
+    const pad = 56;
+    let y = boxTop + Math.max(pad, (boxH - contentH) / 2);
+    if (y + contentH > boxBot - pad) y = Math.max(boxTop + pad, boxBot - pad - contentH);
+
+    c.globalAlpha *= alpha;
+    c.textAlign = "left";
+    c.textBaseline = "alphabetic";
+
+    c.fillStyle = accent;
+    c.shadowColor = accent;
+    c.shadowBlur = 18;
+    c.font = `700 ${kickerSize}px "Outfit", sans-serif`;
+    if (c.letterSpacing !== undefined) c.letterSpacing = "0.1em";
+    c.fillText(kicker.toUpperCase(), x, y);
+    if (c.letterSpacing !== undefined) c.letterSpacing = "0px";
+    c.shadowBlur = 0;
+    y += 18 + titleSize * 0.9;
+
+    c.font = `${titleSize}px "Bebas Neue", sans-serif`;
+    c.shadowColor = accent;
+    c.shadowBlur = 28;
+    c.fillStyle = "#ffffff";
+    titleLines.forEach((line, i) => {
+      c.fillText(line, x, y);
+      if (i < titleLines.length - 1) y += titleLH;
+    });
+    c.shadowBlur = 0;
+    y += 22;
+    c.fillStyle = accent;
+    c.fillRect(x, y, Math.min(220, maxW * 0.38), 5);
+    y += 36;
+
+    if (leadLines.length) {
+      y += 8;
+      c.fillStyle = "#f4f8f0";
+      c.font = `700 ${leadSize}px "Outfit", sans-serif`;
+      c.shadowColor = "rgba(0,0,0,0.55)";
+      c.shadowBlur = 8;
+      leadLines.forEach((line) => {
+        c.fillText(line, x, y);
+        y += leadLH;
+      });
+      c.shadowBlur = 0;
+      y += 44;
+    }
+
+    c.font = `700 ${stepSize}px "Outfit", sans-serif`;
+    stepBlocks.forEach((lines, i) => {
+      const textX = x + 44;
+      const mid = y - stepSize * 0.32;
+      c.shadowColor = accent;
+      c.shadowBlur = 14;
+      c.beginPath();
+      c.arc(x + 14, mid, 8, 0, Math.PI * 2);
+      c.fillStyle = accent;
+      c.fill();
+      c.shadowBlur = 0;
+      c.fillStyle = "#ffffff";
+      c.shadowColor = "rgba(0,0,0,0.65)";
+      c.shadowBlur = 6;
+      lines.forEach((line) => {
+        c.fillText(line, textX, y);
+        y += stepLH;
+      });
+      c.shadowBlur = 0;
+      if (i < stepBlocks.length - 1) y += stepGap + betweenSteps;
+    });
+    c.restore();
+  }
+
+  const TOOL_START = 13550;
+  const TOOL_EACH = 2800;
 
   function render(now) {
     const t = startedAt == null ? 0 : Math.min(DURATION, now - startedAt);
@@ -798,7 +872,7 @@
     drawBg(ctx, t);
     const gameT = loop.time(now);
 
-    const intro = fade(t, 0, 400, 1900, 400);
+    const intro = fade(t, 0, 500, 3400, 400);
     if (intro > 0) {
       drawPaintball(ctx, 960, 400, 54, t, intro);
       drawWordmark(ctx, 960, 560, 120, intro, "center");
@@ -811,7 +885,7 @@
       ctx.restore();
     }
 
-    const hero = fade(t, 1900, 400, 4700, 320);
+    const hero = fade(t, 3800, 350, 9000, 300);
     if (hero > 0) {
       leftCopy(ctx, hero, "Field Mapper", "MAP IT.\nPLAN IT.", "Turn a picture of your field into a planning board.", "#ff5c00", [
         "Load a layout, drop both teams, and plan every lane.",
@@ -824,7 +898,7 @@
       });
     }
 
-    const about = fade(t, 4600, 300, 6300, 260);
+    const about = fade(t, 9200, 300, 13200, 250);
     if (about > 0) {
       leftCopy(ctx, about, "What it is", "LOAD THE\nFIELD.", "Upload a picture, open a map pack, or pick a preset.", "#7cfc3b", [
         "Place Team 1, then Team 2, and lock them in.",
@@ -835,7 +909,7 @@
         accent: "#7cfc3b",
         title: "Upload · Teams · Scene",
         draw: (c) => {
-          if (vegasImg && t < 6400) {
+          if (vegasImg && t < TOOL_START) {
             c.drawImage(vegasImg, 0, 0, FW, FH);
             return;
           }
@@ -844,14 +918,19 @@
       });
     }
 
+    const toolCards = [];
     let toolAt = TOOL_START;
     TOOLS.forEach((tool, i) => {
       const dur = tool.ms || TOOL_EACH;
       const start = toolAt;
       toolAt += dur;
-      const a = fade(t, start, 120, start + dur, 140);
-      if (a <= 0) return;
-      const local = clamp01((t - start) / dur);
+      const a = fade(t, start, 160, start + dur, 160);
+      if (a > 0) toolCards.push({ tool, i, a, local: clamp01((t - start) / dur) });
+    });
+    toolCards.sort((a, b) => b.a - a.a || b.i - a.i);
+    const card = toolCards[0];
+    if (card) {
+      const { tool, i, a, local } = card;
       leftCopy(ctx, a, `Tool  ${String(i + 1).padStart(2, "0")} / 11`, tool.name.toUpperCase(), tool.lead, tool.color, tool.steps);
       const shootCap = local < 0.1 ? "Tap a player" : local < 0.38 ? "Draw the run" : local < 0.52 ? "Set the shoot point" : "Play the scene";
       drawApp(ctx, 860, 120, 980, 820, {
@@ -862,9 +941,9 @@
         caption: tool.id === "shoot" ? shootCap : tool.steps[0],
         draw: (c) => drawToolField(c, tool.id, local),
       });
-    });
+    }
 
-    const payoff = fade(t, 17500, 300, 21200, 350);
+    const payoff = fade(t, 47200, 350, 53600, 320);
     if (payoff > 0) {
       leftCopy(ctx, payoff, "Shoot & run", "PLAY THE\nSCENE.", "Save a setup for each player, then hit Play scene to run them all at once.", "#ff3b3b", [
         "Green paint dots fly down every shoot line.",
@@ -879,7 +958,7 @@
       });
     }
 
-    const close = fade(t, 21150, 400, 25000, 1);
+    const close = fade(t, 53800, 450, 60000, 1);
     if (close > 0) {
       ctx.save();
       ctx.globalAlpha = close;
