@@ -2237,6 +2237,41 @@
   cursor: not-allowed;
 }
 
+.fm-shoot-reset-player {
+  width: 100%;
+  margin-top: 0.45rem;
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #ff4f4f 55%, var(--border));
+  background: var(--ed-deep);
+  color: #ffb0b0;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fm-shoot-reset-player:active {
+  transform: scale(0.97);
+}
+
+.fm-shoot-reset-player:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .fm-shoot-reset-player:not(:disabled):hover {
+    border-color: #ff4f4f;
+    background: rgba(255, 79, 79, 0.12);
+    color: #ffd0d0;
+  }
+}
+
 .fm-player-step-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -3657,7 +3692,7 @@
 }
 
 :root {
-  --player-size: 20px;
+  --player-size: 10px;
 }
 
 .fm-players {
@@ -3677,17 +3712,17 @@
   --player-glow: 0 0 9px 1px color-mix(in srgb, var(--player-color) 65%, transparent);
   --player-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
   position: absolute;
-  width: var(--player-size, 20px);
-  height: var(--player-size, 20px);
-  margin-left: calc(var(--player-size, 20px) / -2);
-  margin-top: calc(var(--player-size, 20px) / -2);
+  width: var(--player-size, 10px);
+  height: var(--player-size, 10px);
+  margin-left: calc(var(--player-size, 10px) / -2);
+  margin-top: calc(var(--player-size, 10px) / -2);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: calc(var(--player-size, 20px) * 0.74);
+  font-size: calc(var(--player-size, 10px) * 0.74);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   letter-spacing: 0;
@@ -4707,7 +4742,7 @@
 
 @media (max-width: 900px) and (pointer: coarse) {
   :root {
-    --player-size: 22px;
+    --player-size: 11px;
   }
 
   /* Small markers, larger invisible touch target */

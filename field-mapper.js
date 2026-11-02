@@ -158,6 +158,7 @@
   const shootSaveSetupBtn = document.getElementById("shoot-save-setup");
   const shootPrevPlayerBtn = document.getElementById("shoot-prev-player");
   const shootNextPlayerBtn = document.getElementById("shoot-next-player");
+  const shootResetPlayerBtn = document.getElementById("shoot-reset-player");
   const shootPlayerStep = document.getElementById("shoot-player-step");
   const shootNewSetupBtn = document.getElementById("shoot-new-setup");
   const shootPlaySceneBtn = document.getElementById("shoot-play-scene");
@@ -1555,6 +1556,57 @@
     return setup.runPath?.length ? setup.runPath : [setup.runPoint];
   }
 
+  function selectedPlayerHasShootWork() {
+    if (!shootPlayerEl) return false;
+    if (shootRunDraw) return true;
+    if (runPoint || runPath?.length || shootPoint || shootTargetPlayerEl) return true;
+    if (shootUseTargetPlayer || shootStandStill || shootNoShot || shootOver) return true;
+    const key = getPlayerKey(shootPlayerEl);
+    return shootSceneSetups.some((setup) => setup.playerKey === key);
+  }
+
+  function cancelRunDraw() {
+    if (!shootRunDraw) return;
+    const pid = shootRunDraw.pid;
+    shootRunDraw = null;
+    setInteractionLock(false);
+    try {
+      if (pid != null && shootCanvas.hasPointerCapture?.(pid)) shootCanvas.releasePointerCapture(pid);
+    } catch {
+      /* pointer already released */
+    }
+  }
+
+  function resetSelectedShootPlayer() {
+    if (!shootPlayerEl) return;
+    cancelRunDraw();
+    const key = getPlayerKey(shootPlayerEl);
+    if (lastRunStartPositions) {
+      const start = lastRunStartPositions.find((item) => item.el === shootPlayerEl);
+      if (start?.el?.isConnected) positionPlayer(start.el, start.x, start.y);
+    }
+    runRouteProgress.delete(key);
+    if (shootTargetPlayerEl) shootTargetPlayerEl.classList.remove("is-shoot-target");
+    shootTargetPlayerEl = null;
+    shootUseTargetPlayer = false;
+    shootStandStill = false;
+    shootNoShot = false;
+    shootOver = false;
+    if (shootTargetPlayerInput) shootTargetPlayerInput.checked = false;
+    if (shootStandStillInput) shootStandStillInput.checked = false;
+    shootPoint = null;
+    runPoint = null;
+    runPath = null;
+    targetRunPoint = null;
+    shootMode = "run";
+    shootSceneSetups = shootSceneSetups.filter((setup) => setup.playerKey !== key);
+    if (activeShootSetupId && !shootSceneSetups.some((setup) => setup.id === activeShootSetupId)) {
+      activeShootSetupId = null;
+    }
+    updateShootPanel();
+    redrawShootOverlay();
+  }
+
   function getShootSetupComplete(setup) {
     if (!setup?.playerKey) return false;
     if (setup.noShoot) return Boolean(setup.runPoint);
@@ -1685,6 +1737,7 @@
     const canStep = teamPlayers.length > 1;
     if (shootPrevPlayerBtn) shootPrevPlayerBtn.disabled = !canStep;
     if (shootNextPlayerBtn) shootNextPlayerBtn.disabled = !canStep;
+    if (shootResetPlayerBtn) shootResetPlayerBtn.disabled = !selectedPlayerHasShootWork();
     if (shootPlayerStep) {
       shootPlayerStep.textContent = hasPlayer ? `${teamPlayers.indexOf(shootPlayerEl) + 1} / ${teamPlayers.length}` : "";
     }
@@ -2387,6 +2440,7 @@
     } catch {
       /* pointer already released */
     }
+    updateShootPanel();
     redrawShootOverlay();
   }
 
@@ -5853,7 +5907,9 @@
   function getTeamStackPositions(spawn, count) {
     const x = Math.max(2, Math.min(98, spawn.x));
     if (count <= 0) return [];
-    const playerPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--player-size")) || 20;
+    const cssSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--player-size")) || 10;
+    const sample = playersLayer.querySelector(".fm-player");
+    const playerPx = sample?.offsetWidth || cssSize;
     const stageH = stage.clientHeight || 0;
     const minSpacing = stageH ? ((playerPx + 4) / stageH) * 100 : 0;
     const preferredSpacing = Math.max(count <= 5 ? 2.6 : 2.2, minSpacing);
@@ -6192,6 +6248,7 @@
   shootSaveSetupBtn?.addEventListener("click", saveShootSetup);
   shootPrevPlayerBtn?.addEventListener("click", () => stepShootPlayer(-1));
   shootNextPlayerBtn?.addEventListener("click", () => stepShootPlayer(1));
+  shootResetPlayerBtn?.addEventListener("click", resetSelectedShootPlayer);
   shootNewSetupBtn?.addEventListener("click", newShootSetup);
   shootPlaySceneBtn?.addEventListener("click", () => runShootScene());
   shootResetSceneBtn?.addEventListener("click", resetShootRun);
@@ -6669,7 +6726,7 @@
       if (isGhostPlayer(el)) return;
       const x = ((parseFloat(el.style.left) || 0) / 100) * W;
       const y = ((parseFloat(el.style.top) || 0) / 100) * H;
-      const r = Math.max(3, (el.offsetWidth / 2) * scale);
+      const r = Math.max(2, (el.offsetWidth / 2) * scale);
       const rgb = hexToRgb(el.dataset.team === "b" ? TEAM_B : TEAM_A) || [255, 92, 0];
       const tint = (t) => rgb.map((c) => Math.round(t >= 0 ? c + (255 - c) * t : c * (1 + t))).join(", ");
 
