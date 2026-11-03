@@ -338,7 +338,6 @@
   let shootNoShot = false;
   let shootOver = false;
   let sceneAutoResetTimer = null;
-  const SCENE_AUTO_RESET_MS = 1500;
   let shootMode = "run";
   let shootPoint = null;
   let runPoint = null;
@@ -2574,6 +2573,7 @@
     const playDots = useSceneDots || setups.every((setup) => setup.standStill || !setup.runPoint);
     const holdMs = Math.max(0, ...setups.map(getSetupDurationMs));
     if (!runners.length && !playDots) return false;
+    if (lastRunStartPositions) resetShootRun();
     if (runAnimationFrame) cancelAnimationFrame(runAnimationFrame);
 
     if (playDots) startShootSceneDots(setups);
@@ -2591,6 +2591,7 @@
       if (start) runner.track = buildRunnerTrack(start, runner.route);
     });
     updateShootPanel();
+    let snappedHome = false;
 
     const step = (now) => {
       let stillRunning = false;
@@ -2602,6 +2603,7 @@
           if (!track) return;
           const t = Math.min(1, (now - startedAt) / duration);
           if (t < 1) stillRunning = true;
+          if (t >= 1 && options.autoReset) return;
           const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
           const pos = pointAlongTrack(track, eased);
           positionPlayer(el, pos.x, pos.y);
@@ -2620,6 +2622,17 @@
         return;
       }
 
+      if (options.autoReset && lastRunStartPositions && !snappedHome) {
+        snappedHome = true;
+        lastRunStartPositions.forEach(({ el, x, y }) => {
+          if (!el?.isConnected) return;
+          positionPlayer(el, x, y);
+          if (visionPlayerEl === el) redrawVisionLines();
+        });
+        runRouteProgress.clear();
+        redrawShootOverlay();
+      }
+
       if (shootSceneDotAnim?.spawning) {
         shootSceneDotAnim.spawning = false;
         runAnimationFrame = requestAnimationFrame(step);
@@ -2634,13 +2647,8 @@
       runAnimationFrame = null;
       clearShootSceneDots();
       setTimelinePlayhead(null);
-      updateShootPanel();
-      if (options.autoReset) {
-        sceneAutoResetTimer = setTimeout(() => {
-          sceneAutoResetTimer = null;
-          resetShootRun();
-        }, SCENE_AUTO_RESET_MS);
-      }
+      if (options.autoReset) resetShootRun();
+      else updateShootPanel();
       options.onDone?.();
     };
 
@@ -2658,6 +2666,7 @@
   function runShootScene(onDone) {
     const readySetups = shootSceneSetups.filter(getShootSetupComplete);
     if (!readySetups.length) return false;
+    if (lastRunStartPositions) resetShootRun();
     return runShootSetups(readySetups, { sceneDots: true, autoReset: true, onDone });
   }
 
@@ -5907,7 +5916,7 @@
   function getTeamStackPositions(spawn, count) {
     const x = Math.max(2, Math.min(98, spawn.x));
     if (count <= 0) return [];
-    const cssSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--player-size")) || 10;
+    const cssSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--player-size")) || 12;
     const sample = playersLayer.querySelector(".fm-player");
     const playerPx = sample?.offsetWidth || cssSize;
     const stageH = stage.clientHeight || 0;

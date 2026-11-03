@@ -3692,7 +3692,7 @@
 }
 
 :root {
-  --player-size: 10px;
+  --player-size: 12px;
 }
 
 .fm-players {
@@ -3712,17 +3712,17 @@
   --player-glow: 0 0 9px 1px color-mix(in srgb, var(--player-color) 65%, transparent);
   --player-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
   position: absolute;
-  width: var(--player-size, 10px);
-  height: var(--player-size, 10px);
-  margin-left: calc(var(--player-size, 10px) / -2);
-  margin-top: calc(var(--player-size, 10px) / -2);
+  width: var(--player-size, 12px);
+  height: var(--player-size, 12px);
+  margin-left: calc(var(--player-size, 12px) / -2);
+  margin-top: calc(var(--player-size, 12px) / -2);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: calc(var(--player-size, 10px) * 0.74);
+  font-size: calc(var(--player-size, 12px) * 0.74);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   letter-spacing: 0;
@@ -4742,7 +4742,7 @@
 
 @media (max-width: 900px) and (pointer: coarse) {
   :root {
-    --player-size: 11px;
+    --player-size: 13px;
   }
 
   /* Small markers, larger invisible touch target */
