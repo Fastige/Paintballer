@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=69" />
+  <link rel="stylesheet" href="field-mapper.css?v=70" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -589,7 +589,7 @@
             </div>
             <span class="fm-editor-rec" aria-hidden="true">Editor</span>
           </div>
-          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then draw their run route and set a shoot point, or choose stand still.</p>
+          <p class="fm-shoot-empty" id="fm-shoot-empty">Tap a player, then draw or joystick their run route and set a shoot point, or choose stand still.</p>
           <div class="fm-shoot-controls" id="fm-shoot-controls" hidden>
             <div class="fm-editor-topbar">
               <div class="fm-editor-clipinfo">
@@ -608,7 +608,16 @@
                 <p class="fm-editor-section-label">Place on map</p>
                 <div class="fm-shoot-mode-row" role="group" aria-label="Shoot point mode">
                   <button type="button" class="fm-shoot-mode-btn is-active" data-shoot-mode="run">Draw run</button>
+                  <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="joystick">Joystick</button>
                   <button type="button" class="fm-shoot-mode-btn" data-shoot-mode="shoot">Set shoot</button>
+                </div>
+                <div class="fm-run-stick-wrap" id="fm-run-stick-wrap" hidden>
+                  <div class="fm-run-stick" id="fm-run-stick" role="application" aria-label="Run route joystick">
+                    <div class="fm-run-stick-base">
+                      <div class="fm-run-stick-knob" id="fm-run-stick-knob"></div>
+                    </div>
+                  </div>
+                  <p class="fm-run-stick-hint">Hold a direction to crawl the run slowly. Draw run still lets you drag the path.</p>
                 </div>
                 <button type="button" class="fm-shoot-reset-player" id="shoot-reset-player" disabled>Reset this player</button>
                 <div class="fm-player-step-row" role="group" aria-label="Switch player">
@@ -652,7 +661,7 @@
             <details class="fm-editor-help">
               <summary>How shoot and run works</summary>
               <p>
-                Shoot lines stop when a structure blocks the lane. Drag on the map (or from the player) to draw the run route; the player follows it over the time above. Stand still lets a player shoot without setting a run location. No shoot lets a player just run. Shoot over draws the line straight through structures.
+                Shoot lines stop when a structure blocks the lane. Drag on the map (or from the player) to draw the run route, or use Joystick to crawl the path slowly for finer control. The player follows it over the time above. Stand still lets a player shoot without setting a run location. No shoot lets a player just run. Shoot over draws the line straight through structures.
               </p>
             </details>
           </div>
@@ -826,7 +835,7 @@
     </div>
   </div>
 
-  <div class="fm-confirm-modal" id="fm-mirror-confirm" hidden aria-hidden="true">
+  <div class="fm-confirm-modal is-preview-dock" id="fm-mirror-confirm" hidden aria-hidden="true">
     <div class="fm-intel-modal-backdrop" id="fm-mirror-confirm-backdrop" tabindex="-1"></div>
     <div class="fm-confirm-panel fm-kit" role="dialog" aria-modal="true" aria-labelledby="fm-mirror-confirm-text" style="--tool-color: #b18cff">
       <div class="fm-kit-head">
@@ -838,10 +847,15 @@
           </div>
         </div>
       </div>
-      <p class="fm-kit-note" id="fm-mirror-confirm-text">Are you sure you want to mirror the layout?</p>
+      <p class="fm-kit-note" id="fm-mirror-confirm-text">Ghost copies are shown. Nudge the whole side left or right, then lock them in — or reset if you don't like it.</p>
+      <div class="fm-mirror-nudge-row" role="group" aria-label="Nudge mirrored copies">
+        <button type="button" class="fm-kit-btn" id="mirror-nudge-left">← Left</button>
+        <button type="button" class="fm-kit-btn" id="mirror-nudge-right">Right →</button>
+      </div>
       <div class="fm-confirm-actions">
-        <button type="button" class="fm-kit-btn is-primary" id="mirror-confirm-yes"><svg class="fm-ico" aria-hidden="true"><use href="#i-check" /></svg>Yes</button>
-        <button type="button" class="fm-kit-btn" id="mirror-confirm-no"><svg class="fm-ico" aria-hidden="true"><use href="#i-close" /></svg>No</button>
+        <button type="button" class="fm-kit-btn is-primary" id="mirror-confirm-yes"><svg class="fm-ico" aria-hidden="true"><use href="#i-check" /></svg>Lock copies</button>
+        <button type="button" class="fm-kit-btn" id="mirror-reset"><svg class="fm-ico" aria-hidden="true"><use href="#i-reset" /></svg>Reset</button>
+        <button type="button" class="fm-kit-btn" id="mirror-confirm-no"><svg class="fm-ico" aria-hidden="true"><use href="#i-close" /></svg>Cancel</button>
       </div>
     </div>
   </div>
@@ -905,6 +919,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=98"></script>
+  <script src="field-mapper.js?v=99"></script>
 </body>
 </html>

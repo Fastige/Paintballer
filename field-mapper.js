@@ -50,6 +50,12 @@
   const mirrorConfirmBackdrop = document.getElementById("fm-mirror-confirm-backdrop");
   const mirrorConfirmYes = document.getElementById("mirror-confirm-yes");
   const mirrorConfirmNo = document.getElementById("mirror-confirm-no");
+  const mirrorNudgeLeftBtn = document.getElementById("mirror-nudge-left");
+  const mirrorNudgeRightBtn = document.getElementById("mirror-nudge-right");
+  const mirrorResetBtn = document.getElementById("mirror-reset");
+  const runStickWrap = document.getElementById("fm-run-stick-wrap");
+  const runStickEl = document.getElementById("fm-run-stick");
+  const runStickKnob = document.getElementById("fm-run-stick-knob");
   const playersLayer = document.getElementById("fm-players");
   const mapUpload = document.getElementById("map-upload");
   const uploadPromptLabel = document.getElementById("fm-upload-prompt");
@@ -361,14 +367,22 @@
   let activeShootSetupId = null;
   let activePlacementTeam = "a";
   let teamPlacement = createDefaultTeamPlacement();
-  /** @type {null|"box"|"line"} */
+  /** @type {null|"box"|"line"|"preview"} */
   let mirrorStep = null;
   /** Normalized 0–1 coordinates so the overlay survives canvas resizes */
   let mirrorBox = null;
   let mirrorDragStart = null;
   let mirrorLinePoints = [];
   let mirrorHoverPoint = null;
+  let mirrorPreviewCopies = [];
+  let mirrorPreviewOffset = 0;
+  let mirrorPreviewDrag = null;
+  let mirrorNudgeTimer = null;
   let mirrorToastTimer = null;
+  const RUN_STICK_SPEED_PX = 56;
+  const RUN_STICK_DEADZONE = 0.16;
+  const RUN_STICK_KNOB_PX = 28;
+  let runStickState = { active: false, pid: null, x: 0, y: 0, mag: 0, raf: 0, lastTs: 0 };
   let sizerSyncing = false;
   let activeSizerEdit = null;
   let sizerClickerOn = false;
@@ -577,7 +591,7 @@
       structure: "Struct — drag to place a new bunker. Use the Sizer Clicker to move existing ones.",
       auto: "Auto — drag a box, brush white over text and lines, then press Done.",
       vision: "Vision — tap a player to see their sight lines. Pick the color below.",
-      shoot: "Shoot — tap a runner, draw the run route, then set a shoot point or target.",
+      shoot: "Shoot — tap a runner, drag or joystick the run route, then set a shoot point or target.",
       sizer: "Sizer — turn on the Clicker to pick and drag bunkers, or resize / use arrows.",
       intel: "Intel — tap a green bunker, then name it below.",
     };
@@ -638,8 +652,13 @@
     if (isDesignPanelShown()) scrollMobilePanel(designPanel);
   }
 
+  function isRunMode() {
+    return shootMode === "run" || shootMode === "joystick";
+  }
+
   function setTool(tool) {
     if (mirrorStep) cancelMirrorFlow();
+    if (tool !== "shoot") stopRunStick();
     uiTool = tool;
     activeTool = tool === "intel" ? "select" : tool;
 
@@ -706,7 +725,7 @@
         vision:
           "<strong>Vision</strong> — click a player to see what they can see · change the color below · stays on when you switch tools",
         shoot:
-          "<strong>Shoot</strong> — click a runner, <strong>drag</strong> to draw the run route, then set a shoot point or target",
+          "<strong>Shoot</strong> — click a runner, <strong>drag</strong> or use the <strong>joystick</strong> to draw the run route, then set a shoot point or target",
         sizer:
           "<strong>Sizer</strong> — resize structures · turn on the <strong>Clicker</strong> to pick and drag · arrows to move",
         intel:
@@ -856,7 +875,8 @@
       runPoint = null;
       runPath = null;
       shootNoShot = false;
-      if (shootMode === "run") shootMode = "shoot";
+      stopRunStick();
+      if (isRunMode()) shootMode = "shoot";
     }
     updateShootPanel();
     redrawShootOverlay();
@@ -867,7 +887,7 @@
     if (shootNoShot) {
       shootStandStill = false;
       shootMode = "run";
-    } else if (shootMode === "run" && !runPoint) {
+    } else if (isRunMode() && !runPoint) {
       shootMode = "shoot";
     }
     updateShootPanel();
@@ -1598,6 +1618,7 @@
     runPoint = null;
     runPath = null;
     targetRunPoint = null;
+    stopRunStick();
     shootMode = "run";
     shootSceneSetups = shootSceneSetups.filter((setup) => setup.playerKey !== key);
     if (activeShootSetupId && !shootSceneSetups.some((setup) => setup.id === activeShootSetupId)) {
@@ -1654,7 +1675,9 @@
       shootTargetPlayerEl = null;
       targetRunPoint = null;
     }
-    shootMode = shootStandStill ? "shoot" : "run";
+    if (shootStandStill) shootMode = "shoot";
+    else if (shootMode === "shoot") shootMode = "run";
+    stopRunStick();
     updateShootPanel();
     redrawShootOverlay();
   }
@@ -1780,13 +1803,17 @@
     }
     shootModeBtns.forEach((btn) => {
       const mode = btn.dataset.shootMode;
-      const isRun = mode === "run";
+      const isRun = mode === "run" || mode === "joystick";
       btn.disabled = isRun ? shootStandStill : shootNoShot;
       btn.classList.toggle("is-active", mode === shootMode);
       if (mode === "shoot") {
         btn.textContent = shootUseTargetPlayer ? "Pick target" : "Set shoot";
       }
     });
+    if (runStickWrap) {
+      runStickWrap.hidden = shootMode !== "joystick" || shootStandStill || !shootPlayerEl;
+    }
+    if (shootMode !== "joystick" || shootStandStill || !shootPlayerEl) stopRunStick();
     renderShootSceneList();
   }
 
@@ -2092,6 +2119,7 @@
     shootOver = false;
     if (shootTargetPlayerInput) shootTargetPlayerInput.checked = false;
     if (shootStandStillInput) shootStandStillInput.checked = false;
+    stopRunStick();
     shootMode = "shoot";
     updateShootPanel();
     redrawShootOverlay();
@@ -2408,7 +2436,9 @@
       if (shootStandStill) return;
       startRunDraw(e, false);
       return;
-    } else if (!shootUseTargetPlayer && !shootNoShot) {
+    }
+    if (shootMode === "joystick") return;
+    if (!shootUseTargetPlayer && !shootNoShot) {
       shootPoint = point;
     }
     updateShootPanel();
@@ -2488,9 +2518,135 @@
     runPoint = runPath[runPath.length - 1];
     shootStandStill = false;
     if (shootStandStillInput) shootStandStillInput.checked = false;
-    if (!shootNoShot && !shootPoint && !shootTargetPlayerEl) shootMode = "shoot";
+    if (!shootNoShot && !shootPoint && !shootTargetPlayerEl && shootMode === "run") shootMode = "shoot";
     updateShootPanel();
     redrawShootOverlay();
+  }
+
+  function getRunDrawTipPx() {
+    if (runPath?.length) return denormalizePoint(runPath[runPath.length - 1]);
+    if (shootPlayerEl) return getPlayerCenterPx(shootPlayerEl);
+    return null;
+  }
+
+  function setRunStickKnob(x, y) {
+    if (!runStickKnob) return;
+    runStickKnob.style.transform = `translate(${x * RUN_STICK_KNOB_PX}px, ${y * RUN_STICK_KNOB_PX}px)`;
+  }
+
+  function readRunStickVector(clientX, clientY) {
+    const base = runStickEl?.querySelector(".fm-run-stick-base") || runStickEl;
+    if (!base) return { x: 0, y: 0, mag: 0 };
+    const rect = base.getBoundingClientRect();
+    const nx = (clientX - (rect.left + rect.width / 2)) / Math.max(1, rect.width / 2);
+    const ny = (clientY - (rect.top + rect.height / 2)) / Math.max(1, rect.height / 2);
+    const mag = Math.hypot(nx, ny);
+    if (mag < RUN_STICK_DEADZONE) return { x: 0, y: 0, mag: 0 };
+    const clamped = Math.min(1, mag);
+    const scale = clamped / mag;
+    return { x: nx * scale, y: ny * scale, mag: clamped };
+  }
+
+  function extendRunPathByPx(dx, dy) {
+    if (!shootPlayerEl || shootStandStill) return;
+    const { w, h } = getCanvasSize();
+    const tip = getRunDrawTipPx();
+    if (!tip || !w || !h) return;
+    const nextPx = {
+      x: Math.max(0, Math.min(w, tip.x + dx)),
+      y: Math.max(0, Math.min(h, tip.y + dy)),
+    };
+    if (Math.hypot(nextPx.x - tip.x, nextPx.y - tip.y) < 0.35) return;
+    const point = normalizeLayerPoint(nextPx);
+    if (!point) return;
+    const last = runPath?.[runPath.length - 1];
+    if (last && Math.hypot((point.x - last.x) * w, (point.y - last.y) * h) < RUN_PATH_MIN_STEP_PX) {
+      runPoint = point;
+      return;
+    }
+    if (!runPath) runPath = [];
+    runPath.push(point);
+    runPoint = point;
+    shootStandStill = false;
+    if (shootStandStillInput) shootStandStillInput.checked = false;
+    redrawShootOverlay();
+  }
+
+  function tickRunStick(now) {
+    if (!runStickState.active) return;
+    const dt = Math.min(0.05, (now - (runStickState.lastTs || now)) / 1000);
+    runStickState.lastTs = now;
+    if (runStickState.mag > 0) {
+      const dist = RUN_STICK_SPEED_PX * runStickState.mag * dt;
+      extendRunPathByPx(runStickState.x * dist, runStickState.y * dist);
+    }
+    runStickState.raf = requestAnimationFrame(tickRunStick);
+  }
+
+  function startRunStick(e) {
+    if (shootMode !== "joystick" || !shootPlayerEl || shootStandStill) return;
+    e.preventDefault();
+    e.stopPropagation();
+    runStickState.active = true;
+    runStickState.pid = e.pointerId;
+    runStickState.lastTs = performance.now();
+    const vec = readRunStickVector(e.clientX, e.clientY);
+    runStickState.x = vec.x;
+    runStickState.y = vec.y;
+    runStickState.mag = vec.mag;
+    setRunStickKnob(vec.x, vec.y);
+    setInteractionLock(true);
+    try {
+      runStickEl.setPointerCapture(e.pointerId);
+    } catch {
+      /* already captured */
+    }
+    if (!runStickState.raf) runStickState.raf = requestAnimationFrame(tickRunStick);
+  }
+
+  function moveRunStick(e) {
+    if (!runStickState.active || runStickState.pid !== e.pointerId) return;
+    e.preventDefault();
+    const vec = readRunStickVector(e.clientX, e.clientY);
+    runStickState.x = vec.x;
+    runStickState.y = vec.y;
+    runStickState.mag = vec.mag;
+    setRunStickKnob(vec.x, vec.y);
+  }
+
+  function endRunStick(e) {
+    if (!runStickState.active || (e && runStickState.pid !== e.pointerId)) return;
+    const pid = runStickState.pid;
+    runStickState.active = false;
+    runStickState.pid = null;
+    runStickState.x = 0;
+    runStickState.y = 0;
+    runStickState.mag = 0;
+    if (runStickState.raf) {
+      cancelAnimationFrame(runStickState.raf);
+      runStickState.raf = 0;
+    }
+    setRunStickKnob(0, 0);
+    setInteractionLock(false);
+    try {
+      if (pid != null && runStickEl?.hasPointerCapture?.(pid)) runStickEl.releasePointerCapture(pid);
+    } catch {
+      /* already released */
+    }
+    if (runPath?.length) {
+      runPath = simplifyRunPath(runPath);
+      runPoint = runPath[runPath.length - 1];
+      updateShootPanel();
+      redrawShootOverlay();
+    }
+  }
+
+  function stopRunStick() {
+    if (runStickState.active) endRunStick({ pointerId: runStickState.pid });
+    else if (runStickState.raf) {
+      cancelAnimationFrame(runStickState.raf);
+      runStickState.raf = 0;
+    }
   }
 
   function getPlayerPercentPosition(el) {
@@ -6250,6 +6406,10 @@
   shootCanvas.addEventListener("pointermove", extendRunDraw);
   shootCanvas.addEventListener("pointerup", endRunDraw);
   shootCanvas.addEventListener("pointercancel", endRunDraw);
+  runStickEl?.addEventListener("pointerdown", startRunStick);
+  runStickEl?.addEventListener("pointermove", moveRunStick);
+  runStickEl?.addEventListener("pointerup", endRunStick);
+  runStickEl?.addEventListener("pointercancel", endRunStick);
   window.addEventListener("pointerup", endRunDraw);
   window.addEventListener("pointercancel", endRunDraw);
   shootRunBtn?.addEventListener("click", runShootPlayer);
@@ -6970,13 +7130,12 @@
   const MIRROR_COLOR = "#ff5c00";
   const MIRROR_SNAP_DEG = 8;
   const MIRROR_MIN_BOX_PX = 24;
+  const MIRROR_NUDGE_STEP = 0.008;
 
   function openMirrorConfirm() {
-    if (!hasMap || !structures.length || !mirrorConfirm) return;
-    if (mirrorStep) cancelMirrorFlow();
+    if (!mirrorConfirm) return;
     mirrorConfirm.hidden = false;
     mirrorConfirm.setAttribute("aria-hidden", "false");
-    body.classList.add("fm-intel-modal-open");
     mirrorConfirmYes?.focus();
   }
 
@@ -6984,7 +7143,6 @@
     if (!mirrorConfirm || mirrorConfirm.hidden) return;
     mirrorConfirm.hidden = true;
     mirrorConfirm.setAttribute("aria-hidden", "true");
-    if (!intelModalOpen) body.classList.remove("fm-intel-modal-open");
   }
 
   function showMirrorPrompt(text, isToast) {
@@ -7005,14 +7163,18 @@
   }
 
   function startMirrorFlow() {
-    closeMirrorConfirm();
-    if (!hasMap) return;
+    if (!hasMap || !structures.length) return;
+    if (mirrorStep) cancelMirrorFlow();
     mirrorStep = "box";
     mirrorBox = null;
     mirrorDragStart = null;
     mirrorLinePoints = [];
     mirrorHoverPoint = null;
+    mirrorPreviewCopies = [];
+    mirrorPreviewOffset = 0;
+    mirrorPreviewDrag = null;
     stage.classList.add("is-mirroring");
+    stage.classList.remove("is-mirror-preview", "is-mirror-dragging");
     mirrorCanvas.hidden = false;
     if (mirrorCancelBtn) mirrorCancelBtn.hidden = false;
     showMirrorPrompt("Draw a box around the field");
@@ -7021,12 +7183,17 @@
   }
 
   function cancelMirrorFlow() {
+    stopMirrorNudgeHold();
+    closeMirrorConfirm();
     mirrorStep = null;
     mirrorBox = null;
     mirrorDragStart = null;
     mirrorLinePoints = [];
     mirrorHoverPoint = null;
-    stage.classList.remove("is-mirroring");
+    mirrorPreviewCopies = [];
+    mirrorPreviewOffset = 0;
+    mirrorPreviewDrag = null;
+    stage.classList.remove("is-mirroring", "is-mirror-preview", "is-mirror-dragging");
     if (mirrorCanvas) mirrorCanvas.hidden = true;
     if (mirrorCancelBtn) mirrorCancelBtn.hidden = true;
     hideMirrorPrompt();
@@ -7075,11 +7242,13 @@
       const width = Math.abs(mirrorBox.x2 - mirrorBox.x1) * w;
       const height = Math.abs(mirrorBox.y2 - mirrorBox.y1) * h;
 
-      mctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-      mctx.beginPath();
-      mctx.rect(0, 0, w, h);
-      mctx.rect(left, top, width, height);
-      mctx.fill("evenodd");
+      if (mirrorStep !== "preview") {
+        mctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        mctx.beginPath();
+        mctx.rect(0, 0, w, h);
+        mctx.rect(left, top, width, height);
+        mctx.fill("evenodd");
+      }
 
       mctx.strokeStyle = MIRROR_COLOR;
       mctx.lineWidth = 2.5;
@@ -7088,7 +7257,7 @@
       mctx.setLineDash([]);
     }
 
-    if (mirrorStep === "line" && mirrorLinePoints.length) {
+    if ((mirrorStep === "line" || mirrorStep === "preview") && mirrorLinePoints.length) {
       const a = mirrorLinePoints[0];
       const b = mirrorLinePoints[1] || (mirrorHoverPoint && snapMirrorLinePoint(a, mirrorHoverPoint));
       mctx.strokeStyle = MIRROR_COLOR;
@@ -7112,18 +7281,18 @@
         mctx.stroke();
       });
     }
+
+    if (mirrorStep === "preview") {
+      const copies = getShiftedMirrorCopies();
+      mctx.save();
+      mctx.globalAlpha = 0.55;
+      copies.forEach((shape) => drawShapeOnContext(mctx, shape, w, h, true));
+      mctx.restore();
+    }
     mctx.restore();
   }
 
-  function boundsIoU(a, b) {
-    const ix = Math.max(0, Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left));
-    const iy = Math.max(0, Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top));
-    const inter = ix * iy;
-    const union = a.width * a.height + b.width * b.height - inter;
-    return union > 0 ? inter / union : 0;
-  }
-
-  function mirrorStructuresAcrossLine(box, p1, p2) {
+  function buildMirrorCopies(box, p1, p2) {
     const { w, h } = getCanvasSize();
     if (!w || !h) return { error: "Map is not ready" };
 
@@ -7172,9 +7341,8 @@
     const r01 = 2 * dx * dy;
     const r11 = 2 * dy * dy - 1;
     const flipsVertically = Math.abs(dx) > Math.abs(dy);
+    const copies = [];
 
-    let added = 0;
-    let skipped = 0;
     source.forEach(({ s, b, cx, cy }) => {
       const hw = (b.width * w) / 2;
       const hh = (b.height * h) / 2;
@@ -7192,51 +7360,124 @@
         ncy = Math.max(boxTop + newHh, Math.min(boxBottom - newHh, ncy));
       }
 
-      const copyBounds = {
-        left: (ncx - newHw) / w,
-        top: (ncy - newHh) / h,
-        width: (newHw * 2) / w,
-        height: (newHh * 2) / h,
-      };
-
-      const overlapsExisting = structures.some(
-        (other) => boundsIoU(getStructureBounds(other), copyBounds) >= 0.5
-      );
-      if (overlapsExisting) {
-        skipped++;
-        return;
-      }
-
-      structures.push({
-        id: crypto.randomUUID(),
+      copies.push({
         type: s.type,
         fill: normalizeStructureFill(s.fill),
+        color: s.color,
         flip: s.type === "triangle" && flipsVertically ? !s.flip : Boolean(s.flip),
         ...(rotation ? { rotation: normalizeRotation(-rotation) } : {}),
-        x1: copyBounds.left,
-        y1: copyBounds.top,
-        x2: copyBounds.left + copyBounds.width,
-        y2: copyBounds.top + copyBounds.height,
+        x1: (ncx - newHw) / w,
+        y1: (ncy - newHh) / h,
+        x2: (ncx + newHw) / w,
+        y2: (ncy + newHh) / h,
         detected: false,
         name: "",
         bio: "",
       });
-      added++;
     });
 
-    return { added, skipped };
+    return { copies };
+  }
+
+  function getShiftedMirrorCopies() {
+    const dx = mirrorPreviewOffset;
+    return (mirrorPreviewCopies || []).map((s) => ({
+      ...s,
+      x1: s.x1 + dx,
+      x2: s.x2 + dx,
+    }));
+  }
+
+  function applyMirrorOffsetDelta(delta) {
+    if (!delta || !mirrorPreviewCopies.length) return;
+    const shifted = getShiftedMirrorCopies();
+    let minX = Infinity;
+    let maxX = -Infinity;
+    shifted.forEach((s) => {
+      minX = Math.min(minX, s.x1, s.x2);
+      maxX = Math.max(maxX, s.x1, s.x2);
+    });
+    let applied = delta;
+    if (minX + applied < 0) applied = -minX;
+    if (maxX + applied > 1) applied = 1 - maxX;
+    if (Math.abs(applied) < 1e-6) return;
+    mirrorPreviewOffset += applied;
+    redrawMirrorOverlay();
+  }
+
+  function nudgeMirrorPreview(dir) {
+    if (mirrorStep !== "preview") return;
+    applyMirrorOffsetDelta(MIRROR_NUDGE_STEP * dir);
+  }
+
+  function startMirrorNudgeHold(dir) {
+    stopMirrorNudgeHold();
+    nudgeMirrorPreview(dir);
+    mirrorNudgeTimer = setInterval(() => nudgeMirrorPreview(dir), 45);
+  }
+
+  function stopMirrorNudgeHold() {
+    if (mirrorNudgeTimer) {
+      clearInterval(mirrorNudgeTimer);
+      mirrorNudgeTimer = null;
+    }
+  }
+
+  function enterMirrorPreview() {
+    const result = buildMirrorCopies(mirrorBox, mirrorLinePoints[0], mirrorLinePoints[1]);
+    if (result.error) {
+      mirrorLinePoints = [];
+      mirrorHoverPoint = null;
+      redrawMirrorOverlay();
+      showMirrorPrompt(result.error);
+      return;
+    }
+    mirrorPreviewCopies = result.copies;
+    mirrorPreviewOffset = 0;
+    mirrorStep = "preview";
+    stage.classList.add("is-mirror-preview");
+    hideMirrorPrompt();
+    openMirrorConfirm();
+    redrawMirrorOverlay();
+  }
+
+  function resetMirrorPreview() {
+    stopMirrorNudgeHold();
+    closeMirrorConfirm();
+    mirrorPreviewCopies = [];
+    mirrorPreviewOffset = 0;
+    mirrorPreviewDrag = null;
+    mirrorDragStart = null;
+    mirrorBox = null;
+    mirrorLinePoints = [];
+    mirrorHoverPoint = null;
+    mirrorStep = "box";
+    stage.classList.remove("is-mirror-preview", "is-mirror-dragging");
+    showMirrorPrompt("Draw a box around the field");
+    redrawMirrorOverlay();
   }
 
   function finishMirror() {
-    const box = mirrorBox;
-    const [p1, p2] = mirrorLinePoints;
-    const result = mirrorStructuresAcrossLine(box, p1, p2);
+    if (mirrorStep !== "preview") return;
+    const copies = getShiftedMirrorCopies();
+    let added = 0;
+    let skipped = 0;
+    copies.forEach((copy) => {
+      const copyBounds = getStructureBounds(copy);
+      const overlapsExisting = structures.some(
+        (other) => boundsIoU(getStructureBounds(other), copyBounds) >= 0.5
+      );
+      if (overlapsExisting) {
+        skipped += 1;
+        return;
+      }
+      structures.push({
+        ...copy,
+        id: crypto.randomUUID(),
+      });
+      added += 1;
+    });
     cancelMirrorFlow();
-
-    if (result.error) {
-      showMirrorPrompt(result.error, true);
-      return;
-    }
 
     clearSizerUndo();
     persistFieldState();
@@ -7247,8 +7488,8 @@
     redrawVisionLines();
     redrawShootOverlay();
 
-    let message = `Mirrored ${result.added} structure${result.added === 1 ? "" : "s"}`;
-    if (result.skipped) message += ` (${result.skipped} already there)`;
+    let message = `Mirrored ${added} structure${added === 1 ? "" : "s"}`;
+    if (skipped) message += ` (${skipped} already there)`;
     showMirrorPrompt(message, true);
   }
 
@@ -7276,7 +7517,18 @@
       }
       mirrorLinePoints = [mirrorLinePoints[0], snapMirrorLinePoint(mirrorLinePoints[0], point)];
       redrawMirrorOverlay();
-      finishMirror();
+      enterMirrorPreview();
+      return;
+    }
+
+    if (mirrorStep === "preview") {
+      mirrorPreviewDrag = {
+        pid: e.pointerId,
+        startX: point.x,
+        startOffset: mirrorPreviewOffset,
+      };
+      stage.classList.add("is-mirror-dragging");
+      mirrorCanvas.setPointerCapture?.(e.pointerId);
     }
   });
 
@@ -7289,10 +7541,18 @@
     } else if (mirrorStep === "line" && mirrorLinePoints.length === 1) {
       mirrorHoverPoint = point;
       redrawMirrorOverlay();
+    } else if (mirrorStep === "preview" && mirrorPreviewDrag && mirrorPreviewDrag.pid === e.pointerId) {
+      mirrorPreviewOffset = mirrorPreviewDrag.startOffset;
+      applyMirrorOffsetDelta(point.x - mirrorPreviewDrag.startX);
     }
   });
 
   function endMirrorBoxDrag(e) {
+    if (mirrorStep === "preview" && mirrorPreviewDrag) {
+      mirrorPreviewDrag = null;
+      stage.classList.remove("is-mirror-dragging");
+      return;
+    }
     if (mirrorStep !== "box" || !mirrorDragStart) return;
     if (e) {
       mirrorBox = { ...mirrorBox, x2: getMirrorPoint(e).x, y2: getMirrorPoint(e).y };
@@ -7320,21 +7580,34 @@
   designMapBtn?.addEventListener("click", onDesignButton);
   designMapMobileBtn?.addEventListener("click", onDesignButton);
   designSwitch?.addEventListener("click", () => setDesignMap(!designMapOn));
-  mirrorLayoutBtn?.addEventListener("click", openMirrorConfirm);
+  mirrorLayoutBtn?.addEventListener("click", startMirrorFlow);
   mirrorLayoutMobileBtn?.addEventListener("click", () => {
     closeToolsPanel();
-    openMirrorConfirm();
+    startMirrorFlow();
   });
-  mirrorConfirmYes?.addEventListener("click", startMirrorFlow);
-  mirrorConfirmNo?.addEventListener("click", closeMirrorConfirm);
-  mirrorConfirmBackdrop?.addEventListener("click", closeMirrorConfirm);
+  mirrorConfirmYes?.addEventListener("click", finishMirror);
+  mirrorConfirmNo?.addEventListener("click", cancelMirrorFlow);
+  mirrorResetBtn?.addEventListener("click", resetMirrorPreview);
+  mirrorNudgeLeftBtn?.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    startMirrorNudgeHold(-1);
+  });
+  mirrorNudgeRightBtn?.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    startMirrorNudgeHold(1);
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((type) => {
+    mirrorNudgeLeftBtn?.addEventListener(type, stopMirrorNudgeHold);
+    mirrorNudgeRightBtn?.addEventListener(type, stopMirrorNudgeHold);
+  });
+  window.addEventListener("pointerup", stopMirrorNudgeHold);
+  window.addEventListener("pointercancel", stopMirrorNudgeHold);
   mirrorCancelBtn?.addEventListener("click", cancelMirrorFlow);
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     if (theaterOpen) closeTheater();
     else if (presetModal && !presetModal.hidden) closePresetModal();
-    else if (mirrorConfirm && !mirrorConfirm.hidden) closeMirrorConfirm();
     else if (mirrorStep) cancelMirrorFlow();
     else if (intelModalOpen) closeIntelModal();
   });
