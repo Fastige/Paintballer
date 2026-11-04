@@ -659,7 +659,7 @@
   }
 
   function isRunMode() {
-    return shootMode === "run" || shootMode === "joystick";
+    return shootMode === "run";
   }
 
   function setTool(tool) {
@@ -856,7 +856,7 @@
 
   shootModeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      shootMode = btn.dataset.shootMode || "shoot";
+      shootMode = btn.dataset.shootMode === "run" ? "run" : "shoot";
       shootModeBtns.forEach((b) => b.classList.toggle("is-active", b === btn));
       updateShootPanel();
     });
@@ -1810,7 +1810,7 @@
     }
     shootModeBtns.forEach((btn) => {
       const mode = btn.dataset.shootMode;
-      const isRun = mode === "run" || mode === "joystick";
+      const isRun = mode === "run";
       btn.disabled = isRun ? shootStandStill : shootNoShot;
       btn.classList.toggle("is-active", mode === shootMode);
       if (mode === "shoot") {
@@ -1818,9 +1818,9 @@
       }
     });
     if (runStickWrap) {
-      runStickWrap.hidden = shootMode !== "joystick" || shootStandStill || !shootPlayerEl;
+      runStickWrap.hidden = shootMode !== "run" || shootStandStill || !shootPlayerEl;
     }
-    if (shootMode !== "joystick" || shootStandStill || !shootPlayerEl) stopRunStick();
+    if (shootMode !== "run" || shootStandStill || !shootPlayerEl) stopRunStick();
     renderShootSceneList();
   }
 
@@ -2444,7 +2444,6 @@
       startRunDraw(e, false);
       return;
     }
-    if (shootMode === "joystick") return;
     if (!shootUseTargetPlayer && !shootNoShot) {
       shootPoint = point;
     }
@@ -2591,7 +2590,7 @@
   }
 
   function startRunStick(e) {
-    if (shootMode !== "joystick" || !shootPlayerEl || shootStandStill) return;
+    if (shootMode !== "run" || !shootPlayerEl || shootStandStill) return;
     e.preventDefault();
     e.stopPropagation();
     runStickState.active = true;

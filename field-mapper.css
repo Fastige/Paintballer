@@ -2183,7 +2183,7 @@
 
 .fm-shoot-mode-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.45rem;
 }
 
@@ -2219,10 +2219,6 @@
 
 .fm-shoot-mode-btn[data-shoot-mode="run"]::before {
   content: "➜";
-}
-
-.fm-shoot-mode-btn[data-shoot-mode="joystick"]::before {
-  content: "◉";
 }
 
 .fm-run-stick-wrap {
