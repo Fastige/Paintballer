@@ -4984,6 +4984,13 @@
   border-radius: 12px;
 }
 
+.fm-kit-card > .fm-throttle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
 .fm-kit-label {
   margin: 0;
   font-size: 0.66rem;

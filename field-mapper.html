@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=19" />
-  <link rel="stylesheet" href="field-mapper.css?v=70" />
+  <link rel="stylesheet" href="field-mapper.css?v=71" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ff5c00'/><circle cx='50' cy='50' r='28' fill='%231a1f14'/></svg>" />
 </head>
 <body class="fm-body">
@@ -573,6 +573,16 @@
               <button type="button" class="fm-count-btn" id="player-count-plus" aria-label="Add player">+</button>
             </div>
           </section>
+          <section class="fm-kit-card">
+            <div class="fm-throttle" id="player-size-throttle">
+              <div class="fm-throttle-head">
+                <label for="player-size">Player size</label>
+                <output class="fm-throttle-value" id="player-size-value" for="player-size">12px</output>
+              </div>
+              <input type="range" class="fm-throttle-range" id="player-size" min="8" max="32" step="1" value="12" />
+              <div class="fm-throttle-scale" aria-hidden="true"><span>Small</span><span>Large</span></div>
+            </div>
+          </section>
           <p class="fm-kit-hint" id="fm-team-hint">
             Tap the map to preview a vertical ghost stack above the click. Use arrows to nudge, then tap ✓ to lock.
           </p>
@@ -919,6 +929,6 @@
 
   <script src="main.js?v=5"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="field-mapper.js?v=99"></script>
+  <script src="field-mapper.js?v=100"></script>
 </body>
 </html>

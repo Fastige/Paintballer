@@ -17,6 +17,10 @@
   const MAX_PLAYERS_PER_TEAM = 10;
   const TEAM_NUDGE_STEP = 1.5;
   const IS_COARSE = window.matchMedia("(pointer: coarse)").matches;
+  const PLAYER_SIZE_KEY = "paintballer-player-size";
+  const PLAYER_SIZE_MIN = 8;
+  const PLAYER_SIZE_MAX = 32;
+  const PLAYER_SIZE_DEFAULT = IS_COARSE ? 13 : 12;
 
   const body = document.body;
   const stage = document.getElementById("fm-stage");
@@ -149,6 +153,8 @@
   const playerCountInput = document.getElementById("player-count");
   const playerCountMinus = document.getElementById("player-count-minus");
   const playerCountPlus = document.getElementById("player-count-plus");
+  const playerSizeInput = document.getElementById("player-size");
+  const playerSizeValue = document.getElementById("player-size-value");
   const shootPanel = document.getElementById("fm-shoot-panel");
   const shootEmpty = document.getElementById("fm-shoot-empty");
   const shootControls = document.getElementById("fm-shoot-controls");
@@ -838,6 +844,7 @@
   playerCountInput?.addEventListener("input", () => setPlacementCount(playerCountInput.value));
   playerCountMinus?.addEventListener("click", () => setPlacementCount(teamPlacement[activePlacementTeam].count - 1));
   playerCountPlus?.addEventListener("click", () => setPlacementCount(teamPlacement[activePlacementTeam].count + 1));
+  playerSizeInput?.addEventListener("input", () => setPlayerSize(playerSizeInput.value, true));
 
   structureStyleBtns.forEach((btn) => {
     btn.addEventListener("click", () => setActiveStructureStyle(btn.dataset.structureStyle || "filled"));
@@ -6070,6 +6077,54 @@
     return Array.from(playersLayer.querySelectorAll(`.fm-player[data-team="${team}"]`));
   }
 
+  function clampPlayerSize(value) {
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n)) return PLAYER_SIZE_DEFAULT;
+    return Math.max(PLAYER_SIZE_MIN, Math.min(PLAYER_SIZE_MAX, n));
+  }
+
+  function readSavedPlayerSize() {
+    try {
+      const saved = localStorage.getItem(PLAYER_SIZE_KEY);
+      if (saved == null || saved === "") return PLAYER_SIZE_DEFAULT;
+      return clampPlayerSize(saved);
+    } catch {
+      return PLAYER_SIZE_DEFAULT;
+    }
+  }
+
+  function syncPlayerSizeUi(size) {
+    if (playerSizeInput) playerSizeInput.value = String(size);
+    if (playerSizeValue) playerSizeValue.textContent = `${size}px`;
+    const min = Number(playerSizeInput?.min) || PLAYER_SIZE_MIN;
+    const max = Number(playerSizeInput?.max) || PLAYER_SIZE_MAX;
+    playerSizeInput?.closest(".fm-throttle")?.style.setProperty("--fill", `${((size - min) / (max - min)) * 100}%`);
+  }
+
+  function restackUnlockedTeams() {
+    ["a", "b"].forEach((team) => {
+      const state = teamPlacement[team];
+      if (state?.placed && !state.locked && state.spawn) placeTeamAtSpawn(team, state.spawn);
+    });
+  }
+
+  function setPlayerSize(value, persist) {
+    const size = clampPlayerSize(value);
+    document.documentElement.style.setProperty("--player-size", `${size}px`);
+    syncPlayerSizeUi(size);
+    restackUnlockedTeams();
+    renderTeamNudges();
+    redrawVisionLines();
+    redrawShootOverlay();
+    if (persist) {
+      try {
+        localStorage.setItem(PLAYER_SIZE_KEY, String(size));
+      } catch {
+        /* storage blocked */
+      }
+    }
+  }
+
   function getTeamStackPositions(spawn, count) {
     const x = Math.max(2, Math.min(98, spawn.x));
     if (count <= 0) return [];
@@ -7646,6 +7701,7 @@
     { passive: false }
   );
 
+  setPlayerSize(readSavedPlayerSize(), false);
   setTool("select");
   updateControlStates();
 })();
