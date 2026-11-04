@@ -69,6 +69,7 @@
   const presetCancelBtn = document.getElementById("preset-cancel");
 
   const MAP_PRESETS = [
+    { name: "WORLD CUP 2026", folder: "presets/world-cup-2026" },
     { name: "MID-ATLANTIC 2026", folder: "presets/mid-atlantic-2026" },
     { name: "LAS VEGAS MAJOR 2024", folder: "presets/las-vegas-major-2024" },
   ];
