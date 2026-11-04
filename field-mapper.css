@@ -2231,6 +2231,7 @@
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, #ff3b3b 40%, var(--border));
   background: rgba(18, 12, 12, 0.55);
+  touch-action: none;
 }
 
 .fm-run-stick-wrap[hidden] {

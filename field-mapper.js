@@ -385,8 +385,8 @@
   let mirrorPreviewDrag = null;
   let mirrorNudgeTimer = null;
   let mirrorToastTimer = null;
-  const RUN_STICK_SPEED_PX = 56;
-  const RUN_STICK_DEADZONE = 0.16;
+  const RUN_STICK_SPEED_PX = 110;
+  const RUN_STICK_DEADZONE = 0.1;
   const RUN_STICK_KNOB_PX = 28;
   let runStickState = { active: false, pid: null, x: 0, y: 0, mag: 0, raf: 0, lastTs: 0 };
   let sizerSyncing = false;
@@ -2530,6 +2530,7 @@
   }
 
   function getRunDrawTipPx() {
+    if (runPoint) return denormalizePoint(runPoint);
     if (runPath?.length) return denormalizePoint(runPath[runPath.length - 1]);
     if (shootPlayerEl) return getPlayerCenterPx(shootPlayerEl);
     return null;
@@ -2562,16 +2563,16 @@
       x: Math.max(0, Math.min(w, tip.x + dx)),
       y: Math.max(0, Math.min(h, tip.y + dy)),
     };
-    if (Math.hypot(nextPx.x - tip.x, nextPx.y - tip.y) < 0.35) return;
+    if (nextPx.x === tip.x && nextPx.y === tip.y) return;
     const point = normalizeLayerPoint(nextPx);
     if (!point) return;
-    const last = runPath?.[runPath.length - 1];
-    if (last && Math.hypot((point.x - last.x) * w, (point.y - last.y) * h) < RUN_PATH_MIN_STEP_PX) {
-      runPoint = point;
-      return;
-    }
     if (!runPath) runPath = [];
-    runPath.push(point);
+    const last = runPath[runPath.length - 1];
+    const dist = last
+      ? Math.hypot((point.x - last.x) * w, (point.y - last.y) * h)
+      : Infinity;
+    if (!last || dist >= 1) runPath.push(point);
+    else runPath[runPath.length - 1] = point;
     runPoint = point;
     shootStandStill = false;
     if (shootStandStillInput) shootStandStillInput.checked = false;
@@ -2591,19 +2592,28 @@
 
   function startRunStick(e) {
     if (shootMode !== "run" || !shootPlayerEl || shootStandStill) return;
+    if (runStickState.active && runStickState.pid === e.pointerId) return;
     e.preventDefault();
     e.stopPropagation();
     runStickState.active = true;
     runStickState.pid = e.pointerId;
-    runStickState.lastTs = performance.now();
+    runStickState.lastTs = performance.now() - 16;
     const vec = readRunStickVector(e.clientX, e.clientY);
     runStickState.x = vec.x;
     runStickState.y = vec.y;
     runStickState.mag = vec.mag;
     setRunStickKnob(vec.x, vec.y);
+    if (!runPoint && shootPlayerEl) {
+      const start = normalizeLayerPoint(getPlayerCenterPx(shootPlayerEl));
+      if (start) {
+        runPoint = start;
+        if (!runPath?.length) runPath = [];
+      }
+    }
     setInteractionLock(true);
+    const pad = runStickEl || runStickWrap;
     try {
-      runStickEl.setPointerCapture(e.pointerId);
+      pad?.setPointerCapture(e.pointerId);
     } catch {
       /* already captured */
     }
@@ -2635,7 +2645,8 @@
     setRunStickKnob(0, 0);
     setInteractionLock(false);
     try {
-      if (pid != null && runStickEl?.hasPointerCapture?.(pid)) runStickEl.releasePointerCapture(pid);
+      const pad = runStickEl || runStickWrap;
+      if (pid != null && pad?.hasPointerCapture?.(pid)) pad.releasePointerCapture(pid);
     } catch {
       /* already released */
     }
@@ -6460,10 +6471,10 @@
   shootCanvas.addEventListener("pointermove", extendRunDraw);
   shootCanvas.addEventListener("pointerup", endRunDraw);
   shootCanvas.addEventListener("pointercancel", endRunDraw);
-  runStickEl?.addEventListener("pointerdown", startRunStick);
-  runStickEl?.addEventListener("pointermove", moveRunStick);
-  runStickEl?.addEventListener("pointerup", endRunStick);
-  runStickEl?.addEventListener("pointercancel", endRunStick);
+  runStickEl?.addEventListener("pointerdown", startRunStick, { passive: false });
+  window.addEventListener("pointermove", moveRunStick);
+  window.addEventListener("pointerup", endRunStick);
+  window.addEventListener("pointercancel", endRunStick);
   window.addEventListener("pointerup", endRunDraw);
   window.addEventListener("pointercancel", endRunDraw);
   shootRunBtn?.addEventListener("click", runShootPlayer);
