@@ -1580,7 +1580,11 @@
 
   function getSetupRunRoute(setup) {
     if (setup.standStill || !setup.runPoint) return null;
-    return setup.runPath?.length ? setup.runPath : [setup.runPoint];
+    const path = setup.runPath?.length ? setup.runPath.slice() : [];
+    const end = setup.runPoint;
+    const last = path[path.length - 1];
+    if (!last || last.x !== end.x || last.y !== end.y) path.push(end);
+    return path;
   }
 
   function selectedPlayerHasShootWork() {
@@ -2567,12 +2571,15 @@
     const point = normalizeLayerPoint(nextPx);
     if (!point) return;
     if (!runPath) runPath = [];
+    if (!runPath.length) {
+      const origin = normalizeLayerPoint(getPlayerCenterPx(shootPlayerEl));
+      if (origin) runPath.push(origin);
+    }
     const last = runPath[runPath.length - 1];
     const dist = last
       ? Math.hypot((point.x - last.x) * w, (point.y - last.y) * h)
       : Infinity;
-    if (!last || dist >= 1) runPath.push(point);
-    else runPath[runPath.length - 1] = point;
+    if (!last || dist >= 2) runPath.push(point);
     runPoint = point;
     shootStandStill = false;
     if (shootStandStillInput) shootStandStillInput.checked = false;
@@ -2603,11 +2610,11 @@
     runStickState.y = vec.y;
     runStickState.mag = vec.mag;
     setRunStickKnob(vec.x, vec.y);
-    if (!runPoint && shootPlayerEl) {
+    if (shootPlayerEl && !runPath?.length) {
       const start = normalizeLayerPoint(getPlayerCenterPx(shootPlayerEl));
       if (start) {
+        runPath = [start];
         runPoint = start;
-        if (!runPath?.length) runPath = [];
       }
     }
     setInteractionLock(true);
@@ -2650,7 +2657,12 @@
     } catch {
       /* already released */
     }
-    if (runPath?.length) {
+    if (runPath?.length || runPoint) {
+      if (!runPath) runPath = [];
+      if (runPoint) {
+        const last = runPath[runPath.length - 1];
+        if (!last || last.x !== runPoint.x || last.y !== runPoint.y) runPath.push(runPoint);
+      }
       runPath = simplifyRunPath(runPath);
       runPoint = runPath[runPath.length - 1];
       updateShootPanel();
