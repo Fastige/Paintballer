@@ -682,7 +682,7 @@
     shoot: {
       color: "#ff3b3b",
       dur: 7000,
-      captions: [[0, "Tap a player, then draw the run"], [1700, "Set the shoot point"], [2500, "Play the scene"]],
+      captions: [[0, "Draw the run, or hold the joystick"], [1700, "Set the shoot point"], [2500, "Play the scene"]],
       draw(ctx, t) {
         drawField(ctx);
         drawBunkers(ctx, ALL);
